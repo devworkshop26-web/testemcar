@@ -1,0 +1,35 @@
+/* Madagasycar App Styles - Optimized for Premium UX */
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scroll behavior */
+html {
+  scrollbar-gutter: stable;
+}
+
+html, body {
+  scroll-behavior: smooth;
+  overflow-y: scroll;
+}
+
+/* Premium focus states */
+*:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Optimize image loading */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+
