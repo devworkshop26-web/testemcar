@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 import uuid
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 
 class CustomUserManager(BaseUserManager):
@@ -12,7 +13,9 @@ class CustomUserManager(BaseUserManager):
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                 "0123456789"
             )
-        return super().make_random_password(length=length, allowed_chars=allowed_chars)
+
+        return get_random_string(length=length, allowed_chars=allowed_chars)
+
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
