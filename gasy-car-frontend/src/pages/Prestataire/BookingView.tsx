@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check, X, Eye } from "lucide-react";
@@ -50,7 +50,52 @@ const BookingsView = () => {
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const selectedVehicle = useMemo(
+    () => ownerVehicles.find((vehicle) => vehicle.id === vehicleId),
+    [ownerVehicles, vehicleId]
+  );
 
+  const getNumberValue = (value?: string | number | null) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
+    const normalized = value.replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const calculateTotalDays = (start: string, end: string) => {
+    if (!start || !end) return 1;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return 1;
+    }
+    const diffMs = endDate.getTime() - startDate.getTime();
+    if (diffMs <= 0) return 1;
+    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  };
+
+  useEffect(() => {
+    if (!selectedVehicle) {
+      setBaseAmount("");
+      setCautionAmount("");
+      return;
+    }
+    setBaseAmount(selectedVehicle.prix_jour || "0");
+    setCautionAmount(selectedVehicle.montant_caution || "0");
+    setPickupLocation(selectedVehicle.adresse_localisation || "");
+  }, [selectedVehicle]);
+
+  useEffect(() => {
+    setTotalDays(calculateTotalDays(startDatetime, endDatetime));
+  }, [startDatetime, endDatetime]);
+
+  useEffect(() => {
+    const base = getNumberValue(baseAmount);
+    const options = getNumberValue(optionsAmount);
+    const total = base * totalDays + options;
+    setTotalAmount(total.toFixed(2));
+  }, [baseAmount, optionsAmount, totalDays]);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -104,6 +149,10 @@ const BookingsView = () => {
       setError("Les dates de début et de fin sont obligatoires.");
       return;
     }
+    if (new Date(endDatetime) <= new Date(startDatetime)) {
+      setError("La date de fin doit être après la date de début.");
+      return;
+    }
     if (!pickupLocation.trim()) {
       setError("Le lieu de prise en charge est obligatoire.");
       return;
@@ -136,9 +185,6 @@ const BookingsView = () => {
         start_datetime: startDatetime,
         end_datetime: endDatetime,
         total_days: totalDays,
-        base_amount: baseAmount || "0",
-        options_amount: optionsAmount || "0",
-        total_amount: totalAmount || "0",
         caution_amount: cautionAmount,
         with_chauffeur: withChauffeur,
         pickup_location: pickupLocation,
@@ -293,8 +339,9 @@ const BookingsView = () => {
                     type="number"
                     min={1}
                     value={totalDays}
-                    onChange={(event) => setTotalDays(Number(event.target.value) || 1)}
+                    readOnly
                   />
+                  <p className="text-xs text-gray-500">Calculé automatiquement depuis les dates.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="baseAmount">Montant base</Label>
@@ -303,8 +350,9 @@ const BookingsView = () => {
                     type="number"
                     min={0}
                     value={baseAmount}
-                    onChange={(event) => setBaseAmount(event.target.value)}
+                    readOnly
                   />
+                  <p className="text-xs text-gray-500">Tarif journalier du véhicule.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="optionsAmount">Options</Label>
@@ -323,8 +371,9 @@ const BookingsView = () => {
                     type="number"
                     min={0}
                     value={totalAmount}
-                    onChange={(event) => setTotalAmount(event.target.value)}
+                    readOnly
                   />
+                  <p className="text-xs text-gray-500">Calculé automatiquement.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="cautionAmount">Caution</Label>
@@ -333,8 +382,9 @@ const BookingsView = () => {
                     type="number"
                     min={0}
                     value={cautionAmount}
-                    onChange={(event) => setCautionAmount(event.target.value)}
+                    readOnly
                   />
+                  <p className="text-xs text-gray-500">Caution définie sur le véhicule.</p>
                 </div>
               </div>
 

@@ -2,9 +2,19 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 import uuid
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 
 class CustomUserManager(BaseUserManager):
+    def make_random_password(self, length=12, allowed_chars=None):
+        if allowed_chars is None:
+            allowed_chars = (
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "0123456789"
+            )
+        return get_random_string(length=length, allowed_chars=allowed_chars)
+
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('L\'email est obligatoire')
