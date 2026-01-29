@@ -5,6 +5,15 @@ from django.utils import timezone
 
 
 class CustomUserManager(BaseUserManager):
+    def make_random_password(self, length=12, allowed_chars=None):
+        if allowed_chars is None:
+            allowed_chars = (
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "0123456789"
+            )
+        return super().make_random_password(length=length, allowed_chars=allowed_chars)
+
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('L\'email est obligatoire')
