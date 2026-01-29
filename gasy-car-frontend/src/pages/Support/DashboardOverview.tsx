@@ -1,7 +1,6 @@
 import CriticalReservationCard from "@/components/support/Dashboard/CriticalReservationCard";
 import RecentTickets from "@/components/support/Dashboard/RecentTickets";
 import SupportStats from "@/components/support/Dashboard/SupportStats";
-import SupportTicketInsights from "@/components/support/Dashboard/SupportTicketInsights";
 import UpcomingReservations from "@/components/support/Dashboard/UpcomingReservations";
 
 interface DashboardOverviewProps {
@@ -14,8 +13,6 @@ export default function DashboardOverview({ setActiveTab }: DashboardOverviewPro
 
       {/* STATS */}
       <SupportStats />
-
-      <SupportTicketInsights />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
