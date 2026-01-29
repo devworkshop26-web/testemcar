@@ -84,7 +84,7 @@ export interface ReservationService {
 
 // Payload pour création (admin)
 export interface CreateReservationPayload {
-  client: string;
+  client?: string;
   vehicle: string;
   start_datetime: string;
   end_datetime: string;
@@ -103,6 +103,11 @@ export interface CreateReservationPayload {
   driving_mode?: "SELF_DRIVE" | "WITH_DRIVER";
   pricing_zone?: "URBAIN" | "PROVINCE";
   equipments?: string[];
+
+  guest_first_name?: string;
+  guest_last_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
 }
 
 export type UpdateReservationPayload = Partial<CreateReservationPayload>;
