@@ -1,15 +1,54 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Filter, Check, X, Eye } from "lucide-react";
-import { useAllReservationOfMyvehiculeQuery } from "@/useQuery/reservationsUseQuery";
+import { Check, X, Eye } from "lucide-react";
+import { useAllReservationOfMyvehiculeQuery, useCreateReservationMutation } from "@/useQuery/reservationsUseQuery";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import { useOwnerClientsQuery, useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
 
 const BookingsView = () => {
   const { user } = useCurentuser();
   const navigate = useNavigate();
   const { data: allReservations = [], isLoading: isLoadingReservations } = useAllReservationOfMyvehiculeQuery(user?.id);
+  const { data: ownerClients = [] } = useOwnerClientsQuery(user?.id);
+  const { data: ownerVehicles = [] } = useOwnerVehiculesQuery(user?.id);
+  const createReservationMutation = useCreateReservationMutation();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [useGuest, setUseGuest] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [guestFirstName, setGuestFirstName] = useState("");
+  const [guestLastName, setGuestLastName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
+  const [startDatetime, setStartDatetime] = useState("");
+  const [endDatetime, setEndDatetime] = useState("");
+  const [totalDays, setTotalDays] = useState(1);
+  const [baseAmount, setBaseAmount] = useState("");
+  const [optionsAmount, setOptionsAmount] = useState("0");
+  const [totalAmount, setTotalAmount] = useState("");
+  const [cautionAmount, setCautionAmount] = useState("");
+  const [withChauffeur, setWithChauffeur] = useState(false);
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [dropoffLocation, setDropoffLocation] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
 
 
@@ -35,6 +74,88 @@ const BookingsView = () => {
     }
   };
 
+  const resetForm = () => {
+    setClientId("");
+    setGuestFirstName("");
+    setGuestLastName("");
+    setGuestEmail("");
+    setGuestPhone("");
+    setVehicleId("");
+    setStartDatetime("");
+    setEndDatetime("");
+    setTotalDays(1);
+    setBaseAmount("");
+    setOptionsAmount("0");
+    setTotalAmount("");
+    setCautionAmount("");
+    setWithChauffeur(false);
+    setPickupLocation("");
+    setDropoffLocation("");
+    setUseGuest(false);
+    setError(null);
+  };
+
+  const handleCreateReservation = async () => {
+    if (!vehicleId) {
+      setError("Veuillez sélectionner un véhicule.");
+      return;
+    }
+    if (!startDatetime || !endDatetime) {
+      setError("Les dates de début et de fin sont obligatoires.");
+      return;
+    }
+    if (!pickupLocation.trim()) {
+      setError("Le lieu de prise en charge est obligatoire.");
+      return;
+    }
+    if (!cautionAmount) {
+      setError("Le montant de caution est obligatoire.");
+      return;
+    }
+    if (!useGuest && !clientId) {
+      setError("Sélectionnez un client ou activez le mode invité.");
+      return;
+    }
+    if (useGuest) {
+      const hasContact = guestEmail.trim() || guestPhone.trim();
+      if (!guestFirstName.trim() || !guestLastName.trim() || !hasContact) {
+        setError("Nom, prénom et un contact (email ou téléphone) sont requis pour un invité.");
+        return;
+      }
+    }
+
+    setError(null);
+    try {
+      await createReservationMutation.mutateAsync({
+        client: useGuest ? undefined : clientId,
+        guest_first_name: useGuest ? guestFirstName : undefined,
+        guest_last_name: useGuest ? guestLastName : undefined,
+        guest_email: useGuest ? guestEmail : undefined,
+        guest_phone: useGuest ? guestPhone : undefined,
+        vehicle: vehicleId,
+        start_datetime: startDatetime,
+        end_datetime: endDatetime,
+        total_days: totalDays,
+        base_amount: baseAmount || "0",
+        options_amount: optionsAmount || "0",
+        total_amount: totalAmount || "0",
+        caution_amount: cautionAmount,
+        with_chauffeur: withChauffeur,
+        pickup_location: pickupLocation,
+        dropoff_location: dropoffLocation,
+        driving_mode: withChauffeur ? "WITH_DRIVER" : "SELF_DRIVE",
+      });
+
+      toast.success("Réservation créée avec succès.");
+      setDialogOpen(false);
+      resetForm();
+    } catch (err: any) {
+      const message = err?.message ?? "Impossible de créer la réservation.";
+      setError(message);
+      toast.error(message);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
@@ -42,6 +163,236 @@ const BookingsView = () => {
           <h2 className="text-2xl font-bold text-gray-900 font-poppins">Réservations</h2>
           <p className="text-gray-500 text-sm">Suivi des demandes et locations en cours.</p>
         </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="rounded-xl">Créer une réservation</Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[640px]">
+            <DialogHeader>
+              <DialogTitle>Nouvelle réservation</DialogTitle>
+              <DialogDescription>
+                Créez une réservation pour un client existant ou un invité.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Client invité</p>
+                  <p className="text-xs text-gray-500">Activez pour saisir un client sans compte</p>
+                </div>
+                <Switch
+                  checked={useGuest}
+                  onCheckedChange={(value) => {
+                    setUseGuest(value);
+                    setClientId("");
+                  }}
+                />
+              </div>
+
+              {!useGuest && (
+                <div className="grid gap-2">
+                  <Label htmlFor="client">Client</Label>
+                  <select
+                    id="client"
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={clientId}
+                    onChange={(event) => setClientId(event.target.value)}
+                  >
+                    <option value="">Sélectionner un client</option>
+                    {ownerClients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.first_name} {client.last_name} ({client.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {useGuest && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="guestFirstName">Prénom</Label>
+                    <Input
+                      id="guestFirstName"
+                      value={guestFirstName}
+                      onChange={(event) => setGuestFirstName(event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="guestLastName">Nom</Label>
+                    <Input
+                      id="guestLastName"
+                      value={guestLastName}
+                      onChange={(event) => setGuestLastName(event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="guestEmail">Email</Label>
+                    <Input
+                      id="guestEmail"
+                      type="email"
+                      value={guestEmail}
+                      onChange={(event) => setGuestEmail(event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="guestPhone">Téléphone</Label>
+                    <Input
+                      id="guestPhone"
+                      value={guestPhone}
+                      onChange={(event) => setGuestPhone(event.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-2">
+                <Label htmlFor="vehicle">Véhicule</Label>
+                <select
+                  id="vehicle"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={vehicleId}
+                  onChange={(event) => setVehicleId(event.target.value)}
+                >
+                  <option value="">Sélectionner un véhicule</option>
+                  {ownerVehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicle.titre || vehicle.marque_data?.nom} {vehicle.modele_data?.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="startDatetime">Début</Label>
+                  <Input
+                    id="startDatetime"
+                    type="datetime-local"
+                    value={startDatetime}
+                    onChange={(event) => setStartDatetime(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="endDatetime">Fin</Label>
+                  <Input
+                    id="endDatetime"
+                    type="datetime-local"
+                    value={endDatetime}
+                    onChange={(event) => setEndDatetime(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="totalDays">Jours</Label>
+                  <Input
+                    id="totalDays"
+                    type="number"
+                    min={1}
+                    value={totalDays}
+                    onChange={(event) => setTotalDays(Number(event.target.value) || 1)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="baseAmount">Montant base</Label>
+                  <Input
+                    id="baseAmount"
+                    type="number"
+                    min={0}
+                    value={baseAmount}
+                    onChange={(event) => setBaseAmount(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="optionsAmount">Options</Label>
+                  <Input
+                    id="optionsAmount"
+                    type="number"
+                    min={0}
+                    value={optionsAmount}
+                    onChange={(event) => setOptionsAmount(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="totalAmount">Total</Label>
+                  <Input
+                    id="totalAmount"
+                    type="number"
+                    min={0}
+                    value={totalAmount}
+                    onChange={(event) => setTotalAmount(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="cautionAmount">Caution</Label>
+                  <Input
+                    id="cautionAmount"
+                    type="number"
+                    min={0}
+                    value={cautionAmount}
+                    onChange={(event) => setCautionAmount(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Avec chauffeur</p>
+                  <p className="text-xs text-gray-500">Activer si la réservation inclut un chauffeur</p>
+                </div>
+                <Switch
+                  checked={withChauffeur}
+                  onCheckedChange={setWithChauffeur}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="pickupLocation">Lieu de prise en charge</Label>
+                <Textarea
+                  id="pickupLocation"
+                  value={pickupLocation}
+                  onChange={(event) => setPickupLocation(event.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="dropoffLocation">Lieu de retour</Label>
+                <Textarea
+                  id="dropoffLocation"
+                  value={dropoffLocation}
+                  onChange={(event) => setDropoffLocation(event.target.value)}
+                />
+              </div>
+
+              {error && (
+                <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {error}
+                </p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDialogOpen(false);
+                  resetForm();
+                }}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleCreateReservation}
+                disabled={createReservationMutation.isPending}
+              >
+                {createReservationMutation.isPending ? "Création..." : "Créer"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
 
