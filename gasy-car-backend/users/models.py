@@ -13,7 +13,9 @@ class CustomUserManager(BaseUserManager):
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                 "0123456789"
             )
+
         return get_random_string(length=length, allowed_chars=allowed_chars)
+
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
