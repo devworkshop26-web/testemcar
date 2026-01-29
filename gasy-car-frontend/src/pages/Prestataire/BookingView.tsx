@@ -55,8 +55,10 @@ const BookingsView = () => {
     [ownerVehicles, vehicleId]
   );
 
-  const getNumberValue = (value?: string | null) => {
-    if (!value) return 0;
+  const getNumberValue = (value?: string | number | null) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
+
     const normalized = value.replace(/,/g, ".");
     const parsed = Number.parseFloat(normalized);
     return Number.isNaN(parsed) ? 0 : parsed;
