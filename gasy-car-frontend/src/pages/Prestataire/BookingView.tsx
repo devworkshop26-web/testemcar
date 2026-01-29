@@ -109,6 +109,7 @@ const BookingsView = () => {
     setTotalAmount(total.toFixed(2));
   }, [baseAmount, optionsAmount, totalDays]);
 
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "PENDING": return "En attente";
@@ -129,6 +130,7 @@ const BookingsView = () => {
       case "CANCELLED": return "bg-red-100 text-red-700 border-red-200";
       default: return "bg-gray-100 text-gray-700";
     }
+
   };
 
   const resetForm = () => {
@@ -486,6 +488,7 @@ const BookingsView = () => {
         </Dialog>
 
       </div>
+
 
       <Card className="border-none shadow-md rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
