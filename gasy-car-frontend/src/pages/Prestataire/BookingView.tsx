@@ -48,6 +48,7 @@ const BookingsView = () => {
   const [withChauffeur, setWithChauffeur] = useState(false);
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropoffLocation, setDropoffLocation] = useState("");
+  const [pricingZone, setPricingZone] = useState<"URBAIN" | "PROVINCE">("URBAIN");
   const [error, setError] = useState<string | null>(null);
 
   const selectedVehicle = useMemo(
@@ -58,7 +59,6 @@ const BookingsView = () => {
   const getNumberValue = (value?: string | number | null) => {
     if (value === null || value === undefined) return 0;
     if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
-
     const normalized = value.replace(/,/g, ".");
     const parsed = Number.parseFloat(normalized);
     return Number.isNaN(parsed) ? 0 : parsed;
@@ -88,6 +88,17 @@ const BookingsView = () => {
   }, [selectedVehicle]);
 
   useEffect(() => {
+    const hasProvincePricing = Boolean(
+      selectedVehicle?.province_prix_jour ||
+        selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE")
+    );
+
+    if (!hasProvincePricing && pricingZone === "PROVINCE") {
+      setPricingZone("URBAIN");
+    }
+  }, [pricingZone, selectedVehicle]);
+
+  useEffect(() => {
     setTotalDays(calculateTotalDays(startDatetime, endDatetime));
   }, [startDatetime, endDatetime]);
 
@@ -97,6 +108,7 @@ const BookingsView = () => {
     const total = base * totalDays + options;
     setTotalAmount(total.toFixed(2));
   }, [baseAmount, optionsAmount, totalDays]);
+
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -118,6 +130,7 @@ const BookingsView = () => {
       case "CANCELLED": return "bg-red-100 text-red-700 border-red-200";
       default: return "bg-gray-100 text-gray-700";
     }
+
   };
 
   const resetForm = () => {
@@ -137,6 +150,7 @@ const BookingsView = () => {
     setWithChauffeur(false);
     setPickupLocation("");
     setDropoffLocation("");
+    setPricingZone("URBAIN");
     setUseGuest(false);
     setError(null);
   };
@@ -191,6 +205,7 @@ const BookingsView = () => {
         pickup_location: pickupLocation,
         dropoff_location: dropoffLocation,
         driving_mode: withChauffeur ? "WITH_DRIVER" : "SELF_DRIVE",
+        pricing_zone: pricingZone,
       });
 
       toast.success("Réservation créée avec succès.");
@@ -401,6 +416,33 @@ const BookingsView = () => {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="pricingZone">Zone de déplacement</Label>
+                <select
+                  id="pricingZone"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={pricingZone}
+                  onChange={(event) => setPricingZone(event.target.value as "URBAIN" | "PROVINCE")}
+                >
+                  <option value="URBAIN">Urbain</option>
+                  <option
+                    value="PROVINCE"
+                    disabled={
+                      !selectedVehicle?.province_prix_jour &&
+                      !selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE")
+                    }
+                  >
+                    Province
+                  </option>
+                </select>
+                {!selectedVehicle?.province_prix_jour &&
+                  !selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE") && (
+                    <p className="text-xs text-gray-500">
+                      La tarification province n&apos;est pas configurée pour ce véhicule.
+                    </p>
+                  )}
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="pickupLocation">Lieu de prise en charge</Label>
                 <Textarea
                   id="pickupLocation"
@@ -446,6 +488,7 @@ const BookingsView = () => {
         </Dialog>
 
       </div>
+
 
       <Card className="border-none shadow-md rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
