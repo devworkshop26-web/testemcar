@@ -54,6 +54,7 @@ export const useCreateReservationMutation = () => {
       reservationAPI.create_reservation(payload).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-of-Myvehicule-all"] });
     },
   });
 };
