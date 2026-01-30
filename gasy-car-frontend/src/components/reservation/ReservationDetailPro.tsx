@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
     ArrowLeft,
     AlertCircle,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { Reservation } from "@/types/reservationsType";
 import { ReservationStatusBadge } from "@/components/reservation/ReservationStatusBadge";
+import { useUpdateReservationPaymentMutation } from "@/useQuery/reservationsUseQuery";
 
 interface ReservationDetailProProps {
     reservation: Reservation | undefined;
@@ -40,6 +42,24 @@ export const ReservationDetailPro = ({
     alerts,
 }: ReservationDetailProProps) => {
     const navigate = useNavigate();
+    const updatePaymentMutation = useUpdateReservationPaymentMutation();
+
+    const handleProviderPayment = async () => {
+        if (!reservation?.payment?.id) {
+            toast.error("Aucun paiement n'est encore associé à cette réservation.");
+            return;
+        }
+
+        try {
+            await updatePaymentMutation.mutateAsync({
+                id: reservation.payment.id,
+                payload: { status: "VALIDATED" },
+            });
+            toast.success("Paiement validé par le prestataire.");
+        } catch (error) {
+            toast.error("Impossible de valider le paiement pour le moment.");
+        }
+    };
 
     // ============ UTILITY FUNCTIONS ============
     const formatCurrency = (amount: string | number) => {
@@ -273,6 +293,26 @@ export const ReservationDetailPro = ({
                                                 />
                                             </div>
                                         )}
+
+                                        <div className="flex flex-wrap gap-3">
+                                            <Button
+                                                variant="default"
+                                                onClick={handleProviderPayment}
+                                                disabled={
+                                                    updatePaymentMutation.isPending ||
+                                                    reservation.payment.status === "VALIDATED"
+                                                }
+                                            >
+                                                {updatePaymentMutation.isPending
+                                                    ? "Validation..."
+                                                    : "Paiement par le prestataire"}
+                                            </Button>
+                                            {reservation.payment.status === "VALIDATED" && (
+                                                <span className="text-xs text-gray-500 self-center">
+                                                    Paiement déjà validé.
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
