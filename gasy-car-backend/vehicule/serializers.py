@@ -494,6 +494,7 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
     
     # On utilise SerializerMethodField intelligemment avec le cache prefetch
     prix_jour = serializers.SerializerMethodField()
+    province_prix_jour = serializers.SerializerMethodField()
     photo_principale = serializers.SerializerMethodField()
     driver_photo = serializers.SerializerMethodField()
 
@@ -502,7 +503,7 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
         fields = [
             "id", "titre", "marque_nom", "modele_label", "annee",
             "nombre_places", "note_moyenne", "nombre_locations",
-            "prix_jour", "photo_principale", "est_certifie", "est_disponible",
+            "prix_jour", "province_prix_jour", "photo_principale", "est_certifie", "est_disponible",
             "ville", "created_at", "driver_name", "driver_last_name", "numero_immatriculation",
             "transmission_nom", "type_carburant_nom", "kilometrage_actuel_km", "driver_photo"
         ]
@@ -512,6 +513,13 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
         for p in pricings:
             if p.zone_type == "URBAIN": return p.prix_jour
         return pricings[0].prix_jour if pricings else None
+
+    def get_province_prix_jour(self, obj):
+        pricings = getattr(obj, "_prefetched_objects_cache", {}).get("pricing_grid", obj.pricing_grid.all())
+        for p in pricings:
+            if p.zone_type == "PROVINCE":
+                return p.prix_jour
+        return None
 
     def get_photo_principale(self, obj):
         request = self.context.get("request")
