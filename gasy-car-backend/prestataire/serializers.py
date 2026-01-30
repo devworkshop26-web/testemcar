@@ -8,6 +8,7 @@ class PrestataireSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = (
             "id",
+            "user",
             "status",
             "validated_by",
             "created_at",
