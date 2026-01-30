@@ -530,16 +530,20 @@ const BookingsView = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600">
-                            {reservation.client_data?.first_name?.substring(0, 2).toUpperCase() ||
-                              reservation.client_data?.email?.substring(0, 2).toUpperCase() || "CL"}
+                            {reservation.client_data?.first_name?.substring(0, 1).toUpperCase()}
+                            {reservation.client_data?.last_name?.substring(0, 1).toUpperCase() ||
+                              reservation.client_data?.email?.substring(0, 2).toUpperCase() ||
+                              "CL"}
                           </div>
                           <div>
                             <div className="font-medium">
-                              {reservation.client_data?.first_name || reservation.client_data?.email || reservation.client_data || "N/A"}
+                              {(reservation.client_data?.first_name || reservation.client_data?.last_name)
+                                ? `${reservation.client_data?.first_name ?? ""} ${reservation.client_data?.last_name ?? ""}`.trim()
+                                : reservation.client_data?.email || reservation.client_data || "N/A"}
                             </div>
-                            {reservation.client_data?.first_name && reservation.client_data?.last_name && (
+                            {reservation.client_data?.email && (reservation.client_data?.first_name || reservation.client_data?.last_name) && (
                               <div className="text-xs text-gray-500">
-                                {reservation.client_data.first_name} {reservation.client_data.last_name}
+                                {reservation.client_data.email}
                               </div>
                             )}
                           </div>
