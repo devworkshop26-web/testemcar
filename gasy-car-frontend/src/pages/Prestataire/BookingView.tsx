@@ -516,9 +516,15 @@ const BookingsView = () => {
                     <td className="px-6 py-4"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   </tr>
                 ))
-
               ) : allReservations.length > 0 ? (
                 allReservations?.map((reservation: any, index: number) => {
+                  const guestFirstName = reservation.guest_first_name;
+                  const guestLastName = reservation.guest_last_name;
+                  const guestEmail = reservation.guest_email;
+                  const guestPhone = reservation.guest_phone;
+                  const hasGuestIdentity = Boolean(
+                    guestFirstName || guestLastName || guestEmail || guestPhone
+                  );
                   const resolvedClient =
                     reservation.client_data ||
                     ownerClients.find((client) => client.id === reservation.client);
@@ -526,29 +532,26 @@ const BookingsView = () => {
                   const clientLastName = resolvedClient?.last_name;
                   const clientEmail = resolvedClient?.email;
 
-                  const guestFirstName = reservation.guest_first_name;
-                  const guestLastName = reservation.guest_last_name;
-                  const guestEmail = reservation.guest_email;
+                  const displayName = hasGuestIdentity
+                    ? `${guestFirstName ?? ""} ${guestLastName ?? ""}`.trim() ||
+                      guestEmail ||
+                      guestPhone ||
+                      "N/A"
+                    : (clientFirstName || clientLastName)
+                      ? `${clientFirstName ?? ""} ${clientLastName ?? ""}`.trim()
+                      : clientEmail || "N/A";
 
-                  const displayName = (clientFirstName || clientLastName)
-                    ? `${clientFirstName ?? ""} ${clientLastName ?? ""}`.trim()
-                    : (guestFirstName || guestLastName)
-                      ? `${guestFirstName ?? ""} ${guestLastName ?? ""}`.trim()
+                  const displayEmail = hasGuestIdentity ? guestEmail : clientEmail;
 
-                      : clientEmail || guestEmail || "N/A";
-
-
-                  const displayEmail = clientEmail || guestEmail;
-
-                  const initialsSourceFirst = clientFirstName || guestFirstName;
-                  const initialsSourceLast = clientLastName || guestLastName;
+                  const initialsSourceFirst = hasGuestIdentity ? guestFirstName : clientFirstName;
+                  const initialsSourceLast = hasGuestIdentity ? guestLastName : clientLastName;
                   const initialsFallback = displayEmail?.substring(0, 2).toUpperCase() ?? "CL";
                   const initials = `${initialsSourceFirst?.substring(0, 1).toUpperCase() ?? ""}${
                     initialsSourceLast?.substring(0, 1).toUpperCase() ?? initialsFallback
-
                   }`;
                   return (
                     <tr key={reservation.id} className="hover:bg-gray-50/50 transition-colors">
+
                       <td className="px-6 py-4 font-mono text-sm font-semibold text-gray-900">{reservation.reference}</td>
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {reservation.vehicle_data?.titre || reservation.vehicle || "N/A"}
