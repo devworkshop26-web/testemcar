@@ -315,6 +315,19 @@ const BookingsView = () => {
                 </select>
               </div>
 
+              <div className="grid gap-2">
+                <Label htmlFor="pricingZone">Zone de déplacement</Label>
+                <select
+                  id="pricingZone"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={pricingZone}
+                  onChange={(event) => setPricingZone(event.target.value as "URBAIN" | "PROVINCE")}
+                >
+                  <option value="URBAIN">Urbain</option>
+                  <option value="PROVINCE">Province</option>
+                </select>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="startDatetime">Début</Label>
@@ -402,23 +415,6 @@ const BookingsView = () => {
                   checked={withChauffeur}
                   onCheckedChange={setWithChauffeur}
                 />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="pricingZone">Zone de déplacement</Label>
-                <select
-                  id="pricingZone"
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  value={pricingZone}
-                  onChange={(event) => setPricingZone(event.target.value as "URBAIN" | "PROVINCE")}
-                >
-                  <option value="URBAIN">Urbain</option>
-                  <option
-                    value="PROVINCE"
-                  >
-                    Province
-                  </option>
-                </select>
               </div>
 
               <div className="grid gap-2">
