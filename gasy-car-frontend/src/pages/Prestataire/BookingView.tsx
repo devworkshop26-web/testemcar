@@ -518,6 +518,37 @@ const BookingsView = () => {
                 ))
               ) : allReservations.length > 0 ? (
                 allReservations?.map((reservation: any, index: number) => {
+                  const guestFirstName = reservation.guest_first_name;
+                  const guestLastName = reservation.guest_last_name;
+                  const guestEmail = reservation.guest_email;
+                  const guestPhone = reservation.guest_phone;
+                  const hasGuestIdentity = Boolean(
+                    guestFirstName || guestLastName || guestEmail || guestPhone
+                  );
+                  const resolvedClient =
+                    reservation.client_data ||
+                    ownerClients.find((client) => client.id === reservation.client);
+                  const clientFirstName = resolvedClient?.first_name;
+                  const clientLastName = resolvedClient?.last_name;
+                  const clientEmail = resolvedClient?.email;
+
+                  const displayName = hasGuestIdentity
+                    ? `${guestFirstName ?? ""} ${guestLastName ?? ""}`.trim() ||
+                      guestEmail ||
+                      guestPhone ||
+                      "N/A"
+                    : (clientFirstName || clientLastName)
+                      ? `${clientFirstName ?? ""} ${clientLastName ?? ""}`.trim()
+                      : clientEmail || "N/A";
+
+                  const displayEmail = hasGuestIdentity ? guestEmail : clientEmail;
+
+                  const initialsSourceFirst = hasGuestIdentity ? guestFirstName : clientFirstName;
+                  const initialsSourceLast = hasGuestIdentity ? guestLastName : clientLastName;
+                  const initialsFallback = displayEmail?.substring(0, 2).toUpperCase() ?? "CL";
+                  const initials = `${initialsSourceFirst?.substring(0, 1).toUpperCase() ?? ""}${
+                    initialsSourceLast?.substring(0, 1).toUpperCase() ?? initialsFallback
+                  }`;
                   return (
                     <tr key={reservation.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 font-mono text-sm font-semibold text-gray-900">{reservation.reference}</td>
@@ -530,21 +561,12 @@ const BookingsView = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600">
-                            {reservation.client_data?.first_name?.substring(0, 1).toUpperCase()}
-                            {reservation.client_data?.last_name?.substring(0, 1).toUpperCase() ||
-                              reservation.client_data?.email?.substring(0, 2).toUpperCase() ||
-                              "CL"}
+                            {initials}
                           </div>
                           <div>
-                            <div className="font-medium">
-                              {(reservation.client_data?.first_name || reservation.client_data?.last_name)
-                                ? `${reservation.client_data?.first_name ?? ""} ${reservation.client_data?.last_name ?? ""}`.trim()
-                                : reservation.client_data?.email || reservation.client_data || "N/A"}
-                            </div>
-                            {reservation.client_data?.email && (reservation.client_data?.first_name || reservation.client_data?.last_name) && (
-                              <div className="text-xs text-gray-500">
-                                {reservation.client_data.email}
-                              </div>
+                            <div className="font-medium">{displayName}</div>
+                            {displayEmail && displayName !== displayEmail && (
+                              <div className="text-xs text-gray-500">{displayEmail}</div>
                             )}
                           </div>
                         </div>
