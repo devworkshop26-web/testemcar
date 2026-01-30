@@ -551,6 +551,7 @@ const BookingsView = () => {
                   }`;
                   return (
                     <tr key={reservation.id} className="hover:bg-gray-50/50 transition-colors">
+
                       <td className="px-6 py-4 font-mono text-sm font-semibold text-gray-900">{reservation.reference}</td>
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {reservation.vehicle_data?.titre || reservation.vehicle || "N/A"}
