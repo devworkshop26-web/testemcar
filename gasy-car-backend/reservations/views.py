@@ -91,10 +91,13 @@ class IsOwnerOrStaff(permissions.BasePermission):
         # obj est une instance de ReservationPayment
         if request.user and request.user.is_staff:
             return True
-        # vérifier propriétaire de la reservation
-        return getattr(obj.reservation, "client_id", None) == getattr(
-            request.user, "id", None
-        )
+        reservation = getattr(obj, "reservation", None)
+        user_id = getattr(request.user, "id", None)
+        if not reservation or not user_id:
+            return False
+        if getattr(reservation, "client_id", None) == user_id:
+            return True
+        return getattr(reservation.vehicle, "proprietaire_id", None) == user_id
 
     def has_permission(self, request, view):
         # pour list/create on laisse passer et on filtrera dans get_queryset / perform_create
@@ -163,6 +166,16 @@ class ReservationPaymentViewSet(viewsets.ModelViewSet):
         #             "Seul le personnel peut modifier le statut ou le champ processed_by."
         #         )
         return super().update(request, *args, **kwargs)
+
+
+def user_can_pay_reservation(user, reservation):
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_staff:
+        return True
+    if reservation.client_id == user.id:
+        return True
+    return reservation.vehicle.proprietaire_id == user.id
 
 
 # reservation APIView
@@ -688,8 +701,8 @@ def reservation_payment_page(request, reservation_id, payment_id):
     reservation = get_object_or_404(Reservation, id=reservation_id)
     payment_mode = get_object_or_404(ModePayment, id=payment_id)
 
-    # Sécurité : seul le client ou staff peut voir la page
-    if not user.is_staff and reservation.client_id != user.id:
+    # Sécurité : seul le client, le prestataire propriétaire ou staff peut voir la page
+    if not user_can_pay_reservation(user, reservation):
         return render(request, "403.html", status=403)
 
     # Récupérer les paramètres de l’URL
@@ -745,7 +758,7 @@ def submit_reservation_payment(request):
     )
 
     # 3. 🔐 Sécurité utilisateur
-    if reservation.client_id != user.id:
+    if not user_can_pay_reservation(user, reservation):
         return render(request, "payment_error.html", {"message": "Accès non autorisé"}, status=403)
 
     # 4. Validation
@@ -793,7 +806,7 @@ def send_link_payment(request):
     methode_payment = get_object_or_404(ModePayment, id=methode_id)
     reservation = get_object_or_404(Reservation, id=reservation_id)
 
-    if reservation.client_id != request.user.id:
+    if not user_can_pay_reservation(request.user, reservation):
         return Response({"detail": "Non autorisé"}, status=403)
 
     # Token JWT utilisé dans le lien
