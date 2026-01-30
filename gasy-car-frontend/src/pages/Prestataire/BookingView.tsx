@@ -82,14 +82,16 @@ const BookingsView = () => {
       setCautionAmount("");
       return;
     }
-    setBaseAmount(selectedVehicle.prix_jour || "0");
+    const provincePrice = selectedVehicle.province_prix_jour ?? selectedVehicle.prix_jour;
+    const basePrice = pricingZone === "PROVINCE" ? provincePrice : selectedVehicle.prix_jour;
+    setBaseAmount(basePrice || "0");
     setCautionAmount(selectedVehicle.montant_caution || "0");
     setPickupLocation(selectedVehicle.adresse_localisation || "");
-  }, [selectedVehicle]);
+  }, [pricingZone, selectedVehicle]);
 
   useEffect(() => {
     const hasProvincePricing = Boolean(
-      selectedVehicle?.province_prix_jour ||
+      selectedVehicle?.province_prix_jour != null ||
         selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE")
     );
 
@@ -425,14 +427,14 @@ const BookingsView = () => {
                   <option
                     value="PROVINCE"
                     disabled={
-                      !selectedVehicle?.province_prix_jour &&
+                      selectedVehicle?.province_prix_jour == null &&
                       !selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE")
                     }
                   >
                     Province
                   </option>
                 </select>
-                {!selectedVehicle?.province_prix_jour &&
+                {selectedVehicle?.province_prix_jour == null &&
                   !selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE") && (
                     <p className="text-xs text-gray-500">
                       La tarification province n&apos;est pas configurée pour ce véhicule.
@@ -551,7 +553,6 @@ const BookingsView = () => {
                   }`;
                   return (
                     <tr key={reservation.id} className="hover:bg-gray-50/50 transition-colors">
-
                       <td className="px-6 py-4 font-mono text-sm font-semibold text-gray-900">{reservation.reference}</td>
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {reservation.vehicle_data?.titre || reservation.vehicle || "N/A"}
