@@ -487,6 +487,7 @@ const BookingsView = () => {
 
       </div>
 
+
       <Card className="border-none shadow-md rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
