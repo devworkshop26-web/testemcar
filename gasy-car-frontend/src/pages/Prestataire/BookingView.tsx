@@ -516,11 +516,16 @@ const BookingsView = () => {
                     <td className="px-6 py-4"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   </tr>
                 ))
+
               ) : allReservations.length > 0 ? (
                 allReservations?.map((reservation: any, index: number) => {
-                  const clientFirstName = reservation.client_data?.first_name;
-                  const clientLastName = reservation.client_data?.last_name;
-                  const clientEmail = reservation.client_data?.email;
+                  const resolvedClient =
+                    reservation.client_data ||
+                    ownerClients.find((client) => client.id === reservation.client);
+                  const clientFirstName = resolvedClient?.first_name;
+                  const clientLastName = resolvedClient?.last_name;
+                  const clientEmail = resolvedClient?.email;
+
                   const guestFirstName = reservation.guest_first_name;
                   const guestLastName = reservation.guest_last_name;
                   const guestEmail = reservation.guest_email;
@@ -529,16 +534,18 @@ const BookingsView = () => {
                     ? `${clientFirstName ?? ""} ${clientLastName ?? ""}`.trim()
                     : (guestFirstName || guestLastName)
                       ? `${guestFirstName ?? ""} ${guestLastName ?? ""}`.trim()
-                      : clientEmail || guestEmail || reservation.client_data || "N/A";
+
+                      : clientEmail || guestEmail || "N/A";
+
 
                   const displayEmail = clientEmail || guestEmail;
 
                   const initialsSourceFirst = clientFirstName || guestFirstName;
                   const initialsSourceLast = clientLastName || guestLastName;
+                  const initialsFallback = displayEmail?.substring(0, 2).toUpperCase() ?? "CL";
                   const initials = `${initialsSourceFirst?.substring(0, 1).toUpperCase() ?? ""}${
-                    initialsSourceLast?.substring(0, 1).toUpperCase() ??
-                    displayEmail?.substring(0, 2).toUpperCase() ??
-                    "CL"
+                    initialsSourceLast?.substring(0, 1).toUpperCase() ?? initialsFallback
+
                   }`;
                   return (
                     <tr key={reservation.id} className="hover:bg-gray-50/50 transition-colors">
