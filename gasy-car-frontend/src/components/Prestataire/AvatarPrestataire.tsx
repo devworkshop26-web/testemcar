@@ -30,12 +30,19 @@ const AvatarPrestataire = ({ user, previewPhoto, size = 48 }: AvatarPrestataireP
   // On génère la silhouette par défaut
   const defaultAvatar = generateDefaultAvatar();
 
-  const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-  const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
+  const getMediaUrl = (value?: string | null) => {
+    if (!value) return null;
+    if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:")) {
+      return value;
+    }
+    const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
+    const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
+    return `${BASE_URL}${value}`;
+  };
 
   const backendPhoto =
     user?.image && typeof user.image === "string"
-      ? `${BASE_URL}${user.image}`
+      ? getMediaUrl(user.image)
       : null;
 
   const finalPhoto = previewPhoto || backendPhoto || defaultAvatar;
