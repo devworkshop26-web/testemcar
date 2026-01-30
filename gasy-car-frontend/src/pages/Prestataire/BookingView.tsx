@@ -90,17 +90,6 @@ const BookingsView = () => {
   }, [pricingZone, selectedVehicle]);
 
   useEffect(() => {
-    const hasProvincePricing = Boolean(
-      selectedVehicle?.province_prix_jour != null ||
-        selectedVehicle?.pricing_grid?.some((pricing) => pricing.zone_type === "PROVINCE")
-    );
-
-    if (!hasProvincePricing && pricingZone === "PROVINCE") {
-      setPricingZone("URBAIN");
-    }
-  }, [pricingZone, selectedVehicle]);
-
-  useEffect(() => {
     setTotalDays(calculateTotalDays(startDatetime, endDatetime));
   }, [startDatetime, endDatetime]);
 
@@ -424,39 +413,12 @@ const BookingsView = () => {
                   onChange={(event) => setPricingZone(event.target.value as "URBAIN" | "PROVINCE")}
                 >
                   <option value="URBAIN">Urbain</option>
-                  {(() => {
-                    const normalizeZoneType = (zoneType: unknown) => String(zoneType ?? "").toUpperCase();
-                    const provinceGridEnabled = selectedVehicle?.pricing_grid?.some(
-                      (pricing) => normalizeZoneType(pricing.zone_type) === "PROVINCE"
-                    );
-                    const provinceDayPrice = Number(selectedVehicle?.province_prix_jour ?? 0);
-                    const provinceEnabled = provinceDayPrice > 0 || provinceGridEnabled;
-                    return (
                   <option
                     value="PROVINCE"
-                    disabled={!provinceEnabled}
                   >
                     Province
                   </option>
-                    );
-                  })()}
                 </select>
-                {(() => {
-                  const normalizeZoneType = (zoneType: unknown) => String(zoneType ?? "").toUpperCase();
-                  const provinceGridEnabled = selectedVehicle?.pricing_grid?.some(
-                    (pricing) => normalizeZoneType(pricing.zone_type) === "PROVINCE"
-                  );
-                  const provinceDayPrice = Number(selectedVehicle?.province_prix_jour ?? 0);
-                  const provinceEnabled = provinceDayPrice > 0 || provinceGridEnabled;
-                  if (provinceEnabled) {
-                    return null;
-                  }
-                  return (
-                    <p className="text-xs text-gray-500">
-                      La tarification province n&apos;est pas configurée pour ce véhicule.
-                    </p>
-                  );
-                })()}
               </div>
 
               <div className="grid gap-2">
