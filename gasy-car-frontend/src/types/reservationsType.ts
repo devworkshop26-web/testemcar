@@ -67,6 +67,11 @@ export interface Reservation {
   driving_mode: "SELF_DRIVE" | "WITH_DRIVER";
   pricing_zone: "URBAIN" | "PROVINCE";
   driver_source: "NONE" | "PROVIDER" | "ADMIN_POOL";
+
+  guest_first_name?: string;
+  guest_last_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
 }
 
 
