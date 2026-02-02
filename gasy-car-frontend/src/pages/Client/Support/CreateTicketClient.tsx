@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSupportQuery } from "@/useQuery/supportUseQuery";
 import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
-import { useReservationsQuery } from "@/useQuery/reservationsUseQuery";
+import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
 
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,8 @@ export default function CreateTicketClient() {
 
     const { createTicketMutation, refetchTickets } = useSupportQuery();
 
-    // Client only needs reservations
-    const { data: reservations = [] } = useReservationsQuery();
+    // Client only needs their own reservations
+    const { data: reservations = [] } = useReservationClientQuery(currentUser?.id);
 
     const [isLoading, setIsLoading] = useState(false);
     const [scope, setScope] = useState<TicketScope>("GENERAL");
