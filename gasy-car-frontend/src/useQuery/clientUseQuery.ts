@@ -17,6 +17,9 @@ export const useReservationClientQuery = (clientId?: string) => {
       return Array.isArray(data) ? data : [];
     },
     staleTime: ONE_HOUR_MS,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
     retry: 2,
   });
 };
