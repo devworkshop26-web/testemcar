@@ -193,6 +193,9 @@ export const useAllReservationOfMyvehiculeQuery = (id?: string) => {
       const { data } = await reservationAPI.get_all_reservations_of_Myvehicule(id);
       return data; // data est un tableau
     },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
     retry: 1,
   });
 };
