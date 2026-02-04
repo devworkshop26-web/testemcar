@@ -103,7 +103,7 @@ const ReservationPaymentPage = () => {
             role === "PRESTATAIRE"
               ? `/prestataire/bookings/${reservation.id}`
               : `/client/booking/${reservation.id}`;
-          navigate(destination);
+          navigate(`${destination}#payment-details`);
         },
         onError: (error: any) => {
           // Handle backend error response

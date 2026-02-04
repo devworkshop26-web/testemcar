@@ -248,7 +248,7 @@ export const ReservationDetailPro = ({
 
                                 {/* État paiement */}
                                 {reservation.payment && (
-                                    <div className="border-t border-gray-100 pt-6 space-y-4">
+                                    <div id="payment-details" className="border-t border-gray-100 pt-6 space-y-4">
                                         <div className="flex items-center gap-2">
                                             <FileText className="w-5 h-5 text-primary" />
                                             <h3 className="font-semibold text-gray-900">Détails du paiement</h3>
