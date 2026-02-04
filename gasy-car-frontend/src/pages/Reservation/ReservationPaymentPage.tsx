@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Clock, Upload, FileText, RefreshCw, Check, Smartphone, Monitor, Send } from "lucide-react";
 import { toast } from "sonner";
 import { ModePayment } from "@/types/modePayment";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 // Generate payment reference
 const generatePaymentRef = (methodName: string) => {
@@ -18,6 +19,7 @@ const generatePaymentRef = (methodName: string) => {
 const ReservationPaymentPage = () => {
   const { reservationId } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuthContext();
 
   const { data: reservation, isLoading: isLoadingReservation } = useReservationQuery(reservationId);
   const { data: paymentModes } = useModePaymentsQuery();
@@ -97,7 +99,11 @@ const ReservationPaymentPage = () => {
       {
         onSuccess: () => {
           toast.success("Paiement envoyé pour validation !");
-          navigate(`/client/booking/${reservation.id}`);
+          const destination =
+            role === "PRESTATAIRE"
+              ? `/prestataire/bookings/${reservation.id}`
+              : `/client/booking/${reservation.id}`;
+          navigate(destination);
         },
         onError: (error: any) => {
           // Handle backend error response
