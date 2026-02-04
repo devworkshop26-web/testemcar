@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useSupportQuery } from "@/useQuery/supportUseQuery"
 import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery"
 import { useReservationsQuery } from "@/useQuery/reservationsUseQuery"
@@ -69,6 +69,17 @@ export default function CreateTicketPrestataire() {
     vehicule: null as string | null,
   })
 
+  const ownerReservations = useMemo(() => {
+    if (!currentUser?.id) return []
+    return reservations.filter((reservation) => {
+      const ownerId =
+        reservation.vehicle_data?.proprietaire ||
+        reservation.vehicle_data?.proprietaire_data?.id ||
+        null
+      return ownerId === currentUser.id
+    })
+  }, [currentUser?.id, reservations])
+
   const handleSubmit = () => {
     if (!currentUser) return
 
@@ -76,6 +87,24 @@ export default function CreateTicketPrestataire() {
       toast({
         title: "Champs manquants",
         description: "Merci de remplir tous les champs obligatoires.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (scope === "RESERVATION" && !form.reservation) {
+      toast({
+        title: "Réservation manquante",
+        description: "Merci de sélectionner une réservation pour ce ticket.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (scope === "VEHICLE" && !form.vehicule) {
+      toast({
+        title: "Véhicule manquant",
+        description: "Merci de sélectionner un véhicule pour ce ticket.",
         variant: "destructive",
       })
       return
@@ -187,12 +216,18 @@ export default function CreateTicketPrestataire() {
                       <SelectValue placeholder="Choisir une réservation..." />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
-                      {reservations.map((res) => (
-                        <SelectItem key={res.id} value={res.id}>
-                          {res.vehicle_data?.marque_data?.nom} {res.vehicle_data?.modele_data?.label} —{" "}
-                          {new Date(res.start_datetime).toLocaleDateString()}
+                      {ownerReservations.length === 0 ? (
+                        <SelectItem value="no-reservation" disabled>
+                          Aucune réservation disponible
                         </SelectItem>
-                      ))}
+                      ) : (
+                        ownerReservations.map((res) => (
+                          <SelectItem key={res.id} value={res.id}>
+                            {res.vehicle_data?.marque_data?.nom} {res.vehicle_data?.modele_data?.label} —{" "}
+                            {new Date(res.start_datetime).toLocaleDateString()}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -208,11 +243,17 @@ export default function CreateTicketPrestataire() {
                       <SelectValue placeholder="Choisir un véhicule..." />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
-                      {vehicles.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.marque_data?.nom} {v.modele_data?.label} — {v.numero_immatriculation}
+                      {vehicles.length === 0 ? (
+                        <SelectItem value="no-vehicle" disabled>
+                          Aucun véhicule disponible
                         </SelectItem>
-                      ))}
+                      ) : (
+                        vehicles.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.marque_data?.nom} {v.modele_data?.label} — {v.numero_immatriculation}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
