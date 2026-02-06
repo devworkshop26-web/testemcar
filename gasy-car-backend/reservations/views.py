@@ -212,6 +212,8 @@ class ReservationViewSet(viewsets.ModelViewSet):
         """
         Permet à l'admin d'assigner un chauffeur (du pool admin ou autre) à une réservation.
         """
+        from .pricing_service import PricingService
+
         reservation = self.get_object()
         driver_id = request.data.get('driver_id')
         
@@ -228,21 +230,36 @@ class ReservationViewSet(viewsets.ModelViewSet):
         reservation.driver_source = Reservation.DriverSource.ADMIN_POOL # Force Source to Admin Pool if assigned by Admin manually
         reservation.with_chauffeur = True
         reservation.driving_mode = Reservation.DrivingMode.WITH_DRIVER
-        
-        # TODO: Recalculate price if needed? 
-        # If we assign a driver later, we might need to add the driver fees.
-        # Let's assume the price was already calculated/estimated or needs update.
-        # For simplicity, we just update the driver for now. 
-        # Ideally calls PricingService again.
-        
+
+        pricing_result = PricingService.calculate_amounts(
+            vehicle=reservation.vehicle,
+            start_datetime=reservation.start_datetime,
+            end_datetime=reservation.end_datetime,
+            pricing_zone=reservation.pricing_zone,
+            driving_mode=reservation.driving_mode,
+            driver_source=reservation.driver_source,
+        )
+
+        reservation.total_days = pricing_result['days']
+        reservation.base_amount = pricing_result['base_amount']
+        reservation.options_amount = pricing_result['driver_amount']
+        reservation.total_amount = pricing_result['total_amount']
+
         reservation.save()
-        
-        # Create Service line if not exists
-        # Check if service exists
-        if not ReservationService.objects.filter(reservation=reservation, service_type=ReservationService.ServiceType.CHAUFFEUR).exists():
-             # Basic Fee calculation or default
-             # Re-use Pricing Service logic if possible, or just add default fee
-             pass 
+
+        chauffeur_service, _ = ReservationService.objects.get_or_create(
+            reservation=reservation,
+            service_type=ReservationService.ServiceType.CHAUFFEUR,
+            defaults={
+                "service_name": "Chauffeur Pro",
+                "price": pricing_result['driver_amount'] / pricing_result['days'],
+                "quantity": pricing_result['days'],
+            },
+        )
+        chauffeur_service.service_name = "Chauffeur Pro"
+        chauffeur_service.price = pricing_result['driver_amount'] / pricing_result['days']
+        chauffeur_service.quantity = pricing_result['days']
+        chauffeur_service.save()
 
         return Response(ReservationSerializer(reservation).data)
 
