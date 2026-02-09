@@ -167,15 +167,20 @@ export default function VehiculeDetailView() {
   }
 
   // --- LOGIQUE DONNÉES ---
+  const photosList = Array.isArray(vehicule.photos) ? vehicule.photos : [];
+  const pricingGrid = Array.isArray(vehicule.pricing_grid) ? vehicule.pricing_grid : [];
+  const availabilities = Array.isArray(vehicule.availabilities) ? vehicule.availabilities : [];
+  const equipments = Array.isArray(vehicule.equipements_details) ? vehicule.equipements_details : [];
+
   const photos =
-    vehicule.photos?.length > 0
-      ? vehicule.photos
+    photosList.length > 0
+      ? photosList
       : [{ image_url: "/placeholder.jpg", id: "default" }];
 
   const mainPhoto = photos[selectedImageIndex]?.image_url;
 
-  const urbain = vehicule.pricing_grid?.find((p: any) => p.zone_type === "URBAIN");
-  const province = vehicule.pricing_grid?.find((p: any) => p.zone_type === "PROVINCE");
+  const urbain = pricingGrid.find((p: any) => p.zone_type === "URBAIN");
+  const province = pricingGrid.find((p: any) => p.zone_type === "PROVINCE");
 
   const driver = vehicule.driver_data;
   const owner = vehicule.proprietaire_data;
@@ -368,8 +373,8 @@ export default function VehiculeDetailView() {
               <div className="mt-auto">
                 <p className="text-xs font-bold text-gray-400 uppercase mb-2">Équipements inclus</p>
                 <div className="flex flex-wrap gap-2">
-                  {vehicule.equipements_details?.length > 0 ? (
-                    vehicule.equipements_details.map((eq: any) => (
+                  {equipments.length > 0 ? (
+                    equipments.map((eq: any) => (
                       <span
                         key={eq.id}
                         className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md border border-gray-200"
@@ -525,8 +530,8 @@ export default function VehiculeDetailView() {
               <Calendar className="w-5 h-5 text-orange-500" /> Calendrier
             </h3>
             <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-              {vehicule.availabilities?.length > 0 ? (
-                vehicule.availabilities.map((a: any) => (
+              {availabilities.length > 0 ? (
+                availabilities.map((a: any) => (
                   <div
                     key={a.id}
                     className="flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-sm"
