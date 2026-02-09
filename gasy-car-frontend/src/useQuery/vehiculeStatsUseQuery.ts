@@ -142,8 +142,27 @@ export const useCoupDeCoeurVehicles = () => {
 export const useMostBookedVehicles = () => {
   return useQuery<VehicleSearchItem[]>({
     queryKey: ["vehicles", "most-booked"],
-    queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.mostBooked()),
+    queryFn: async () => {
+      try {
+        const mostBookedFromSearch = normalizeVehicleList(await vehiculeSearchAPI.mostBooked());
+        if (mostBookedFromSearch.length > 0) {
+          return mostBookedFromSearch;
+        }
+      } catch {
+        // fallback below
+      }
+
+      const { data: allVehiclesData } = await vehiculeAPI.get_all_vehicules({
+        est_disponible: true,
+      });
+      const allVehicles = normalizeVehicleList(allVehiclesData as VehicleListResponse);
+
+      return [...allVehicles]
+        .sort((a, b) => (Number(b.nombre_locations) || 0) - (Number(a.nombre_locations) || 0))
+        .slice(0, 12);
+    },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 };
