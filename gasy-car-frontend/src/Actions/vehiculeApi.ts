@@ -9,12 +9,28 @@ import { Vehicule } from "@/types/vehiculeType";
 
 export const vehiculeAPI = {
   // GET /vehicule/vehicule/
-  get_all_vehicules: async (type_vehicule?: string) => {
-    let url = "/vehicule/vehicule/";
-    if (type_vehicule) {
-      url += `?type_vehicule=${type_vehicule}`;
+  get_all_vehicules: async (
+    filters?:
+      | string
+      | {
+          type_vehicule?: string;
+          est_sponsorise?: boolean;
+          est_disponible?: boolean;
+        }
+  ) => {
+    const params = new URLSearchParams();
+
+    if (typeof filters === "string" && filters) {
+      params.set("type_vehicule", filters);
+    } else if (filters) {
+      if (filters.type_vehicule) params.set("type_vehicule", filters.type_vehicule);
+      if (typeof filters.est_sponsorise === "boolean") params.set("est_sponsorise", String(filters.est_sponsorise));
+      if (typeof filters.est_disponible === "boolean") params.set("est_disponible", String(filters.est_disponible));
     }
-    return await InstanceAxis.get<Vehicule[]>(url);
+
+    const query = params.toString();
+    const url = query ? `/vehicule/vehicule/?${query}` : "/vehicule/vehicule/";
+    return await InstanceAxis.get<Vehicule[]>(url, { _skipAuth: true, _skipRefresh: true });
   },
 
   // GET /vehicule/vehicule/:id/
@@ -110,13 +126,11 @@ export const searchVehicles = async (filters: VehicleSearchFilters) => {
 
 export const vehiculeSearchAPI = {
   sponsored: async () => {
-    try {
-      const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/", { _skipAuth: true, _skipRefresh: true });
-      return res.data;
-    } catch {
-      const fallback = await InstanceAxis.get("/vehicule/vehicule-search/popular/", { _skipAuth: true, _skipRefresh: true });
-      return fallback.data;
-    }
+    const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/", {
+      _skipAuth: true,
+      _skipRefresh: true,
+    });
+    return res.data;
   },
 
   popular: async () => {
