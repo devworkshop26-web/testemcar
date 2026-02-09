@@ -42,10 +42,10 @@ const VehicleGallery: React.FC<VehicleGalleryProps> = ({ photos: rawPhotos, clas
             <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] rounded-3xl overflow-hidden bg-gray-100 mb-4 shadow-sm border border-gray-100 relative group">
                 <img
                     src={mainPhoto.image}
-                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                    className="w-full h-full object-contain transition-transform duration-700 hover:scale-[1.02]"
                     alt="Véhicule principal"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             </div>
 
             {/* THUMBNAILS */}

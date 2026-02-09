@@ -503,7 +503,7 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
         fields = [
             "id", "titre", "marque_nom", "modele_label", "annee",
             "nombre_places", "note_moyenne", "nombre_locations",
-            "prix_jour", "province_prix_jour", "photo_principale", "est_certifie", "est_disponible",
+            "prix_jour", "province_prix_jour", "photo_principale", "est_certifie", "est_disponible", "est_coup_de_coeur",
             "ville", "created_at", "driver_name", "driver_last_name", "numero_immatriculation",
             "transmission_nom", "type_carburant_nom", "kilometrage_actuel_km", "driver_photo"
         ]
@@ -568,6 +568,7 @@ class VehiculeListSerializer(serializers.ModelSerializer):
             "ville",
             "zone",
             "est_certifie",
+            "est_coup_de_coeur",
             "statut",
             
             # Key metrics
