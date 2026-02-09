@@ -374,7 +374,7 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             models.Prefetch("pricing_grid", queryset=VehiclePricing.objects.only("id", "vehicle", "zone_type", "prix_jour"))
         ).only(
             "id", "titre", "marque", "modele", "annee", "nombre_places",
-            "note_moyenne", "nombre_locations", "est_certifie", "est_disponible", "est_sponsorise",
+            "note_moyenne", "nombre_locations", "est_certifie", "est_disponible", "est_sponsorise", "est_coup_de_coeur",
             "ville", "created_at"
         )
 
@@ -398,6 +398,10 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         est_disponible = request.query_params.get("est_disponible")
         if est_disponible is not None:
             queryset = queryset.filter(est_disponible=str(est_disponible).lower() in ["1", "true", "yes"])
+
+        est_coup_de_coeur = request.query_params.get("est_coup_de_coeur")
+        if est_coup_de_coeur is not None:
+            queryset = queryset.filter(est_coup_de_coeur=str(est_coup_de_coeur).lower() in ["1", "true", "yes"])
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -618,16 +622,24 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
         min_note = float(request.query_params.get("min_note", 4))
         min_favoris = int(request.query_params.get("min_favoris", 5))
 
-        qs = (
+        coups_de_coeur_qs = (
             self.get_queryset()
-            .filter(
-                est_certifie=True,
-                est_disponible=True,
-                note_moyenne__gte=min_note,
-                nombre_favoris__gte=min_favoris,
-            )
+            .filter(est_coup_de_coeur=True, est_disponible=True)
             .order_by("-note_moyenne", "-nombre_favoris", "-nombre_locations")
         )
+
+        qs = coups_de_coeur_qs
+        if not coups_de_coeur_qs.exists():
+            qs = (
+                self.get_queryset()
+                .filter(
+                    est_certifie=True,
+                    est_disponible=True,
+                    note_moyenne__gte=min_note,
+                    nombre_favoris__gte=min_favoris,
+                )
+                .order_by("-note_moyenne", "-nombre_favoris", "-nombre_locations")
+            )
 
         page = self.paginate_queryset(qs)
         if page is not None:

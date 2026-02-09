@@ -16,6 +16,7 @@ export const vehiculeAPI = {
           type_vehicule?: string;
           est_sponsorise?: boolean;
           est_disponible?: boolean;
+          est_coup_de_coeur?: boolean;
         }
   ) => {
     const params = new URLSearchParams();
@@ -26,6 +27,7 @@ export const vehiculeAPI = {
       if (filters.type_vehicule) params.set("type_vehicule", filters.type_vehicule);
       if (typeof filters.est_sponsorise === "boolean") params.set("est_sponsorise", String(filters.est_sponsorise));
       if (typeof filters.est_disponible === "boolean") params.set("est_disponible", String(filters.est_disponible));
+      if (typeof filters.est_coup_de_coeur === "boolean") params.set("est_coup_de_coeur", String(filters.est_coup_de_coeur));
     }
 
     const query = params.toString();
