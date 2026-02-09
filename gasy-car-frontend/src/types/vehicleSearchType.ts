@@ -22,6 +22,7 @@ export interface VehicleSearchItem {
   nombre_favoris: number;
   nombre_locations: number;
   est_certifie: boolean;
+  est_sponsorise?: boolean;
   photo_principale: string | null;
   
   // Propriétés supplémentaires pour l'affichage détaillé

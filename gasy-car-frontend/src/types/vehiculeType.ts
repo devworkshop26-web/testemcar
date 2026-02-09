@@ -101,6 +101,7 @@ export interface Vehicule {
 
   // Statut & qualité
   est_certifie: boolean;
+  est_sponsorise: boolean;
   est_disponible: boolean;
 
   // Réputation
