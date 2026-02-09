@@ -1,4 +1,4 @@
-import {  vehiculeSearchAPI } from "@/Actions/vehiculeApi";
+import { vehiculeAPI, vehiculeSearchAPI } from "@/Actions/vehiculeApi";
 import { VehicleSearchItem } from "@/types/vehicleSearchType";
 import { useQuery } from "@tanstack/react-query";
 
@@ -68,7 +68,19 @@ export const usePopularVehicles = (config?: QueryConfig) => {
 export const useSponsoredVehicles = () => {
   return useQuery<VehicleSearchItem[]>({
     queryKey: ["vehicles", "sponsored"],
-    queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.sponsored()),
+    queryFn: async () => {
+      const sponsoredFromSearch = normalizeVehicleList(await vehiculeSearchAPI.sponsored());
+      if (sponsoredFromSearch.length > 0) {
+        return sponsoredFromSearch;
+      }
+
+      const { data } = await vehiculeAPI.get_all_vehicules({
+        est_sponsorise: true,
+        est_disponible: true,
+      });
+
+      return normalizeVehicleList(data as VehicleListResponse);
+    },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
   });
