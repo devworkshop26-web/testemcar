@@ -24,7 +24,7 @@ export const PopularVehicles = () => {
   const vehicles = shouldLoadPopularFallback && popularVehicles.length > 0
     ? popularVehicles
     : sponsoredVehicles;
-  const plugin = useRef(Autoplay({ delay: 3500, stopOnInteraction: true }));
+  const plugin = useRef(Autoplay({ delay: 3000, stopOnMouseEnter: true, stopOnInteraction: false }));
   const { handleReserve } = useReservationAction();
 
 
@@ -56,9 +56,7 @@ export const PopularVehicles = () => {
         <Carousel
           plugins={[plugin.current]}
           className="w-full"
-          onMouseEnter={plugin.current.stop}
-          onMouseLeave={plugin.current.reset}
-          opts={{ align: "start", loop: true }}
+          opts={{ align: "start", loop: true, slidesToScroll: 1 }}
         >
           <CarouselContent className="-ml-2 md:-ml-4">
 
@@ -69,7 +67,7 @@ export const PopularVehicles = () => {
               Array.from({ length: skeletonCount }).map((_, index) => (
                 <CarouselItem
                   key={index}
-                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
                 >
                   <VehicleCardSkeleton />
                 </CarouselItem>
@@ -100,7 +98,7 @@ export const PopularVehicles = () => {
                 return (
                   <CarouselItem
                     key={vehicle.id}
-                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
                   >
                     <AnimatedItem delay={index * 80}>
                       <Link to={`/vehicule/${vehicle.id}`}>
@@ -135,8 +133,8 @@ export const PopularVehicles = () => {
           </CarouselContent>
 
           {/* Flèches */}
-          <CarouselPrevious className="absolute left-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />
-          <CarouselNext className="absolute right-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />
+          <CarouselPrevious className="absolute left-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" disabled={false} />
+          <CarouselNext className="absolute right-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" disabled={false} />
         </Carousel>
       </div>
     </AnimatedSection>
