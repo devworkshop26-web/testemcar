@@ -19,6 +19,7 @@ type SupportFleetFilter =
   | "CERTIFIED" // certifié
   | "VALIDATED" // validé admin (tous)
   | "SPONSORED" // sponsorisé
+  | "FAVORITE" // coup de cœur
   | "ALL";
 
 type AnyVehicule = {
@@ -34,6 +35,7 @@ type AnyVehicule = {
   est_disponible?: boolean;
   est_certifie?: boolean;
   est_sponsorise?: boolean;
+  est_coup_de_coeur?: boolean;
 
   // parfois présent selon backend
   valide?: boolean;
@@ -92,6 +94,13 @@ export default function FleetView() {
     return false;
   };
 
+
+  const getCoupDeCoeur = (v: AnyVehicule) => {
+    if (typeof v.est_coup_de_coeur === "boolean") return v.est_coup_de_coeur;
+    const d = detailsById.get(v.id);
+    if (typeof d?.est_coup_de_coeur === "boolean") return d.est_coup_de_coeur;
+    return false;
+  };
   const matchesSearch = (v: AnyVehicule, q: string) => {
     if (!q) return true;
 
@@ -132,6 +141,8 @@ export default function FleetView() {
       list = list.filter((v) => getValide(v) === true && getCertifie(v) === false);
     } else if (filter === "SPONSORED") {
       list = list.filter((v) => getSponsorise(v) === true);
+    } else if (filter === "FAVORITE") {
+      list = list.filter((v) => getCoupDeCoeur(v) === true);
     }
 
     // 3) tri support (toujours logique)
@@ -164,7 +175,8 @@ export default function FleetView() {
     const certified = all.filter((v) => getCertifie(v) === true).length;
     const toCertify = all.filter((v) => getValide(v) === true && getCertifie(v) === false).length;
     const sponsored = all.filter((v) => getSponsorise(v) === true).length;
-    return { all: all.length, pending, validated, certified, toCertify, sponsored };
+    const favorite = all.filter((v) => getCoupDeCoeur(v) === true).length;
+    return { all: all.length, pending, validated, certified, toCertify, sponsored, favorite };
   }, [vehicules, detailsById]);
 
   // ✅ Loading Skeleton
@@ -255,6 +267,14 @@ export default function FleetView() {
           </Button>
 
           <Button
+            variant={filter === "FAVORITE" ? "default" : "outline"}
+            className={`rounded-xl ${filter === "FAVORITE" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            onClick={() => setFilter("FAVORITE")}
+          >
+            Coups de cœur ({counts.favorite})
+          </Button>
+
+          <Button
             variant={filter === "ALL" ? "default" : "outline"}
             className={`rounded-xl ${filter === "ALL" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
             onClick={() => setFilter("ALL")}
@@ -310,6 +330,12 @@ export default function FleetView() {
                   {getSponsorise(v) ? (
                     <div className="absolute top-3 left-3 px-3 py-1 text-xs font-bold rounded-full shadow bg-amber-100 text-amber-700">
                       Sponsorisé
+                    </div>
+                  ) : null}
+
+                  {getCoupDeCoeur(v) ? (
+                    <div className="absolute top-3 left-28 px-3 py-1 text-xs font-bold rounded-full shadow bg-rose-100 text-rose-700">
+                      Coup de cœur
                     </div>
                   ) : null}
 

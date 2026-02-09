@@ -19,6 +19,7 @@ import {
   BadgeCheck,
   CheckCircle2,
   XCircle,
+  Heart,
 } from "lucide-react";
 
 const LoadingSkeleton = () => (
@@ -130,6 +131,24 @@ export default function VehiculeDetailView() {
     },
   });
 
+  // ✅ Mutation Coup de cœur
+  const coupDeCoeurMutation = useMutation({
+    mutationFn: async ({
+      vehiculeId,
+      est_coup_de_coeur,
+    }: {
+      vehiculeId: string;
+      est_coup_de_coeur: boolean;
+    }) => {
+      const res = await vehiculeAPI.patch_vehicule(vehiculeId, { est_coup_de_coeur } as any);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    },
+  });
+
   // ✅ Mutation Caution
   const cautionMutation = useMutation({
     mutationFn: async ({
@@ -154,6 +173,7 @@ export default function VehiculeDetailView() {
     validateMutation.isPending ||
     certifyMutation.isPending ||
     sponsorMutation.isPending ||
+    coupDeCoeurMutation.isPending ||
     cautionMutation.isPending;
 
   if (isLoading) return <LoadingSkeleton />;
@@ -188,6 +208,7 @@ export default function VehiculeDetailView() {
   const isValidated = !!vehicule.valide;
   const isCertified = !!vehicule.est_certifie;
   const isSponsored = !!vehicule.est_sponsorise;
+  const isCoupDeCoeur = !!vehicule.est_coup_de_coeur;
 
   const devise = vehicule.devise || "MGA";
 
@@ -259,6 +280,12 @@ export default function VehiculeDetailView() {
               {isSponsored ? (
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/90 text-white shadow-sm backdrop-blur-md">
                   SPONSORISÉ
+                </span>
+              ) : null}
+
+              {isCoupDeCoeur ? (
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
+                  <Heart className="w-3.5 h-3.5" /> COUP DE CŒUR
                 </span>
               ) : null}
             </div>
@@ -362,6 +389,7 @@ export default function VehiculeDetailView() {
                 <DataRow label="Statut Technique" value={vehicule.statut_data?.nom} highlight />
                 <DataRow label="Certifié" value={vehicule.est_certifie ? "✅ Oui" : "Non"} />
                 <DataRow label="Sponsorisé" value={vehicule.est_sponsorise ? "✅ Oui" : "Non"} />
+                <DataRow label="Coup de cœur" value={vehicule.est_coup_de_coeur ? "✅ Oui" : "Non"} />
                 <DataRow label="Validé Admin" value={vehicule.valide ? "✅ Oui" : "Non"} />
                 <DataRow
                   label="Caution"
@@ -728,6 +756,44 @@ export default function VehiculeDetailView() {
 
               {sponsorMutation.isError ? (
                 <p className="text-xs text-red-500 mt-2">Erreur pendant la mise à jour du sponsoring.</p>
+              ) : null}
+            </div>
+
+            {/* Coup de cœur */}
+            <div className="rounded-2xl border border-gray-200 p-4 mb-4">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Coups de cœur</p>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-700">
+                  Statut :{" "}
+                  <span className={`font-bold ${isCoupDeCoeur ? "text-rose-700" : "text-gray-600"}`}>
+                    {isCoupDeCoeur ? "Coup de cœur" : "Non coup de cœur"}
+                  </span>
+                </span>
+
+                <div className="flex gap-2">
+                  {isCoupDeCoeur ? (
+                    <button
+                      disabled={busy || !id}
+                      onClick={() => coupDeCoeurMutation.mutate({ vehiculeId: id!, est_coup_de_coeur: false })}
+                      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    >
+                      Retirer
+                    </button>
+                  ) : (
+                    <button
+                      disabled={busy || !id}
+                      onClick={() => coupDeCoeurMutation.mutate({ vehiculeId: id!, est_coup_de_coeur: true })}
+                      className={`px-3 py-2 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      Mettre en coup de cœur
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {coupDeCoeurMutation.isError ? (
+                <p className="text-xs text-red-500 mt-2">Erreur pendant la mise à jour du coup de cœur.</p>
               ) : null}
             </div>
 
