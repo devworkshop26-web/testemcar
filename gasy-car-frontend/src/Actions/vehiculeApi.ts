@@ -102,27 +102,40 @@ export const searchVehicles = async (filters: VehicleSearchFilters) => {
   });
 
   const { data } = await InstanceAxis.get(
-    `/vehicule/vehicule-search/search/?${params.toString()}`
+    `/vehicule/vehicule-search/search/?${params.toString()}`,
+    { _skipAuth: true, _skipRefresh: true }
   );
   return data;
 };
 
 export const vehiculeSearchAPI = {
+  sponsored: async () => {
+    try {
+      const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/", { _skipAuth: true, _skipRefresh: true });
+      return res.data;
+    } catch {
+      const fallback = await InstanceAxis.get("/vehicule/vehicule-search/popular/", { _skipAuth: true, _skipRefresh: true });
+      return fallback.data;
+    }
+  },
+
   popular: async () => {
-    const res = await InstanceAxis.get("/vehicule/vehicule-search/popular/");
+    const res = await InstanceAxis.get("/vehicule/vehicule-search/popular/", { _skipAuth: true, _skipRefresh: true });
     return res.data;
   },
 
   coupDeCoeur: async () => {
     const res = await InstanceAxis.get(
-      "/vehicule/vehicule-search/coup-de-coeur/"
+      "/vehicule/vehicule-search/coup-de-coeur/",
+      { _skipAuth: true, _skipRefresh: true }
     );
     return res.data;
   },
 
   mostBooked: async () => {
     const res = await InstanceAxis.get(
-      "/vehicule/vehicule-search/most-booked/"
+      "/vehicule/vehicule-search/most-booked/",
+      { _skipAuth: true, _skipRefresh: true }
     );
     return res.data;
   },

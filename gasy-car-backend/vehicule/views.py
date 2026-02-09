@@ -561,6 +561,22 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
     # ------------------------------------------------------------------
     # 1) Voitures les plus populaires (par favoris + note)
     # ------------------------------------------------------------------
+    @action(detail=False, methods=["get"], url_path="sponsored")
+    def sponsored(self, request):
+        qs = (
+            self.get_queryset()
+            .filter(est_disponible=True, est_certifie=True)
+            .order_by("-nombre_favoris", "-note_moyenne", "-nombre_locations")
+        )
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["get"], url_path="popular")
     def popular(self, request):
         qs = (
