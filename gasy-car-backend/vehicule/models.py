@@ -203,6 +203,7 @@ class Vehicule(models.Model):
 
     # Statut & qualité
     est_certifie = models.BooleanField("Véhicule certifié", default=False)
+    est_sponsorise = models.BooleanField("Véhicule sponsorisé", default=False, db_index=True)
     est_disponible = models.BooleanField("Disponible à la location", default=True, db_index=True)
 
     # Réputation

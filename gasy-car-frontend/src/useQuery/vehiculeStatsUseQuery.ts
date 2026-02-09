@@ -31,6 +31,15 @@ export const usePopularVehicles = () => {
   });
 };
 
+export const useSponsoredVehicles = () => {
+  return useQuery<VehicleSearchItem[]>({
+    queryKey: ["vehicles", "sponsored"],
+    queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.sponsored()),
+    staleTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+  });
+};
+
 
 // ░░░░░░░░░░ COUP DE COEUR VEHICLES ░░░░░░░░░░
 export const useCoupDeCoeurVehicles = () => {
