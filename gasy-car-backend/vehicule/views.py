@@ -565,7 +565,7 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
     def sponsored(self, request):
         sponsored_qs = (
             self.get_queryset()
-            .filter(est_disponible=True, est_sponsorise=True)
+            .filter(est_sponsorise=True)
             .order_by("-nombre_favoris", "-note_moyenne", "-nombre_locations")
         )
 
