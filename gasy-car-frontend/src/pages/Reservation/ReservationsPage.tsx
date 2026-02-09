@@ -26,7 +26,6 @@ import {
 import { useVehiculeQuery } from '@/useQuery/vehiculeUseQuery';
 import { useAllVehicleEquipmentsQuery } from '@/useQuery/vehicleEquipmentsUseQuery';
 import { useCreateReservationMutation } from '@/useQuery/reservationsUseQuery';
-import { useCurentuser } from '@/useQuery/authUseQuery';
 import { toast } from 'sonner';
 import { CreateReservationPayload } from '@/types/reservationsType';
 import Header from '@/components/Header';
@@ -71,19 +70,18 @@ const ReservationsPage: React.FC = () => {
   // verification authentication
 
   useEffect(() => {
-    return () => {
-      if (!isAuthenticated) {
-        navigate("/login");
-        return;
-      }
-      if (currentUser && currentUser.role !== "CLIENT") {
-        setDesableReservation(true);
-        toast.error("Vous n'avez pas la permission d'effectuer une réservation.");
-        return;
-      }
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
 
-    };
-  }, []);
+    if (currentUser && currentUser.role !== "CLIENT") {
+      setDesableReservation(true);
+      return;
+    }
+
+    setDesableReservation(false);
+  }, [isAuthenticated, currentUser, navigate]);
 
 
 
