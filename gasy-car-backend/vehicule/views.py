@@ -374,7 +374,7 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             models.Prefetch("pricing_grid", queryset=VehiclePricing.objects.only("id", "vehicle", "zone_type", "prix_jour"))
         ).only(
             "id", "titre", "marque", "modele", "annee", "nombre_places",
-            "note_moyenne", "nombre_locations", "est_certifie", "est_disponible",
+            "note_moyenne", "nombre_locations", "est_certifie", "est_disponible", "est_sponsorise",
             "ville", "created_at"
         )
 
@@ -390,7 +390,15 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         type_vehicule = request.query_params.get("type_vehicule")
         if type_vehicule:
              queryset = queryset.filter(type_vehicule=type_vehicule)
-        
+
+        est_sponsorise = request.query_params.get("est_sponsorise")
+        if est_sponsorise is not None:
+            queryset = queryset.filter(est_sponsorise=str(est_sponsorise).lower() in ["1", "true", "yes"])
+
+        est_disponible = request.query_params.get("est_disponible")
+        if est_disponible is not None:
+            queryset = queryset.filter(est_disponible=str(est_disponible).lower() in ["1", "true", "yes"])
+
         page = self.paginate_queryset(queryset)
         if page is not None:
              serializer = self.get_serializer(page, many=True)

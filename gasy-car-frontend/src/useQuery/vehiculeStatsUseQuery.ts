@@ -1,4 +1,4 @@
-import {  vehiculeSearchAPI } from "@/Actions/vehiculeApi";
+import { vehiculeAPI, vehiculeSearchAPI } from "@/Actions/vehiculeApi";
 import { VehicleSearchItem } from "@/types/vehicleSearchType";
 import { useQuery } from "@tanstack/react-query";
 
@@ -9,6 +9,9 @@ type QueryConfig = {
 type VehicleListResponse =
   | VehicleSearchItem[]
   | {
+      data?: VehicleSearchItem[] | { results?: VehicleSearchItem[]; items?: VehicleSearchItem[]; vehicles?: VehicleSearchItem[] };
+      items?: VehicleSearchItem[];
+      vehicles?: VehicleSearchItem[];
       results?: VehicleSearchItem[];
     };
 
@@ -17,8 +20,34 @@ const normalizeVehicleList = (payload: VehicleListResponse): VehicleSearchItem[]
     return payload;
   }
 
+  if (payload?.data) {
+    if (Array.isArray(payload.data)) {
+      return payload.data;
+    }
+
+    if (Array.isArray(payload.data.results)) {
+      return payload.data.results;
+    }
+
+    if (Array.isArray(payload.data.items)) {
+      return payload.data.items;
+    }
+
+    if (Array.isArray(payload.data.vehicles)) {
+      return payload.data.vehicles;
+    }
+  }
+
   if (payload && Array.isArray(payload.results)) {
     return payload.results;
+  }
+
+  if (payload && Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  if (payload && Array.isArray(payload.vehicles)) {
+    return payload.vehicles;
   }
 
   return [];
@@ -39,7 +68,19 @@ export const usePopularVehicles = (config?: QueryConfig) => {
 export const useSponsoredVehicles = () => {
   return useQuery<VehicleSearchItem[]>({
     queryKey: ["vehicles", "sponsored"],
-    queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.sponsored()),
+    queryFn: async () => {
+      const sponsoredFromSearch = normalizeVehicleList(await vehiculeSearchAPI.sponsored());
+      if (sponsoredFromSearch.length > 0) {
+        return sponsoredFromSearch;
+      }
+
+      const { data } = await vehiculeAPI.get_all_vehicules({
+        est_sponsorise: true,
+        est_disponible: true,
+      });
+
+      return normalizeVehicleList(data as VehicleListResponse);
+    },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
   });
