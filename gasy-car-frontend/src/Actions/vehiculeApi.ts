@@ -126,13 +126,11 @@ export const searchVehicles = async (filters: VehicleSearchFilters) => {
 
 export const vehiculeSearchAPI = {
   sponsored: async () => {
-    try {
-      const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/", { _skipAuth: true, _skipRefresh: true });
-      return res.data;
-    } catch {
-      const fallback = await InstanceAxis.get("/vehicule/vehicule-search/popular/", { _skipAuth: true, _skipRefresh: true });
-      return fallback.data;
-    }
+    const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/", {
+      _skipAuth: true,
+      _skipRefresh: true,
+    });
+    return res.data;
   },
 
   popular: async () => {
