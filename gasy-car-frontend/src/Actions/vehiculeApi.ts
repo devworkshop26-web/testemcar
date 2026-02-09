@@ -108,6 +108,16 @@ export const searchVehicles = async (filters: VehicleSearchFilters) => {
 };
 
 export const vehiculeSearchAPI = {
+  sponsored: async () => {
+    try {
+      const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/");
+      return res.data;
+    } catch {
+      const fallback = await InstanceAxis.get("/vehicule/vehicule-search/popular/");
+      return fallback.data;
+    }
+  },
+
   popular: async () => {
     const res = await InstanceAxis.get("/vehicule/vehicule-search/popular/");
     return res.data;

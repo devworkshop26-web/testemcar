@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleCardSkeleton from "@/components/VehicleCardSkeleton";
 import { AnimatedSection, AnimatedItem } from "@/components/animations";
-import { usePopularVehicles } from "@/useQuery/vehiculeStatsUseQuery";
+import { useSponsoredVehicles } from "@/useQuery/vehiculeStatsUseQuery";
 import {
   Carousel,
   CarouselContent,
@@ -18,7 +18,7 @@ import { Star } from "lucide-react";
 import { useReservationAction } from "@/hooks/useReservationAction";
 
 export const PopularVehicles = () => {
-  const { data: vehicles = [], isLoading, isError } = usePopularVehicles();
+  const { data: vehicles = [], isLoading, isError } = useSponsoredVehicles();
   const plugin = useRef(Autoplay({ delay: 3500, stopOnInteraction: true }));
   const { handleReserve } = useReservationAction();
 
