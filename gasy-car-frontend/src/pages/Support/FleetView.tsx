@@ -18,6 +18,7 @@ type SupportFleetFilter =
   | "TO_CERTIFY" // validé admin mais non certifié
   | "CERTIFIED" // certifié
   | "VALIDATED" // validé admin (tous)
+  | "SPONSORED" // sponsorisé
   | "ALL";
 
 type AnyVehicule = {
@@ -32,6 +33,7 @@ type AnyVehicule = {
 
   est_disponible?: boolean;
   est_certifie?: boolean;
+  est_sponsorise?: boolean;
 
   // parfois présent selon backend
   valide?: boolean;
@@ -83,6 +85,13 @@ export default function FleetView() {
     return false;
   };
 
+  const getSponsorise = (v: AnyVehicule) => {
+    if (typeof v.est_sponsorise === "boolean") return v.est_sponsorise;
+    const d = detailsById.get(v.id);
+    if (typeof d?.est_sponsorise === "boolean") return d.est_sponsorise;
+    return false;
+  };
+
   const matchesSearch = (v: AnyVehicule, q: string) => {
     if (!q) return true;
 
@@ -121,6 +130,8 @@ export default function FleetView() {
     } else if (filter === "TO_CERTIFY") {
       // ✅ À certifier = validé admin MAIS pas certifié
       list = list.filter((v) => getValide(v) === true && getCertifie(v) === false);
+    } else if (filter === "SPONSORED") {
+      list = list.filter((v) => getSponsorise(v) === true);
     }
 
     // 3) tri support (toujours logique)
@@ -152,7 +163,8 @@ export default function FleetView() {
     const validated = all.filter((v) => getValide(v) === true).length;
     const certified = all.filter((v) => getCertifie(v) === true).length;
     const toCertify = all.filter((v) => getValide(v) === true && getCertifie(v) === false).length;
-    return { all: all.length, pending, validated, certified, toCertify };
+    const sponsored = all.filter((v) => getSponsorise(v) === true).length;
+    return { all: all.length, pending, validated, certified, toCertify, sponsored };
   }, [vehicules, detailsById]);
 
   // ✅ Loading Skeleton
@@ -235,6 +247,14 @@ export default function FleetView() {
           </Button>
 
           <Button
+            variant={filter === "SPONSORED" ? "default" : "outline"}
+            className={`rounded-xl ${filter === "SPONSORED" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            onClick={() => setFilter("SPONSORED")}
+          >
+            Sponsorisés ({counts.sponsored})
+          </Button>
+
+          <Button
             variant={filter === "ALL" ? "default" : "outline"}
             className={`rounded-xl ${filter === "ALL" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
             onClick={() => setFilter("ALL")}
@@ -286,6 +306,12 @@ export default function FleetView() {
                   >
                     {v.est_disponible ? "Disponible" : "Indisponible"}
                   </div>
+
+                  {getSponsorise(v) ? (
+                    <div className="absolute top-3 left-3 px-3 py-1 text-xs font-bold rounded-full shadow bg-amber-100 text-amber-700">
+                      Sponsorisé
+                    </div>
+                  ) : null}
 
                   {/* Badge validation */}
                   <div

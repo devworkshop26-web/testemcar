@@ -563,11 +563,19 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
     # ------------------------------------------------------------------
     @action(detail=False, methods=["get"], url_path="sponsored")
     def sponsored(self, request):
-        qs = (
+        sponsored_qs = (
             self.get_queryset()
-            .filter(est_disponible=True, est_certifie=True)
+            .filter(est_disponible=True, est_sponsorise=True)
             .order_by("-nombre_favoris", "-note_moyenne", "-nombre_locations")
         )
+
+        qs = sponsored_qs
+        if not sponsored_qs.exists():
+            qs = (
+                self.get_queryset()
+                .filter(est_disponible=True)
+                .order_by("-nombre_favoris", "-note_moyenne", "-nombre_locations")
+            )
 
         page = self.paginate_queryset(qs)
         if page is not None:

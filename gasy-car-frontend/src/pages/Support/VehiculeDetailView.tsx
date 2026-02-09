@@ -112,6 +112,24 @@ export default function VehiculeDetailView() {
     },
   });
 
+  // ✅ Mutation Sponsoring
+  const sponsorMutation = useMutation({
+    mutationFn: async ({
+      vehiculeId,
+      est_sponsorise,
+    }: {
+      vehiculeId: string;
+      est_sponsorise: boolean;
+    }) => {
+      const res = await vehiculeAPI.patch_vehicule(vehiculeId, { est_sponsorise } as any);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    },
+  });
+
   // ✅ Mutation Caution
   const cautionMutation = useMutation({
     mutationFn: async ({
@@ -133,7 +151,10 @@ export default function VehiculeDetailView() {
   });
 
   const busy =
-    validateMutation.isPending || certifyMutation.isPending || cautionMutation.isPending;
+    validateMutation.isPending ||
+    certifyMutation.isPending ||
+    sponsorMutation.isPending ||
+    cautionMutation.isPending;
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -146,21 +167,27 @@ export default function VehiculeDetailView() {
   }
 
   // --- LOGIQUE DONNÉES ---
+  const photosList = Array.isArray(vehicule.photos) ? vehicule.photos : [];
+  const pricingGrid = Array.isArray(vehicule.pricing_grid) ? vehicule.pricing_grid : [];
+  const availabilities = Array.isArray(vehicule.availabilities) ? vehicule.availabilities : [];
+  const equipments = Array.isArray(vehicule.equipements_details) ? vehicule.equipements_details : [];
+
   const photos =
-    vehicule.photos?.length > 0
-      ? vehicule.photos
+    photosList.length > 0
+      ? photosList
       : [{ image_url: "/placeholder.jpg", id: "default" }];
 
   const mainPhoto = photos[selectedImageIndex]?.image_url;
 
-  const urbain = vehicule.pricing_grid?.find((p: any) => p.zone_type === "URBAIN");
-  const province = vehicule.pricing_grid?.find((p: any) => p.zone_type === "PROVINCE");
+  const urbain = pricingGrid.find((p: any) => p.zone_type === "URBAIN");
+  const province = pricingGrid.find((p: any) => p.zone_type === "PROVINCE");
 
   const driver = vehicule.driver_data;
   const owner = vehicule.proprietaire_data;
 
   const isValidated = !!vehicule.valide;
   const isCertified = !!vehicule.est_certifie;
+  const isSponsored = !!vehicule.est_sponsorise;
 
   const devise = vehicule.devise || "MGA";
 
@@ -226,6 +253,12 @@ export default function VehiculeDetailView() {
               {isCertified ? (
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
                   <BadgeCheck className="w-4 h-4" /> CERTIFIÉ
+                </span>
+              ) : null}
+
+              {isSponsored ? (
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/90 text-white shadow-sm backdrop-blur-md">
+                  SPONSORISÉ
                 </span>
               ) : null}
             </div>
@@ -328,6 +361,7 @@ export default function VehiculeDetailView() {
               <div className="space-y-1 mb-6">
                 <DataRow label="Statut Technique" value={vehicule.statut_data?.nom} highlight />
                 <DataRow label="Certifié" value={vehicule.est_certifie ? "✅ Oui" : "Non"} />
+                <DataRow label="Sponsorisé" value={vehicule.est_sponsorise ? "✅ Oui" : "Non"} />
                 <DataRow label="Validé Admin" value={vehicule.valide ? "✅ Oui" : "Non"} />
                 <DataRow
                   label="Caution"
@@ -339,8 +373,8 @@ export default function VehiculeDetailView() {
               <div className="mt-auto">
                 <p className="text-xs font-bold text-gray-400 uppercase mb-2">Équipements inclus</p>
                 <div className="flex flex-wrap gap-2">
-                  {vehicule.equipements_details?.length > 0 ? (
-                    vehicule.equipements_details.map((eq: any) => (
+                  {equipments.length > 0 ? (
+                    equipments.map((eq: any) => (
                       <span
                         key={eq.id}
                         className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md border border-gray-200"
@@ -496,8 +530,8 @@ export default function VehiculeDetailView() {
               <Calendar className="w-5 h-5 text-orange-500" /> Calendrier
             </h3>
             <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-              {vehicule.availabilities?.length > 0 ? (
-                vehicule.availabilities.map((a: any) => (
+              {availabilities.length > 0 ? (
+                availabilities.map((a: any) => (
                   <div
                     key={a.id}
                     className="flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-gray-100 text-sm"
@@ -656,6 +690,44 @@ export default function VehiculeDetailView() {
 
               {certifyMutation.isError ? (
                 <p className="text-xs text-red-500 mt-2">Erreur pendant la certification.</p>
+              ) : null}
+            </div>
+
+            {/* Sponsoring */}
+            <div className="rounded-2xl border border-gray-200 p-4 mb-4">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Sponsoring</p>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-700">
+                  Statut :{" "}
+                  <span className={`font-bold ${isSponsored ? "text-amber-700" : "text-gray-600"}`}>
+                    {isSponsored ? "Sponsorisé" : "Non sponsorisé"}
+                  </span>
+                </span>
+
+                <div className="flex gap-2">
+                  {isSponsored ? (
+                    <button
+                      disabled={busy || !id}
+                      onClick={() => sponsorMutation.mutate({ vehiculeId: id!, est_sponsorise: false })}
+                      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
+                    >
+                      Retirer
+                    </button>
+                  ) : (
+                    <button
+                      disabled={busy || !id}
+                      onClick={() => sponsorMutation.mutate({ vehiculeId: id!, est_sponsorise: true })}
+                      className={`px-3 py-2 rounded-xl text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      Sponsoriser
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {sponsorMutation.isError ? (
+                <p className="text-xs text-red-500 mt-2">Erreur pendant la mise à jour du sponsoring.</p>
               ) : null}
             </div>
 
