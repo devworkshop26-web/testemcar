@@ -9,6 +9,9 @@ type QueryConfig = {
 type VehicleListResponse =
   | VehicleSearchItem[]
   | {
+      data?: VehicleSearchItem[] | { results?: VehicleSearchItem[]; items?: VehicleSearchItem[]; vehicles?: VehicleSearchItem[] };
+      items?: VehicleSearchItem[];
+      vehicles?: VehicleSearchItem[];
       results?: VehicleSearchItem[];
     };
 
@@ -17,8 +20,34 @@ const normalizeVehicleList = (payload: VehicleListResponse): VehicleSearchItem[]
     return payload;
   }
 
+  if (payload?.data) {
+    if (Array.isArray(payload.data)) {
+      return payload.data;
+    }
+
+    if (Array.isArray(payload.data.results)) {
+      return payload.data.results;
+    }
+
+    if (Array.isArray(payload.data.items)) {
+      return payload.data.items;
+    }
+
+    if (Array.isArray(payload.data.vehicles)) {
+      return payload.data.vehicles;
+    }
+  }
+
   if (payload && Array.isArray(payload.results)) {
     return payload.results;
+  }
+
+  if (payload && Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  if (payload && Array.isArray(payload.vehicles)) {
+    return payload.vehicles;
   }
 
   return [];
