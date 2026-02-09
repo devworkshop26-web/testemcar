@@ -2,6 +2,10 @@ import {  vehiculeSearchAPI } from "@/Actions/vehiculeApi";
 import { VehicleSearchItem } from "@/types/vehicleSearchType";
 import { useQuery } from "@tanstack/react-query";
 
+type QueryConfig = {
+  enabled?: boolean;
+};
+
 type VehicleListResponse =
   | VehicleSearchItem[]
   | {
@@ -22,12 +26,13 @@ const normalizeVehicleList = (payload: VehicleListResponse): VehicleSearchItem[]
 
 
 // ░░░░░░░░░░ POPULAR VEHICLES ░░░░░░░░░░
-export const usePopularVehicles = () => {
+export const usePopularVehicles = (config?: QueryConfig) => {
   return useQuery<VehicleSearchItem[]>({
     queryKey: ["vehicles", "popular"],
     queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.popular()),
     staleTime: 1000 * 60 * 10, // 10 minutes
     refetchOnWindowFocus: false,
+    enabled: config?.enabled,
   });
 };
 
