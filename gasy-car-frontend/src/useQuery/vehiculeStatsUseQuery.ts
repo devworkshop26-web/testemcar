@@ -105,9 +105,35 @@ export const useSponsoredVehicles = () => {
 export const useCoupDeCoeurVehicles = () => {
   return useQuery<VehicleSearchItem[]>({
     queryKey: ["vehicles", "coup-de-coeur"],
-    queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.coupDeCoeur()),
+    queryFn: async () => {
+      try {
+        const coupsFromSearch = normalizeVehicleList(await vehiculeSearchAPI.coupDeCoeur());
+        if (coupsFromSearch.length > 0) {
+          return coupsFromSearch;
+        }
+      } catch {
+        // fallback below
+      }
+
+      try {
+        const { data: coupsFromListData } = await vehiculeAPI.get_all_vehicules({
+          est_coup_de_coeur: true,
+        });
+        const coupsFromList = normalizeVehicleList(coupsFromListData as VehicleListResponse);
+        if (coupsFromList.length > 0) {
+          return coupsFromList;
+        }
+      } catch {
+        // fallback below
+      }
+
+      const { data: allVehiclesData } = await vehiculeAPI.get_all_vehicules();
+      const allVehicles = normalizeVehicleList(allVehiclesData as VehicleListResponse);
+      return allVehicles.filter((vehicle) => (vehicle as { est_coup_de_coeur?: boolean }).est_coup_de_coeur === true);
+    },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 };
 
