@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useUnreadTickets } from "./useUnreadTickets";
-import { WS_BASE_URL } from "@/helper/InstanceAxios";
+import { resolveWsBaseUrl, WS_BASE_URL } from "@/helper/InstanceAxios";
 
 export const useTicketsListSocket = () => {
   const { markUnread } = useUnreadTickets();
@@ -16,10 +16,7 @@ export const useTicketsListSocket = () => {
       wsRef.current = null;
     }
 
-    // ✅ http -> ws, https -> wss
-    const wsBase = WS_BASE_URL.replace(/^https?/, (m) =>
-      m === "https" ? "wss" : "ws"
-    );
+    const wsBase = resolveWsBaseUrl(WS_BASE_URL);
 
     const url = `${wsBase}/ws/notifications/?token=${token}`;
     const socket = new WebSocket(url);
