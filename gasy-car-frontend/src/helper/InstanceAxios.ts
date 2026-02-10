@@ -12,6 +12,28 @@ export const WS_BASE_URL = API_BASE_URL
   )
   .replace(/\/api$/, "");
 
+export const resolveWsBaseUrl = (base: string) => {
+  const fromEnv = String(base ?? "").trim();
+
+  if (fromEnv) {
+    const normalized = fromEnv.replace(/\/api\/?$/, "");
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      return normalized.replace(/^ws:\/\//, "wss://").replace(/^http:\/\//, "wss://");
+    }
+
+    return normalized
+      .replace(/^https:\/\//, "wss://")
+      .replace(/^http:\/\//, "ws://");
+  }
+
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.host}`;
+  }
+
+  return "";
+};
+
 export const accessTokenKey = "access_token";
 export const refreshTokenKey = "refresh_token";
 
