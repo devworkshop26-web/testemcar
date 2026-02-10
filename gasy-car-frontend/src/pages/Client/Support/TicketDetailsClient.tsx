@@ -10,6 +10,7 @@ import { useChatProfiles } from "@/useQuery/support/useChatProfiles";
 import { ConversationBox } from "@/components/support/ConversationBox";
 import { MessageInput } from "@/components/support/MessageInput";
 import { useTicketSocket } from "@/hooks/support/useTicketSocket";
+import { useSendMessage } from "@/useQuery/support/useSendMessage";
 
 import type { User } from "@/types/userType";
 
@@ -80,6 +81,7 @@ export default function TicketDetailsClient() {
   );
 
   const { sendMessage } = useTicketSocket(ticketId, isOwner);
+  const { mutate: sendMessageFallback, isPending: sendingFallback } = useSendMessage();
 
   useEffect(() => {
     if (isOwner) scrollToBottom();
@@ -121,8 +123,17 @@ export default function TicketDetailsClient() {
   const onSend = (text: string) => {
     const msg = text.trim();
     if (!msg) return;
-    sendMessage(msg);
-    setTimeout(scrollToBottom, 50);
+
+    const sentBySocket = sendMessage(msg);
+    if (sentBySocket) {
+      setTimeout(scrollToBottom, 50);
+      return;
+    }
+
+    sendMessageFallback(
+      { ticket: ticketId, message: msg },
+      { onSuccess: () => setTimeout(scrollToBottom, 50) }
+    );
   };
 
   // ✅ si tu veux afficher le nom du client (toi) :
@@ -200,7 +211,7 @@ export default function TicketDetailsClient() {
 
       {/* INPUT */}
       <div className="border-t p-3 bg-white">
-        <MessageInput disabled={false} onSend={onSend} />
+        <MessageInput disabled={sendingFallback} onSend={onSend} />
       </div>
     </div>
   );
