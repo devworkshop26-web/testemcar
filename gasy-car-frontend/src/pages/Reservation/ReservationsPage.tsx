@@ -626,10 +626,6 @@ const ReservationsPage: React.FC = () => {
                         <span className="text-gray-700 font-medium">Sélectionné</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 bg-white border-2 border-primary/30 rounded shadow-sm" />
-                        <span className="text-gray-700 font-medium">Aujourd'hui</span>
-                      </div>
-                      <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-red-100 border border-red-300 rounded shadow-sm flex items-center justify-center">
                           <Lock className="w-3 h-3 text-red-600" />
                         </div>
