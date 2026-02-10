@@ -608,7 +608,7 @@ const ReservationsPage: React.FC = () => {
                         day_today: "bg-white text-primary font-bold border-2 border-primary/20",
                         day_outside: "text-gray-300 opacity-30",
                         day_disabled: "opacity-50 cursor-not-allowed",
-                        day_range_middle: "aria-selected:bg-primary/5 aria-selected:text-primary-700 rounded-none my-0",
+                        day_range_middle: "aria-selected:bg-primary aria-selected:text-white hover:aria-selected:bg-primary rounded-none my-0",
                         day_hidden: "invisible",
                       }}
                     />
@@ -624,10 +624,6 @@ const ReservationsPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-primary rounded shadow-sm" />
                         <span className="text-gray-700 font-medium">Sélectionné</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 bg-white border-2 border-primary/30 rounded shadow-sm" />
-                        <span className="text-gray-700 font-medium">Aujourd'hui</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-red-100 border border-red-300 rounded shadow-sm flex items-center justify-center">
