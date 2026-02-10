@@ -608,7 +608,7 @@ const ReservationsPage: React.FC = () => {
                         day_today: "bg-white text-primary font-bold border-2 border-primary/20",
                         day_outside: "text-gray-300 opacity-30",
                         day_disabled: "opacity-50 cursor-not-allowed",
-                        day_range_middle: "aria-selected:bg-primary/5 aria-selected:text-primary-700 rounded-none my-0",
+                        day_range_middle: "aria-selected:bg-primary aria-selected:text-white hover:aria-selected:bg-primary rounded-none my-0",
                         day_hidden: "invisible",
                       }}
                     />
