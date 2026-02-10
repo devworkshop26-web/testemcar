@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const useUnreadTickets = () => {
@@ -6,17 +7,17 @@ export const useUnreadTickets = () => {
   const unreadTickets =
     queryClient.getQueryData<string[]>(["unread-tickets"]) ?? [];
 
-  const markUnread = (ticketId: string) => {
+  const markUnread = useCallback((ticketId: string) => {
     queryClient.setQueryData<string[]>(["unread-tickets"], (old = []) =>
       old.includes(ticketId) ? old : [...old, ticketId]
     );
-  };
+  }, [queryClient]);
 
-  const markRead = (ticketId: string) => {
+  const markRead = useCallback((ticketId: string) => {
     queryClient.setQueryData<string[]>(["unread-tickets"], (old = []) =>
       old.filter((id) => id !== ticketId)
     );
-  };
+  }, [queryClient]);
 
   return { unreadTickets, markUnread, markRead };
 };

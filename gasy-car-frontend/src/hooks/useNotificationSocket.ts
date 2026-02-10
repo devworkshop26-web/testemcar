@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { WS_BASE_URL, accessTokenKey } from "@/helper/InstanceAxios";
+import { resolveWsBaseUrl, WS_BASE_URL, accessTokenKey } from "@/helper/InstanceAxios";
 
 interface NotificationMessage {
     id: string;
@@ -25,7 +25,8 @@ export const useNotificationSocket = () => {
             socketRef.current.close();
         }
 
-        const socketUrl = `${WS_BASE_URL}/ws/notifications/?token=${token}`;
+        const wsBase = resolveWsBaseUrl(WS_BASE_URL);
+        const socketUrl = `${wsBase}/ws/notifications/?token=${token}`;
         const socket = new WebSocket(socketUrl);
         socketRef.current = socket;
 
