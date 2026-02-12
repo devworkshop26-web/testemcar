@@ -4,7 +4,7 @@ import { useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
 import { AlertCircle, Car, CheckCircle2, ClipboardCheck, Eraser, Info } from "lucide-react";
 import { MouseEvent, useMemo, useState } from "react";
 
-type VehicleView = "left" | "front" | "rear" | "top";
+type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom";
 
 type DamagePoint = {
   id: string;
@@ -14,11 +14,15 @@ type DamagePoint = {
   level: "léger" | "moyen" | "important";
 };
 
+const vehicleViews: VehicleView[] = ["left", "right", "front", "rear", "top", "bottom"];
+
 const viewLabels: Record<VehicleView, string> = {
-  left: "Vue latérale",
+  left: "Vue gauche",
+  right: "Vue droite",
   front: "Vue avant",
   rear: "Vue arrière",
-  top: "Vue de dessus",
+  top: "Vue dessus",
+  bottom: "Vue dessous",
 };
 
 const levelClasses: Record<DamagePoint["level"], string> = {
@@ -27,52 +31,74 @@ const levelClasses: Record<DamagePoint["level"], string> = {
   important: "bg-red-500",
 };
 
+const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <path d="M42 118l8-23 36-20 64-13h186l68 10 26 20 8 26v16H42z" strokeWidth="2.6" />
+      <path d="M116 73l30-30h133l45 30" strokeWidth="2.2" />
+      <path d="M176 73v59M240 73v59M304 73v59" strokeWidth="1.7" className="opacity-85" />
+      <path d="M90 120h52M318 120h58" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="124" cy="136" r="31" strokeWidth="2.6" />
+      <circle cx="124" cy="136" r="17" strokeWidth="1.8" className="opacity-80" />
+      <circle cx="344" cy="136" r="31" strokeWidth="2.6" />
+      <circle cx="344" cy="136" r="17" strokeWidth="1.8" className="opacity-80" />
+      <path d="M58 108h30M404 108h30" strokeWidth="1.5" className="opacity-70" />
+    </g>
+  </svg>
+);
+
+const FrontViewOutline = () => (
+  <svg viewBox="0 0 250 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M32 140v-48l16-27 31-18h92l31 18 16 27v48z" strokeWidth="2.6" />
+    <path d="M58 84h134M48 102h154" strokeWidth="1.8" className="opacity-80" />
+    <path d="M77 68l-24 20M173 68l24 20" strokeWidth="1.8" className="opacity-90" />
+    <rect x="98" y="108" width="54" height="14" rx="6" strokeWidth="1.7" className="opacity-80" />
+    <circle cx="68" cy="145" r="13" strokeWidth="2.5" />
+    <circle cx="182" cy="145" r="13" strokeWidth="2.5" />
+    <path d="M58 132h32M160 132h32" strokeWidth="1.6" className="opacity-70" />
+  </svg>
+);
+
+const RearViewOutline = () => (
+  <svg viewBox="0 0 250 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M32 140v-45l13-26 35-21h90l35 21 13 26v45z" strokeWidth="2.6" />
+    <path d="M56 98h138M54 116h142" strokeWidth="1.8" className="opacity-85" />
+    <rect x="95" y="74" width="60" height="20" rx="7" strokeWidth="1.8" className="opacity-90" />
+    <path d="M74 77l24 17M176 77l-24 17" strokeWidth="1.7" className="opacity-80" />
+    <circle cx="68" cy="145" r="13" strokeWidth="2.5" />
+    <circle cx="182" cy="145" r="13" strokeWidth="2.5" />
+  </svg>
+);
+
+const TopViewOutline = () => (
+  <svg viewBox="0 0 380 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M26 96c0-46 38-78 164-78s164 32 164 78-38 78-164 78S26 142 26 96z" strokeWidth="2.6" />
+    <rect x="110" y="52" width="160" height="88" rx="28" strokeWidth="2.1" />
+    <path d="M136 52v88M244 52v88" strokeWidth="1.7" className="opacity-80" />
+    <path d="M30 70h48M350 70h-48M30 122h48M350 122h-48" strokeWidth="1.5" className="opacity-70" />
+  </svg>
+);
+
+const BottomViewOutline = () => (
+  <svg viewBox="0 0 380 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M26 96c0-46 38-78 164-78s164 32 164 78-38 78-164 78S26 142 26 96z" strokeWidth="2.6" />
+    <rect x="126" y="54" width="128" height="80" rx="20" strokeWidth="2" />
+    <path d="M190 54v80M126 94h128" strokeWidth="1.6" className="opacity-75" />
+    <circle cx="78" cy="64" r="13" strokeWidth="2" />
+    <circle cx="302" cy="64" r="13" strokeWidth="2" />
+    <circle cx="78" cy="128" r="13" strokeWidth="2" />
+    <circle cx="302" cy="128" r="13" strokeWidth="2" />
+    <path d="M142 72h96M142 118h96" strokeWidth="1.5" className="opacity-70" />
+  </svg>
+);
+
 const VehicleOutline = ({ view }: { view: VehicleView }) => {
-  if (view === "left") {
-    return (
-      <svg viewBox="0 0 420 160" className="h-full w-full text-white/90" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="48" y="58" width="316" height="52" rx="12" />
-        <path d="M98 58l38-24h148l42 24" />
-        <circle cx="120" cy="114" r="26" />
-        <circle cx="302" cy="114" r="26" />
-        <path d="M184 58v52M238 58v52" />
-      </svg>
-    );
-  }
-
-  if (view === "front") {
-    return (
-      <svg viewBox="0 0 220 160" className="h-full w-full text-white/90" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="30" y="35" width="160" height="90" rx="18" />
-        <path d="M58 88h104M44 68h132" />
-        <circle cx="64" cy="128" r="11" />
-        <circle cx="156" cy="128" r="11" />
-        <path d="M76 64l-20 24M144 64l20 24" />
-      </svg>
-    );
-  }
-
-  if (view === "rear") {
-    return (
-      <svg viewBox="0 0 220 160" className="h-full w-full text-white/90" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="30" y="35" width="160" height="90" rx="18" />
-        <path d="M52 82h116" />
-        <rect x="84" y="58" width="52" height="20" rx="6" />
-        <circle cx="64" cy="128" r="11" />
-        <circle cx="156" cy="128" r="11" />
-        <path d="M60 56l24 18M160 56l-24 18" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 320 160" className="h-full w-full text-white/90" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="24" y="22" width="272" height="116" rx="26" />
-      <rect x="84" y="42" width="152" height="78" rx="20" />
-      <path d="M120 42v78M200 42v78" />
-      <path d="M24 58h60M296 58h-60M24 102h60M296 102h-60" />
-    </svg>
-  );
+  if (view === "left") return <SideViewOutline />;
+  if (view === "right") return <SideViewOutline mirrored />;
+  if (view === "front") return <FrontViewOutline />;
+  if (view === "rear") return <RearViewOutline />;
+  if (view === "top") return <TopViewOutline />;
+  return <BottomViewOutline />;
 };
 
 const VehicleConditionReportPage = () => {
@@ -94,7 +120,7 @@ const VehicleConditionReportPage = () => {
         acc[point.view].push(point);
         return acc;
       },
-      { left: [], front: [], rear: [], top: [] }
+      { left: [], right: [], front: [], rear: [], top: [], bottom: [] }
     ),
     [points]
   );
@@ -123,7 +149,7 @@ const VehicleConditionReportPage = () => {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-900">État des lieux annoté du véhicule</h1>
         <p className="text-sm text-slate-600">
-          Créez un constat visuel (avant/après location) en plaçant les dommages directement sur le plan du véhicule.
+          Plan professionnel 6 vues (gauche, droite, avant, arrière, dessus, dessous) pour cartographier les dommages.
         </p>
       </div>
 
@@ -188,16 +214,16 @@ const VehicleConditionReportPage = () => {
         </Card>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-          <Card className="overflow-hidden border-slate-900 bg-slate-900">
-            <CardContent className="grid gap-4 p-4 md:grid-cols-2">
-              {(["left", "front", "rear", "top"] as VehicleView[]).map((view) => (
+          <Card className="overflow-hidden border-slate-900 bg-slate-950 shadow-[0_24px_70px_-32px_rgba(2,8,23,0.9)]">
+            <CardContent className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+              {vehicleViews.map((view) => (
                 <div
                   key={view}
-                  className="relative rounded-xl border border-white/20 bg-gradient-to-b from-slate-800 to-slate-900 p-3"
+                  className="relative rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3"
                 >
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/80">{viewLabels[view]}</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</div>
                   <div
-                    className="relative h-44 cursor-crosshair rounded-lg border border-white/20"
+                    className="relative h-44 cursor-crosshair rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]"
                     onClick={(event) => addDamagePoint(view, event)}
                   >
                     <VehicleOutline view={view} />
