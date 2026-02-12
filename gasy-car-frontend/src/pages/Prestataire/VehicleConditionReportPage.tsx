@@ -4,10 +4,8 @@ import { vehiculeAPI, VehicleConditionPoint, VehicleView } from "@/Actions/vehic
 import { useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
 import {
   Car,
-  Eraser,
   ImagePlus,
   Info,
-  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -272,18 +270,17 @@ const VehicleConditionReportPage = () => {
     });
   };
 
-  const resetUploadedPhotos = () => {
-    const nextPhotosByView: Partial<Record<VehicleView, string>> = {};
-    setCustomPhotosByView(nextPhotosByView);
-    persistReport(nextPhotosByView);
-  };
-
   const removePhotoForView = (view: VehicleView) => {
     const nextPhotosByView = { ...customPhotosByView };
     delete nextPhotosByView[view];
     setCustomPhotosByView(nextPhotosByView);
     persistReport(nextPhotosByView);
   };
+
+  const removePoint = (pointId: string) => {
+    setPoints((prev) => prev.filter((point) => point.id !== pointId));
+  };
+
   const updatePointDescription = (pointId: string, description: string) => {
     setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, description } : point)));
   };
@@ -305,10 +302,6 @@ const VehicleConditionReportPage = () => {
       points,
       custom_photos_by_view: customPhotosByView,
     });
-  };
-
-  const clearAllPoints = () => {
-    setPoints([]);
   };
 
   return (
@@ -376,23 +369,6 @@ const VehicleConditionReportPage = () => {
               {useCustomPhotos ? "Mode photos réelles" : "Mode schéma"}
             </button>
 
-            <button
-              type="button"
-              onClick={clearAllPoints}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-            >
-              <Eraser className="h-4 w-4" />
-              Effacer points
-            </button>
-
-            <button
-              type="button"
-              onClick={resetUploadedPhotos}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Réinitialiser photos
-            </button>
           </div>
         </CardContent>
       </Card>
@@ -443,6 +419,14 @@ const VehicleConditionReportPage = () => {
                             <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor("top")}`}>{index + 1}</span>
                           </div>
                           <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                          <button
+                            type="button"
+                            onClick={() => removePoint(point.id)}
+                            className="mt-2 inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Supprimer #{index + 1}
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -502,6 +486,14 @@ const VehicleConditionReportPage = () => {
                                 <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor(view)}`}>{index + 1}</span>
                               </div>
                               <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                              <button
+                                type="button"
+                                onClick={() => removePoint(point.id)}
+                                className="mt-2 inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Supprimer #{index + 1}
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -561,6 +553,14 @@ const VehicleConditionReportPage = () => {
                             <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor("bottom")}`}>{index + 1}</span>
                           </div>
                           <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                          <button
+                            type="button"
+                            onClick={() => removePoint(point.id)}
+                            className="mt-2 inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Supprimer #{index + 1}
+                          </button>
                         </div>
                       ))}
                     </div>
