@@ -23,8 +23,6 @@ type DamagePoint = {
   level: "léger" | "moyen" | "important";
 };
 
-const vehicleViews: VehicleView[] = ["left", "right", "front", "rear", "top", "bottom"];
-
 const viewLabels: Record<VehicleView, string> = {
   left: "Vue gauche",
   right: "Vue droite",
@@ -257,46 +255,73 @@ const VehicleConditionReportPage = () => {
       ) : (
         <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
           <Card className="overflow-hidden border-slate-900 bg-slate-950 shadow-[0_24px_70px_-32px_rgba(2,8,23,0.9)]">
-            <CardContent className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-              {vehicleViews.map((view) => (
-                <div
-                  key={view}
-                  className="relative rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</span>
-                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
-                      <ImagePlus className="h-3.5 w-3.5" />
-                      Ajouter photo
-                      <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
-                    </label>
-                  </div>
-
-                  <div
-                    className="relative h-44 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]"
-                    onClick={(event) => addDamagePoint(view, event)}
-                  >
-                    {useCustomPhotos && customPhotosByView[view] ? (
-                      <img
-                        src={customPhotosByView[view]}
-                        alt={`Inspection ${viewLabels[view]}`}
-                        className="absolute inset-0 h-full w-full object-contain bg-black/30"
-                      />
-                    ) : (
-                      <VehicleOutline view={view} />
-                    )}
-
-                    {groupedPoints[view].map((point) => (
-                      <span
-                        key={point.id}
-                        className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`}
-                        style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                        title={`${viewLabels[view]} - ${point.level}`}
-                      />
-                    ))}
-                  </div>
+            <CardContent className="space-y-4 p-4">
+              <div className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels.top}</span>
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Ajouter photo
+                    <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("top", event)} />
+                  </label>
                 </div>
-              ))}
+                <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint("top", event)}>
+                  {useCustomPhotos && customPhotosByView.top ? (
+                    <img src={customPhotosByView.top} alt={`Inspection ${viewLabels.top}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
+                  ) : (
+                    <VehicleOutline view="top" />
+                  )}
+                  {groupedPoints.top.map((point) => (
+                    <span key={point.id} className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - ${point.level}`} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+                {(["left", "right", "front", "rear"] as const).map((view) => (
+                  <div key={view} className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</span>
+                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        Ajouter photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
+                      </label>
+                    </div>
+                    <div className="relative h-48 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint(view, event)}>
+                      {useCustomPhotos && customPhotosByView[view] ? (
+                        <img src={customPhotosByView[view]} alt={`Inspection ${viewLabels[view]}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
+                      ) : (
+                        <VehicleOutline view={view} />
+                      )}
+                      {groupedPoints[view].map((point) => (
+                        <span key={point.id} className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - ${point.level}`} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels.bottom}</span>
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Ajouter photo
+                    <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("bottom", event)} />
+                  </label>
+                </div>
+                <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint("bottom", event)}>
+                  {useCustomPhotos && customPhotosByView.bottom ? (
+                    <img src={customPhotosByView.bottom} alt={`Inspection ${viewLabels.bottom}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
+                  ) : (
+                    <VehicleOutline view="bottom" />
+                  )}
+                  {groupedPoints.bottom.map((point) => (
+                    <span key={point.id} className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - ${point.level}`} />
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
