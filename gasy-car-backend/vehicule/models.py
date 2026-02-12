@@ -239,6 +239,36 @@ class Vehicule(models.Model):
 
 
 
+class VehicleConditionReport(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    vehicle = models.OneToOneField(
+        Vehicule,
+        on_delete=models.CASCADE,
+        related_name="condition_report",
+        verbose_name="Rapport d'état des lieux",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vehicle_condition_reports",
+    )
+    view_notes = models.JSONField(default=dict, blank=True)
+    saved_view_timestamps = models.JSONField(default=dict, blank=True)
+    points = models.JSONField(default=list, blank=True)
+    custom_photos_by_view = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Rapport d'état véhicule"
+        verbose_name_plural = "Rapports d'état véhicules"
+
+    def __str__(self):
+        return f"Rapport état - {self.vehicle.titre}"
+
+
 class VehiclePricing(models.Model):
     class ZoneType(models.TextChoices):
         URBAIN = "URBAIN", "Zone Urbaine"
