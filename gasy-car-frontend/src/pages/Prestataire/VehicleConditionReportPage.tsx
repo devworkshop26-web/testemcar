@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { ChangeEvent, MouseEvent, useMemo, useState } from "react";
 
-type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom";
+type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom" | "interior-front" | "interior-rear";
 
 type DamagePoint = {
   id: string;
@@ -31,6 +31,8 @@ const viewLabels: Record<VehicleView, string> = {
   rear: "Vue arrière",
   top: "Vue dessus",
   bottom: "Vue dessous",
+  "interior-front": "Intérieur avant",
+  "interior-rear": "Intérieur arrière",
 };
 
 const levelClasses: Record<DamagePoint["level"], string> = {
@@ -100,13 +102,36 @@ const BottomViewOutline = () => (
   </svg>
 );
 
+
+const InteriorFrontOutline = () => (
+  <svg viewBox="0 0 420 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="28" y="28" width="364" height="134" rx="22" strokeWidth="2.3" />
+    <rect x="82" y="54" width="92" height="74" rx="14" strokeWidth="2" />
+    <rect x="246" y="54" width="92" height="74" rx="14" strokeWidth="2" />
+    <circle cx="210" cy="74" r="22" strokeWidth="2.2" />
+    <path d="M210 52v44M188 74h44" strokeWidth="1.5" className="opacity-75" />
+    <path d="M42 118h336" strokeWidth="1.6" className="opacity-70" />
+  </svg>
+);
+
+const InteriorRearOutline = () => (
+  <svg viewBox="0 0 420 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="28" y="28" width="364" height="134" rx="22" strokeWidth="2.3" />
+    <rect x="68" y="64" width="284" height="66" rx="14" strokeWidth="2" />
+    <path d="M122 64v66M210 64v66M298 64v66" strokeWidth="1.7" className="opacity-80" />
+    <path d="M42 52h336M42 142h336" strokeWidth="1.5" className="opacity-65" />
+  </svg>
+);
+
 const VehicleOutline = ({ view }: { view: VehicleView }) => {
   if (view === "left") return <SideViewOutline />;
   if (view === "right") return <SideViewOutline mirrored />;
   if (view === "front") return <FrontViewOutline />;
   if (view === "rear") return <RearViewOutline />;
   if (view === "top") return <TopViewOutline />;
-  return <BottomViewOutline />;
+  if (view === "bottom") return <BottomViewOutline />;
+  if (view === "interior-front") return <InteriorFrontOutline />;
+  return <InteriorRearOutline />;
 };
 
 const VehicleConditionReportPage = () => {
@@ -130,7 +155,7 @@ const VehicleConditionReportPage = () => {
         acc[point.view].push(point);
         return acc;
       },
-      { left: [], right: [], front: [], rear: [], top: [], bottom: [] }
+      { left: [], right: [], front: [], rear: [], top: [], bottom: [], "interior-front": [], "interior-rear": [] }
     ),
     [points]
   );
@@ -175,7 +200,7 @@ const VehicleConditionReportPage = () => {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-900">État des lieux annoté du véhicule</h1>
         <p className="text-sm text-slate-600">
-          Vous pouvez maintenant insérer vos propres photos (gauche, droite, avant, arrière, dessus, dessous) pour un rapport plus réaliste.
+          Vous pouvez maintenant insérer vos propres photos (gauche, droite, avant, arrière, dessus, dessous, intérieur avant et intérieur arrière) pour un rapport plus réaliste.
         </p>
       </div>
 
@@ -294,7 +319,7 @@ const VehicleConditionReportPage = () => {
               </div>
 
               <div className="grid gap-4">
-                {(["left", "right", "front", "rear"] as const).map((view) => (
+                {(["left", "right", "front", "rear", "interior-front", "interior-rear"] as const).map((view) => (
                   <div key={view} className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</span>
