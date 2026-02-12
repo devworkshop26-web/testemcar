@@ -425,7 +425,7 @@ const VehicleConditionReportPage = () => {
                             className="mt-2 inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Supprimer #{index + 1} {point.description ? `- ${point.description}` : "- Sans description"}
+                            Supprimer #{index + 1}
                           </button>
                         </div>
                       ))}
@@ -492,7 +492,7 @@ const VehicleConditionReportPage = () => {
                                 className="mt-2 inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
-                                Supprimer #{index + 1} {point.description ? `- ${point.description}` : "- Sans description"}
+                                Supprimer #{index + 1}
                               </button>
                             </div>
                           ))}
@@ -559,7 +559,7 @@ const VehicleConditionReportPage = () => {
                             className="mt-2 inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Supprimer #{index + 1} {point.description ? `- ${point.description}` : "- Sans description"}
+                            Supprimer #{index + 1}
                           </button>
                         </div>
                       ))}
