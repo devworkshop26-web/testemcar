@@ -22,6 +22,7 @@ type DamagePoint = {
   x: number;
   y: number;
   level: "léger" | "moyen" | "important";
+  description: string;
 };
 
 const viewLabels: Record<VehicleView, string> = {
@@ -34,6 +35,18 @@ const viewLabels: Record<VehicleView, string> = {
   "interior-front": "Intérieur avant",
   "interior-rear": "Intérieur arrière",
 };
+
+const reportViewOrder: VehicleView[] = [
+  "top",
+  "front",
+  "left",
+  "right",
+  "rear",
+  "bottom",
+  "interior-front",
+  "interior-rear",
+];
+
 
 const levelClasses: Record<DamagePoint["level"], string> = {
   léger: "bg-emerald-500",
@@ -143,6 +156,16 @@ const VehicleConditionReportPage = () => {
   const [points, setPoints] = useState<DamagePoint[]>([]);
   const [customPhotosByView, setCustomPhotosByView] = useState<Partial<Record<VehicleView, string>>>({});
   const [useCustomPhotos, setUseCustomPhotos] = useState(true);
+  const [viewNotes, setViewNotes] = useState<Record<VehicleView, string>>({
+    left: "",
+    right: "",
+    front: "",
+    rear: "",
+    top: "",
+    bottom: "",
+    "interior-front": "",
+    "interior-rear": "",
+  });
 
   const selectedVehicle = useMemo(
     () => vehicules.find((vehicule) => vehicule.id === selectedVehicleId),
@@ -173,6 +196,7 @@ const VehicleConditionReportPage = () => {
         x,
         y,
         level: damageLevel,
+        description: "",
       },
     ]);
   };
@@ -193,6 +217,14 @@ const VehicleConditionReportPage = () => {
       return next;
     });
   };
+  const updatePointDescription = (pointId: string, description: string) => {
+    setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, description } : point)));
+  };
+
+  const updateViewNote = (view: VehicleView, note: string) => {
+    setViewNotes((prev) => ({ ...prev, [view]: note }));
+  };
+
   const clearAllPoints = () => setPoints([]);
 
   return (
@@ -406,14 +438,52 @@ const VehicleConditionReportPage = () => {
                   </div>
                 </div>
               ) : (
-                <ul className="space-y-2">
-                  {points.map((point, index) => (
-                    <li key={point.id} className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-                      <span className="text-slate-700">#{index + 1} • {viewLabels[point.view]}</span>
-                      <span className={`h-2.5 w-2.5 rounded-full ${levelClasses[point.level]}`} />
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-3">
+                  {reportViewOrder.map((view) => {
+                    const viewPoints = groupedPoints[view];
+
+                    return (
+                      <div key={view} className="rounded-lg border border-slate-200 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-sm font-semibold text-slate-800">{viewLabels[view]}</p>
+                          <span className="text-xs text-slate-500">{viewPoints.length} point(s)</span>
+                        </div>
+
+                        <textarea
+                          value={viewNotes[view]}
+                          onChange={(event) => updateViewNote(view, event.target.value)}
+                          placeholder={`Observation générale - ${viewLabels[view]}`}
+                          className="mb-2 min-h-20 w-full rounded-md border border-slate-200 px-3 py-2 text-xs outline-none ring-primary/20 focus:ring-2"
+                        />
+
+                        {viewPoints.length === 0 ? (
+                          <p className="text-xs text-slate-400">Aucun point annoté pour cette vue.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {viewPoints.map((point) => {
+                              const pointNumber = points.findIndex((item) => item.id === point.id) + 1;
+
+                              return (
+                                <div key={point.id} className="rounded-md border border-slate-200 p-2">
+                                  <div className="mb-2 flex items-center justify-between text-xs">
+                                    <span className="font-semibold text-slate-700">Point #{pointNumber}</span>
+                                    <span className={`h-2.5 w-2.5 rounded-full ${levelClasses[point.level]}`} />
+                                  </div>
+                                  <input
+                                    value={point.description}
+                                    onChange={(event) => updatePointDescription(point.id, event.target.value)}
+                                    placeholder="Description du dommage (rayure, choc, fissure...)"
+                                    className="w-full rounded-md border border-slate-200 px-3 py-2 text-xs outline-none ring-primary/20 focus:ring-2"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
