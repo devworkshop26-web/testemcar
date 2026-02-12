@@ -19,6 +19,7 @@ import VehiclePhotosPage from "@/pages/Prestataire/VehiclePhotosPage";
 import CreateTicketPrestataire from "@/pages/Prestataire/Support/CreateTicketPrestataire";
 import TicketDetailsPrestataire from "@/pages/Prestataire/Support/TicketDetailsPrestataire";
 import MyTickets from "@/pages/Support/MyTickets Prestataire";
+import VehicleConditionReportPage from "@/pages/Prestataire/VehicleConditionReportPage";
 
 export const PrestataireRoutes = () => {
   return (
@@ -50,6 +51,7 @@ export const PrestataireRoutes = () => {
           <Route path="supports/create" element={<CreateTicketPrestataire />} />
           <Route path="supports/my-tickets" element={<MyTickets />} />
           <Route path="supports/ticket/:id" element={<TicketDetailsPrestataire />} />
+          <Route path="condition-report" element={<VehicleConditionReportPage />} />
 
         </Route>
       </Route>
