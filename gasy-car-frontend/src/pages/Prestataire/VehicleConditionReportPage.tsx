@@ -1,8 +1,17 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
-import { AlertCircle, Car, CheckCircle2, ClipboardCheck, Eraser, Info } from "lucide-react";
-import { MouseEvent, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  Car,
+  CheckCircle2,
+  ClipboardCheck,
+  Eraser,
+  ImagePlus,
+  Info,
+  RotateCcw,
+} from "lucide-react";
+import { ChangeEvent, MouseEvent, useMemo, useState } from "react";
 
 type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom";
 
@@ -108,6 +117,8 @@ const VehicleConditionReportPage = () => {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [damageLevel, setDamageLevel] = useState<DamagePoint["level"]>("léger");
   const [points, setPoints] = useState<DamagePoint[]>([]);
+  const [customPhotosByView, setCustomPhotosByView] = useState<Partial<Record<VehicleView, string>>>({});
+  const [useCustomPhotos, setUseCustomPhotos] = useState(true);
 
   const selectedVehicle = useMemo(
     () => vehicules.find((vehicule) => vehicule.id === selectedVehicleId),
@@ -142,6 +153,15 @@ const VehicleConditionReportPage = () => {
     ]);
   };
 
+  const handleUploadForView = (view: VehicleView, event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setCustomPhotosByView((prev) => ({ ...prev, [view]: previewUrl }));
+  };
+
+  const resetUploadedPhotos = () => setCustomPhotosByView({});
   const clearAllPoints = () => setPoints([]);
 
   return (
@@ -149,7 +169,7 @@ const VehicleConditionReportPage = () => {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-slate-900">État des lieux annoté du véhicule</h1>
         <p className="text-sm text-slate-600">
-          Plan professionnel 6 vues (gauche, droite, avant, arrière, dessus, dessous) pour cartographier les dommages.
+          Vous pouvez maintenant insérer vos propres photos (gauche, droite, avant, arrière, dessus, dessous) pour un rapport plus réaliste.
         </p>
       </div>
 
@@ -159,10 +179,10 @@ const VehicleConditionReportPage = () => {
             <Car className="h-5 w-5 text-primary" />
             Sélection du véhicule
           </CardTitle>
-          <CardDescription>Choisissez un véhicule pour commencer l&apos;inspection visuelle.</CardDescription>
+          <CardDescription>Choisissez un véhicule puis ajoutez vos vraies photos d&apos;inspection.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap">
             <select
               value={selectedVehicleId}
               onChange={(event) => setSelectedVehicleId(event.target.value)}
@@ -195,11 +215,33 @@ const VehicleConditionReportPage = () => {
 
             <button
               type="button"
+              onClick={() => setUseCustomPhotos((prev) => !prev)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                useCustomPhotos
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <ImagePlus className="h-4 w-4" />
+              {useCustomPhotos ? "Mode photos réelles" : "Mode schéma"}
+            </button>
+
+            <button
+              type="button"
               onClick={clearAllPoints}
               className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
             >
               <Eraser className="h-4 w-4" />
-              Effacer
+              Effacer points
+            </button>
+
+            <button
+              type="button"
+              onClick={resetUploadedPhotos}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Réinitialiser photos
             </button>
           </div>
         </CardContent>
@@ -221,12 +263,29 @@ const VehicleConditionReportPage = () => {
                   key={view}
                   className="relative rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3"
                 >
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</span>
+                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      Ajouter photo
+                      <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
+                    </label>
+                  </div>
+
                   <div
-                    className="relative h-44 cursor-crosshair rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]"
+                    className="relative h-44 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]"
                     onClick={(event) => addDamagePoint(view, event)}
                   >
-                    <VehicleOutline view={view} />
+                    {useCustomPhotos && customPhotosByView[view] ? (
+                      <img
+                        src={customPhotosByView[view]}
+                        alt={`Inspection ${viewLabels[view]}`}
+                        className="absolute inset-0 h-full w-full object-contain bg-black/30"
+                      />
+                    ) : (
+                      <VehicleOutline view={view} />
+                    )}
+
                     {groupedPoints[view].map((point) => (
                       <span
                         key={point.id}
@@ -261,7 +320,7 @@ const VehicleConditionReportPage = () => {
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="mt-0.5 h-4 w-4" />
-                    Cliquez sur le schéma pour placer les zones d&apos;impact.
+                    Cliquez sur une vue pour placer les zones d&apos;impact.
                   </div>
                 </div>
               ) : (
