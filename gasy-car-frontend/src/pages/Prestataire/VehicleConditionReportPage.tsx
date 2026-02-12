@@ -263,13 +263,26 @@ const VehicleConditionReportPage = () => {
     reader.readAsDataURL(file);
   };
 
-  const resetUploadedPhotos = () => setCustomPhotosByView({});
-  const removePhotoForView = (view: VehicleView) => {
-    setCustomPhotosByView((prev) => {
-      const next = { ...prev };
-      delete next[view];
-      return next;
+  const persistReport = (nextPhotosByView: Partial<Record<VehicleView, string>>) => {
+    saveReportMutation.mutate({
+      view_notes: viewNotes,
+      saved_view_timestamps: savedViewTimestamps,
+      points,
+      custom_photos_by_view: nextPhotosByView,
     });
+  };
+
+  const resetUploadedPhotos = () => {
+    const nextPhotosByView: Partial<Record<VehicleView, string>> = {};
+    setCustomPhotosByView(nextPhotosByView);
+    persistReport(nextPhotosByView);
+  };
+
+  const removePhotoForView = (view: VehicleView) => {
+    const nextPhotosByView = { ...customPhotosByView };
+    delete nextPhotosByView[view];
+    setCustomPhotosByView(nextPhotosByView);
+    persistReport(nextPhotosByView);
   };
   const updatePointDescription = (pointId: string, description: string) => {
     setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, description } : point)));
