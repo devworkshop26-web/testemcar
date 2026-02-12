@@ -48,18 +48,18 @@ const reportViewOrder: VehicleView[] = [
 ];
 
 
-const annotationPalette = [
-  "bg-sky-500 border-sky-300",
-  "bg-emerald-500 border-emerald-300",
-  "bg-violet-500 border-violet-300",
-  "bg-amber-500 border-amber-300",
-  "bg-rose-500 border-rose-300",
-  "bg-cyan-500 border-cyan-300",
-  "bg-indigo-500 border-indigo-300",
-  "bg-orange-500 border-orange-300",
-];
+const viewColorClasses: Record<VehicleView, string> = {
+  top: "bg-blue-500 border-blue-300",
+  front: "bg-emerald-500 border-emerald-300",
+  left: "bg-violet-500 border-violet-300",
+  right: "bg-amber-500 border-amber-300",
+  rear: "bg-rose-500 border-rose-300",
+  bottom: "bg-cyan-500 border-cyan-300",
+  "interior-front": "bg-indigo-500 border-indigo-300",
+  "interior-rear": "bg-orange-500 border-orange-300",
+};
 
-const getAnnotationColor = (index: number) => annotationPalette[index % annotationPalette.length];
+const getViewColor = (view: VehicleView) => viewColorClasses[view];
 
 const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -173,6 +173,7 @@ const VehicleConditionReportPage = () => {
     "interior-front": "",
     "interior-rear": "",
   });
+  const [savedViewTimestamps, setSavedViewTimestamps] = useState<Partial<Record<VehicleView, string>>>({});
 
   const selectedVehicle = useMemo(
     () => vehicules.find((vehicule) => vehicule.id === selectedVehicleId),
@@ -230,6 +231,11 @@ const VehicleConditionReportPage = () => {
 
   const updateViewNote = (view: VehicleView, note: string) => {
     setViewNotes((prev) => ({ ...prev, [view]: note }));
+  };
+
+  const saveViewReport = (view: VehicleView) => {
+    const now = new Date();
+    setSavedViewTimestamps((prev) => ({ ...prev, [view]: now.toLocaleTimeString("fr-FR") }));
   };
 
   const clearAllPoints = () => setPoints([]);
@@ -350,7 +356,7 @@ const VehicleConditionReportPage = () => {
                     <VehicleOutline view="top" />
                   )}
                   {groupedPoints.top.map((point, index) => (
-                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getAnnotationColor(index)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - point ${index + 1}`}>
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getViewColor("top")}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - point ${index + 1}`}>
                       {index + 1}
                     </span>
                   ))}
@@ -381,7 +387,7 @@ const VehicleConditionReportPage = () => {
                         <VehicleOutline view={view} />
                       )}
                       {groupedPoints[view].map((point, index) => (
-                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getAnnotationColor(index)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - point ${index + 1}`}>
+                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getViewColor(view)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - point ${index + 1}`}>
                           {index + 1}
                         </span>
                       ))}
@@ -412,7 +418,7 @@ const VehicleConditionReportPage = () => {
                     <VehicleOutline view="bottom" />
                   )}
                   {groupedPoints.bottom.map((point, index) => (
-                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getAnnotationColor(index)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - point ${index + 1}`}>
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getViewColor("bottom")}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - point ${index + 1}`}>
                       {index + 1}
                     </span>
                   ))}
@@ -451,9 +457,21 @@ const VehicleConditionReportPage = () => {
 
                     return (
                       <div key={view} className="rounded-lg border border-slate-200 p-3">
-                        <div className="mb-2 flex items-center justify-between">
+                        <div className="mb-2 flex items-center justify-between gap-2">
                           <p className="text-sm font-semibold text-slate-800">{viewLabels[view]}</p>
-                          <span className="text-xs text-slate-500">{viewPoints.length} point(s)</span>
+                          <div className="flex items-center gap-2">
+                            {savedViewTimestamps[view] && (
+                              <span className="text-[10px] text-emerald-600">Enregistré à {savedViewTimestamps[view]}</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => saveViewReport(view)}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Enregistrer la vue
+                            </button>
+                            <span className="text-xs text-slate-500">{viewPoints.length} point(s)</span>
+                          </div>
                         </div>
 
                         <textarea
@@ -474,7 +492,7 @@ const VehicleConditionReportPage = () => {
                                 <div key={point.id} className="rounded-md border border-slate-200 p-2">
                                   <div className="mb-2 flex items-center justify-between text-xs">
                                     <span className="font-semibold text-slate-700">Point #{pointNumber}</span>
-                                    <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getAnnotationColor(index)}`}>{pointNumber}</span>
+                                    <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor(view)}`}>{pointNumber}</span>
                                   </div>
                                   <input
                                     value={point.description}
