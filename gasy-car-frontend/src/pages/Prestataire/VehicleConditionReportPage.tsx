@@ -10,6 +10,7 @@ import {
   ImagePlus,
   Info,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { ChangeEvent, MouseEvent, useMemo, useState } from "react";
 
@@ -160,6 +161,13 @@ const VehicleConditionReportPage = () => {
   };
 
   const resetUploadedPhotos = () => setCustomPhotosByView({});
+  const removePhotoForView = (view: VehicleView) => {
+    setCustomPhotosByView((prev) => {
+      const next = { ...prev };
+      delete next[view];
+      return next;
+    });
+  };
   const clearAllPoints = () => setPoints([]);
 
   return (
@@ -264,6 +272,12 @@ const VehicleConditionReportPage = () => {
                     Ajouter photo
                     <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("top", event)} />
                   </label>
+                  {customPhotosByView.top && (
+                    <button type="button" onClick={() => removePhotoForView("top")} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Effacer photo
+                    </button>
+                  )}
                 </div>
                 <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint("top", event)}>
                   {useCustomPhotos && customPhotosByView.top ? (
@@ -272,7 +286,9 @@ const VehicleConditionReportPage = () => {
                     <VehicleOutline view="top" />
                   )}
                   {groupedPoints.top.map((point) => (
-                    <span key={point.id} className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - ${point.level}`} />
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white px-1 text-[10px] font-bold text-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - ${point.level}`}>
+                      {points.findIndex((item) => item.id === point.id) + 1}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -287,6 +303,12 @@ const VehicleConditionReportPage = () => {
                         Ajouter photo
                         <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
                       </label>
+                      {customPhotosByView[view] && (
+                        <button type="button" onClick={() => removePhotoForView(view)} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Effacer photo
+                        </button>
+                      )}
                     </div>
                     <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint(view, event)}>
                       {useCustomPhotos && customPhotosByView[view] ? (
@@ -295,7 +317,9 @@ const VehicleConditionReportPage = () => {
                         <VehicleOutline view={view} />
                       )}
                       {groupedPoints[view].map((point) => (
-                        <span key={point.id} className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - ${point.level}`} />
+                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white px-1 text-[10px] font-bold text-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - ${point.level}`}>
+                          {points.findIndex((item) => item.id === point.id) + 1}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -310,6 +334,12 @@ const VehicleConditionReportPage = () => {
                     Ajouter photo
                     <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("bottom", event)} />
                   </label>
+                  {customPhotosByView.bottom && (
+                    <button type="button" onClick={() => removePhotoForView("bottom")} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Effacer photo
+                    </button>
+                  )}
                 </div>
                 <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint("bottom", event)}>
                   {useCustomPhotos && customPhotosByView.bottom ? (
@@ -318,7 +348,9 @@ const VehicleConditionReportPage = () => {
                     <VehicleOutline view="bottom" />
                   )}
                   {groupedPoints.bottom.map((point) => (
-                    <span key={point.id} className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - ${point.level}`} />
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white px-1 text-[10px] font-bold text-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - ${point.level}`}>
+                      {points.findIndex((item) => item.id === point.id) + 1}
+                    </span>
                   ))}
                 </div>
               </div>
