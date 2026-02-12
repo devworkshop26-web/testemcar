@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCurentuser } from "@/useQuery/authUseQuery";
+import { vehiculeAPI, VehicleConditionPoint, VehicleView } from "@/Actions/vehiculeApi";
 import { useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
 import {
   Car,
@@ -9,18 +10,10 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { ChangeEvent, MouseEvent, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ChangeEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 
-type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom" | "interior-front" | "interior-rear";
-
-type DamagePoint = {
-  id: string;
-  view: VehicleView;
-  x: number;
-  y: number;
-  level: "léger" | "moyen" | "important";
-  description: string;
-};
+type DamagePoint = VehicleConditionPoint;
 
 const viewLabels: Record<VehicleView, string> = {
   left: "Vue gauche",
@@ -139,6 +132,17 @@ const VehicleOutline = ({ view }: { view: VehicleView }) => {
   return <InteriorRearOutline />;
 };
 
+const defaultViewNotes: Record<VehicleView, string> = {
+  left: "",
+  right: "",
+  front: "",
+  rear: "",
+  top: "",
+  bottom: "",
+  "interior-front": "",
+  "interior-rear": "",
+};
+
 const VehicleConditionReportPage = () => {
   const { user } = useCurentuser();
   const { data: vehicules = [], isLoading } = useOwnerVehiculesQuery(user?.id);
@@ -148,17 +152,69 @@ const VehicleConditionReportPage = () => {
   const [points, setPoints] = useState<DamagePoint[]>([]);
   const [customPhotosByView, setCustomPhotosByView] = useState<Partial<Record<VehicleView, string>>>({});
   const [useCustomPhotos, setUseCustomPhotos] = useState(true);
-  const [viewNotes, setViewNotes] = useState<Record<VehicleView, string>>({
-    left: "",
-    right: "",
-    front: "",
-    rear: "",
-    top: "",
-    bottom: "",
-    "interior-front": "",
-    "interior-rear": "",
-  });
+  const [viewNotes, setViewNotes] = useState<Record<VehicleView, string>>(defaultViewNotes);
   const [savedViewTimestamps, setSavedViewTimestamps] = useState<Partial<Record<VehicleView, string>>>({});
+
+  useEffect(() => {
+    if (!selectedVehicleId && vehicules.length > 0) {
+      setSelectedVehicleId(vehicules[0].id);
+    }
+  }, [vehicules, selectedVehicleId]);
+
+  const {
+    data: conditionReport,
+    isLoading: isConditionReportLoading,
+    refetch: refetchConditionReport,
+  } = useQuery({
+    queryKey: ["vehicule-condition-report", selectedVehicleId],
+    enabled: !!selectedVehicleId,
+    queryFn: async () => {
+      if (!selectedVehicleId) throw new Error("Véhicule non sélectionné");
+      const { data } = await vehiculeAPI.get_vehicle_condition_report(selectedVehicleId);
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (!conditionReport) {
+      setPoints([]);
+      setCustomPhotosByView({});
+      setViewNotes(defaultViewNotes);
+      setSavedViewTimestamps({});
+      return;
+    }
+
+    setPoints(Array.isArray(conditionReport.points) ? conditionReport.points : []);
+    setCustomPhotosByView(conditionReport.custom_photos_by_view || {});
+    setSavedViewTimestamps(conditionReport.saved_view_timestamps || {});
+    setViewNotes({
+      ...defaultViewNotes,
+      ...(conditionReport.view_notes || {}),
+    });
+  }, [conditionReport]);
+
+  const saveReportMutation = useMutation({
+    mutationFn: async (payload: {
+      view_notes: Partial<Record<VehicleView, string>>;
+      saved_view_timestamps: Partial<Record<VehicleView, string>>;
+      points: DamagePoint[];
+      custom_photos_by_view: Partial<Record<VehicleView, string>>;
+    }) => {
+      if (!selectedVehicleId) throw new Error("Véhicule non sélectionné");
+      const { data } = await vehiculeAPI.patch_vehicle_condition_report(selectedVehicleId, payload);
+      return data;
+    },
+    onSuccess: (savedReport) => {
+      setPoints(Array.isArray(savedReport.points) ? savedReport.points : []);
+      setCustomPhotosByView(savedReport.custom_photos_by_view || {});
+      setSavedViewTimestamps(savedReport.saved_view_timestamps || {});
+      setViewNotes({
+        ...defaultViewNotes,
+        ...(savedReport.view_notes || {}),
+      });
+      refetchConditionReport();
+    },
+  });
 
   const selectedVehicle = useMemo(
     () => vehicules.find((vehicule) => vehicule.id === selectedVehicleId),
@@ -198,17 +254,35 @@ const VehicleConditionReportPage = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const previewUrl = URL.createObjectURL(file);
-    setCustomPhotosByView((prev) => ({ ...prev, [view]: previewUrl }));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) return;
+      setCustomPhotosByView((prev) => ({ ...prev, [view]: result }));
+    };
+    reader.readAsDataURL(file);
   };
 
-  const resetUploadedPhotos = () => setCustomPhotosByView({});
-  const removePhotoForView = (view: VehicleView) => {
-    setCustomPhotosByView((prev) => {
-      const next = { ...prev };
-      delete next[view];
-      return next;
+  const persistReport = (nextPhotosByView: Partial<Record<VehicleView, string>>) => {
+    saveReportMutation.mutate({
+      view_notes: viewNotes,
+      saved_view_timestamps: savedViewTimestamps,
+      points,
+      custom_photos_by_view: nextPhotosByView,
     });
+  };
+
+  const resetUploadedPhotos = () => {
+    const nextPhotosByView: Partial<Record<VehicleView, string>> = {};
+    setCustomPhotosByView(nextPhotosByView);
+    persistReport(nextPhotosByView);
+  };
+
+  const removePhotoForView = (view: VehicleView) => {
+    const nextPhotosByView = { ...customPhotosByView };
+    delete nextPhotosByView[view];
+    setCustomPhotosByView(nextPhotosByView);
+    persistReport(nextPhotosByView);
   };
   const updatePointDescription = (pointId: string, description: string) => {
     setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, description } : point)));
@@ -219,11 +293,23 @@ const VehicleConditionReportPage = () => {
   };
 
   const saveViewReport = (view: VehicleView) => {
-    const now = new Date();
-    setSavedViewTimestamps((prev) => ({ ...prev, [view]: now.toLocaleTimeString("fr-FR") }));
+    const nextTimestamps = {
+      ...savedViewTimestamps,
+      [view]: new Date().toLocaleTimeString("fr-FR"),
+    };
+
+    setSavedViewTimestamps(nextTimestamps);
+    saveReportMutation.mutate({
+      view_notes: viewNotes,
+      saved_view_timestamps: nextTimestamps,
+      points,
+      custom_photos_by_view: customPhotosByView,
+    });
   };
 
-  const clearAllPoints = () => setPoints([]);
+  const clearAllPoints = () => {
+    setPoints([]);
+  };
 
   return (
     <div className="space-y-6">
@@ -232,6 +318,9 @@ const VehicleConditionReportPage = () => {
         <p className="text-sm text-slate-600">
           Vous pouvez maintenant insérer vos propres photos (gauche, droite, avant, arrière, dessus, dessous, intérieur avant et intérieur arrière) pour un rapport plus réaliste.
         </p>
+        {selectedVehicleId && isConditionReportLoading && (
+          <p className="text-xs text-slate-500">Chargement du rapport enregistré...</p>
+        )}
       </div>
 
       <Card className="border-slate-200/70">
@@ -341,7 +430,7 @@ const VehicleConditionReportPage = () => {
                     <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels.top}</p>
                     <div className="flex items-center gap-2">
                       {savedViewTimestamps.top && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps.top}</span>}
-                      <button type="button" onClick={() => saveViewReport("top")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100">Enregistrer</button>
+                      <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport("top")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
                     </div>
                   </div>
                   <textarea value={viewNotes.top} onChange={(event) => updateViewNote("top", event.target.value)} placeholder={`Observation générale - ${viewLabels.top}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
@@ -400,7 +489,7 @@ const VehicleConditionReportPage = () => {
                         <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels[view]}</p>
                         <div className="flex items-center gap-2">
                           {savedViewTimestamps[view] && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps[view]}</span>}
-                          <button type="button" onClick={() => saveViewReport(view)} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100">Enregistrer</button>
+                          <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport(view)} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
                         </div>
                       </div>
                       <textarea value={viewNotes[view]} onChange={(event) => updateViewNote(view, event.target.value)} placeholder={`Observation générale - ${viewLabels[view]}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
@@ -459,7 +548,7 @@ const VehicleConditionReportPage = () => {
                     <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels.bottom}</p>
                     <div className="flex items-center gap-2">
                       {savedViewTimestamps.bottom && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps.bottom}</span>}
-                      <button type="button" onClick={() => saveViewReport("bottom")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100">Enregistrer</button>
+                      <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport("bottom")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
                     </div>
                   </div>
                   <textarea value={viewNotes.bottom} onChange={(event) => updateViewNote("bottom", event.target.value)} placeholder={`Observation générale - ${viewLabels.bottom}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />

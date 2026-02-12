@@ -7,6 +7,29 @@ import type {
 } from "@/types/vehiculeType";
 import { Vehicule } from "@/types/vehiculeType";
 
+export type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom" | "interior-front" | "interior-rear";
+
+export type VehicleConditionPoint = {
+  id: string;
+  view: VehicleView;
+  x: number;
+  y: number;
+  level: "léger" | "moyen" | "important";
+  description: string;
+};
+
+export type VehicleConditionReport = {
+  id: string;
+  vehicle: string;
+  created_by: string | null;
+  view_notes: Partial<Record<VehicleView, string>>;
+  saved_view_timestamps: Partial<Record<VehicleView, string>>;
+  points: VehicleConditionPoint[];
+  custom_photos_by_view: Partial<Record<VehicleView, string>>;
+  created_at: string;
+  updated_at: string;
+};
+
 export const vehiculeAPI = {
   // GET /vehicule/vehicule/
   get_all_vehicules: async (
@@ -107,6 +130,17 @@ export const vehiculeAPI = {
 
   remove_driver: async (vehiculeId: string) => {
     return await InstanceAxis.post(`/vehicule/vehicule/${vehiculeId}/remove_driver/`);
+  },
+
+  get_vehicle_condition_report: async (vehiculeId: string) => {
+    return await InstanceAxis.get<VehicleConditionReport>(`/vehicule/vehicule/${vehiculeId}/condition-report/`);
+  },
+
+  patch_vehicle_condition_report: async (
+    vehiculeId: string,
+    payload: Pick<VehicleConditionReport, "view_notes" | "saved_view_timestamps" | "points" | "custom_photos_by_view">
+  ) => {
+    return await InstanceAxis.patch<VehicleConditionReport>(`/vehicule/vehicule/${vehiculeId}/condition-report/`, payload);
   },
 };
 
