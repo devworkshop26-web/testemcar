@@ -48,11 +48,18 @@ const reportViewOrder: VehicleView[] = [
 ];
 
 
-const levelClasses: Record<DamagePoint["level"], string> = {
-  léger: "bg-emerald-500",
-  moyen: "bg-amber-500",
-  important: "bg-red-500",
-};
+const annotationPalette = [
+  "bg-sky-500 border-sky-300",
+  "bg-emerald-500 border-emerald-300",
+  "bg-violet-500 border-violet-300",
+  "bg-amber-500 border-amber-300",
+  "bg-rose-500 border-rose-300",
+  "bg-cyan-500 border-cyan-300",
+  "bg-indigo-500 border-indigo-300",
+  "bg-orange-500 border-orange-300",
+];
+
+const getAnnotationColor = (index: number) => annotationPalette[index % annotationPalette.length];
 
 const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -342,9 +349,9 @@ const VehicleConditionReportPage = () => {
                   ) : (
                     <VehicleOutline view="top" />
                   )}
-                  {groupedPoints.top.map((point) => (
-                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white px-1 text-[10px] font-bold text-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - ${point.level}`}>
-                      {points.findIndex((item) => item.id === point.id) + 1}
+                  {groupedPoints.top.map((point, index) => (
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getAnnotationColor(index)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - point ${index + 1}`}>
+                      {index + 1}
                     </span>
                   ))}
                 </div>
@@ -373,9 +380,9 @@ const VehicleConditionReportPage = () => {
                       ) : (
                         <VehicleOutline view={view} />
                       )}
-                      {groupedPoints[view].map((point) => (
-                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white px-1 text-[10px] font-bold text-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - ${point.level}`}>
-                          {points.findIndex((item) => item.id === point.id) + 1}
+                      {groupedPoints[view].map((point, index) => (
+                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getAnnotationColor(index)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - point ${index + 1}`}>
+                          {index + 1}
                         </span>
                       ))}
                     </div>
@@ -404,9 +411,9 @@ const VehicleConditionReportPage = () => {
                   ) : (
                     <VehicleOutline view="bottom" />
                   )}
-                  {groupedPoints.bottom.map((point) => (
-                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white px-1 text-[10px] font-bold text-white ${levelClasses[point.level]}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - ${point.level}`}>
-                      {points.findIndex((item) => item.id === point.id) + 1}
+                  {groupedPoints.bottom.map((point, index) => (
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getAnnotationColor(index)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - point ${index + 1}`}>
+                      {index + 1}
                     </span>
                   ))}
                 </div>
@@ -460,14 +467,14 @@ const VehicleConditionReportPage = () => {
                           <p className="text-xs text-slate-400">Aucun point annoté pour cette vue.</p>
                         ) : (
                           <div className="space-y-2">
-                            {viewPoints.map((point) => {
-                              const pointNumber = points.findIndex((item) => item.id === point.id) + 1;
+                            {viewPoints.map((point, index) => {
+                              const pointNumber = index + 1;
 
                               return (
                                 <div key={point.id} className="rounded-md border border-slate-200 p-2">
                                   <div className="mb-2 flex items-center justify-between text-xs">
                                     <span className="font-semibold text-slate-700">Point #{pointNumber}</span>
-                                    <span className={`h-2.5 w-2.5 rounded-full ${levelClasses[point.level]}`} />
+                                    <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getAnnotationColor(index)}`}>{pointNumber}</span>
                                   </div>
                                   <input
                                     value={point.description}
