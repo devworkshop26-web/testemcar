@@ -335,32 +335,32 @@ const VehicleConditionReportPage = () => {
                   )}
                 </div>
               </div>
-              <div className="grid gap-3 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
-                <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 lg:order-first">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)] lg:items-start">
+                <div className="rounded-lg border border-slate-200 bg-white p-3 lg:order-last">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-100">Rapport - {viewLabels.top}</p>
+                    <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels.top}</p>
                     <div className="flex items-center gap-2">
                       {savedViewTimestamps.top && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps.top}</span>}
-                      <button type="button" onClick={() => saveViewReport("top")} className="rounded-md border border-slate-500 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-800">Enregistrer</button>
+                      <button type="button" onClick={() => saveViewReport("top")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100">Enregistrer</button>
                     </div>
                   </div>
-                  <textarea value={viewNotes.top} onChange={(event) => updateViewNote("top", event.target.value)} placeholder={`Observation générale - ${viewLabels.top}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none ring-primary/20 focus:ring-2" />
+                  <textarea value={viewNotes.top} onChange={(event) => updateViewNote("top", event.target.value)} placeholder={`Observation générale - ${viewLabels.top}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                   {groupedPoints.top.length > 0 && (
                     <div className="space-y-2">
                       {groupedPoints.top.map((point, index) => (
-                        <div key={point.id} className="rounded-md border border-slate-700 p-2">
+                        <div key={point.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                           <div className="mb-1 flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-200">Point #{index + 1}</span>
+                            <span className="text-xs font-semibold text-slate-700">Point #{index + 1}</span>
                             <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor("top")}`}>{index + 1}</span>
                           </div>
-                          <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none ring-primary/20 focus:ring-2" />
+                          <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] lg:order-last" onClick={(event) => addDamagePoint("top", event)}>
+                <div className="relative h-72 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] lg:h-80 lg:order-first" onClick={(event) => addDamagePoint("top", event)}>
                   {useCustomPhotos && customPhotosByView.top ? (
                     <img src={customPhotosByView.top} alt={`Inspection ${viewLabels.top}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                   ) : (
@@ -394,32 +394,32 @@ const VehicleConditionReportPage = () => {
                       )}
                     </div>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
-                    <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 lg:order-first">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)] lg:items-start">
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 lg:order-last">
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-slate-100">Rapport - {viewLabels[view]}</p>
+                        <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels[view]}</p>
                         <div className="flex items-center gap-2">
                           {savedViewTimestamps[view] && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps[view]}</span>}
-                          <button type="button" onClick={() => saveViewReport(view)} className="rounded-md border border-slate-500 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-800">Enregistrer</button>
+                          <button type="button" onClick={() => saveViewReport(view)} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100">Enregistrer</button>
                         </div>
                       </div>
-                      <textarea value={viewNotes[view]} onChange={(event) => updateViewNote(view, event.target.value)} placeholder={`Observation générale - ${viewLabels[view]}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none ring-primary/20 focus:ring-2" />
+                      <textarea value={viewNotes[view]} onChange={(event) => updateViewNote(view, event.target.value)} placeholder={`Observation générale - ${viewLabels[view]}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                       {groupedPoints[view].length > 0 && (
                         <div className="space-y-2">
                           {groupedPoints[view].map((point, index) => (
-                            <div key={point.id} className="rounded-md border border-slate-700 p-2">
+                            <div key={point.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                               <div className="mb-1 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-slate-200">Point #{index + 1}</span>
+                                <span className="text-xs font-semibold text-slate-700">Point #{index + 1}</span>
                                 <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor(view)}`}>{index + 1}</span>
                               </div>
-                              <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none ring-primary/20 focus:ring-2" />
+                              <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] lg:order-last" onClick={(event) => addDamagePoint(view, event)}>
+                    <div className="relative h-72 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] lg:h-80 lg:order-first" onClick={(event) => addDamagePoint(view, event)}>
                       {useCustomPhotos && customPhotosByView[view] ? (
                         <img src={customPhotosByView[view]} alt={`Inspection ${viewLabels[view]}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                       ) : (
@@ -453,32 +453,32 @@ const VehicleConditionReportPage = () => {
                   )}
                 </div>
               </div>
-              <div className="grid gap-3 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
-                <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3 lg:order-first">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)] lg:items-start">
+                <div className="rounded-lg border border-slate-200 bg-white p-3 lg:order-last">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-100">Rapport - {viewLabels.bottom}</p>
+                    <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels.bottom}</p>
                     <div className="flex items-center gap-2">
                       {savedViewTimestamps.bottom && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps.bottom}</span>}
-                      <button type="button" onClick={() => saveViewReport("bottom")} className="rounded-md border border-slate-500 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-800">Enregistrer</button>
+                      <button type="button" onClick={() => saveViewReport("bottom")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100">Enregistrer</button>
                     </div>
                   </div>
-                  <textarea value={viewNotes.bottom} onChange={(event) => updateViewNote("bottom", event.target.value)} placeholder={`Observation générale - ${viewLabels.bottom}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none ring-primary/20 focus:ring-2" />
+                  <textarea value={viewNotes.bottom} onChange={(event) => updateViewNote("bottom", event.target.value)} placeholder={`Observation générale - ${viewLabels.bottom}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                   {groupedPoints.bottom.length > 0 && (
                     <div className="space-y-2">
                       {groupedPoints.bottom.map((point, index) => (
-                        <div key={point.id} className="rounded-md border border-slate-700 p-2">
+                        <div key={point.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                           <div className="mb-1 flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-200">Point #{index + 1}</span>
+                            <span className="text-xs font-semibold text-slate-700">Point #{index + 1}</span>
                             <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor("bottom")}`}>{index + 1}</span>
                           </div>
-                          <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none ring-primary/20 focus:ring-2" />
+                          <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] lg:order-last" onClick={(event) => addDamagePoint("bottom", event)}>
+                <div className="relative h-72 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)] lg:h-80 lg:order-first" onClick={(event) => addDamagePoint("bottom", event)}>
                   {useCustomPhotos && customPhotosByView.bottom ? (
                     <img src={customPhotosByView.bottom} alt={`Inspection ${viewLabels.bottom}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                   ) : (
