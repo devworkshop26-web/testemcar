@@ -18,6 +18,7 @@ from .models import (
     VehicleAvailability,
     VehiclePricing,
     VehicleDocuments,
+    VehicleConditionReport,
 )
 from driver.models import Driver
 from driver.serializers import DriverReadSerializer
@@ -197,6 +198,25 @@ class VehicleAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleAvailability
         fields = "__all__"
+
+
+class VehicleConditionReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VehicleConditionReport
+        fields = [
+            "id",
+            "vehicle",
+            "created_by",
+            "view_notes",
+            "saved_view_timestamps",
+            "points",
+            "custom_photos_by_view",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at", "vehicle"]
+
+
 
 
 # ============================================================

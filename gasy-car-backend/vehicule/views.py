@@ -23,12 +23,12 @@ from rest_framework import serializers
 
 # seralisers.py
 from .serializers import FastCategorySerializer,MarqueSerializer, CategorySerializer, TransmissionSerializer,VehiclePhotoSerializer,VehiculeSearchSerializer, VehiculeListSerializer
-from .serializers import FuelTypeSerializer, StatusSerializer,ModeleVehiculeSerializer,VehiculeSerializer,VehicleEquipmentsSerializer, VehicleAvailabilitySerializer, VehicleDocumentsSerializer, VehiculeCardSerializer
+from .serializers import FuelTypeSerializer, StatusSerializer,ModeleVehiculeSerializer,VehiculeSerializer,VehicleEquipmentsSerializer, VehicleAvailabilitySerializer, VehicleDocumentsSerializer, VehiculeCardSerializer, VehicleConditionReportSerializer
 from users.serializers import UserProfileSerializer
 
 # models
 from .models import Marque, Category, Transmission,VehiclePhoto
-from .models import FuelType, StatusVehicule,ModeleVehicule,Vehicule,VehicleEquipments, VehicleAvailability, VehicleDocuments, VehiclePricing
+from .models import FuelType, StatusVehicule,ModeleVehicule,Vehicule,VehicleEquipments, VehicleAvailability, VehicleDocuments, VehiclePricing, VehicleConditionReport
 from users.models import User
 from driver.models import Driver
 
@@ -500,6 +500,35 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             
             return Response({"message": "Chauffeur retiré avec succès"})
         return Response({"message": "Aucun chauffeur assigné à ce véhicule"})
+
+    @action(detail=True, methods=["get", "put", "patch"], url_path="condition-report", permission_classes=[permissions.IsAuthenticated])
+    def condition_report(self, request, pk=None):
+        vehicle = self.get_object()
+        user = request.user
+        user_role = getattr(user, "role", None)
+
+        if vehicle.proprietaire_id != user.id and user_role not in ["ADMIN", "SUPPORT"] and not user.is_staff:
+            return Response({"detail": "Vous n'avez pas la permission de gérer ce rapport."}, status=status.HTTP_403_FORBIDDEN)
+
+        report, _ = VehicleConditionReport.objects.get_or_create(
+            vehicle=vehicle,
+            defaults={"created_by": user},
+        )
+
+        if request.method == "GET":
+            serializer = VehicleConditionReportSerializer(report, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = VehicleConditionReportSerializer(
+            report,
+            data=request.data,
+            partial=(request.method == "PATCH"),
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(created_by=report.created_by or user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
   
 
 # api view for VehicleEquipment
