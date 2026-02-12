@@ -277,7 +277,7 @@ const VehicleConditionReportPage = () => {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+              <div className="grid gap-4">
                 {(["left", "right", "front", "rear"] as const).map((view) => (
                   <div key={view} className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
@@ -288,7 +288,7 @@ const VehicleConditionReportPage = () => {
                         <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
                       </label>
                     </div>
-                    <div className="relative h-48 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint(view, event)}>
+                    <div className="relative h-64 cursor-crosshair overflow-hidden rounded-lg border border-slate-700/80 bg-[radial-gradient(circle_at_center,_#0f172a,_#020617)]" onClick={(event) => addDamagePoint(view, event)}>
                       {useCustomPhotos && customPhotosByView[view] ? (
                         <img src={customPhotosByView[view]} alt={`Inspection ${viewLabels[view]}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                       ) : (
