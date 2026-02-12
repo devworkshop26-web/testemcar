@@ -12,6 +12,7 @@ import {
   ChevronRight,
   X,
   Headset,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCurentuser } from "@/useQuery/authUseQuery";
@@ -35,6 +36,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     { id: "drivers", icon: Users, label: "Chauffeurs", path: "/prestataire/drivers" },
     { id: "bookings", icon: CalendarRange, label: "Réservations", path: "/prestataire/booking" },
     { id: "customers", icon: Users, label: "Clients", path: "/prestataire/customer" },
+    { id: "condition-report", icon: ClipboardCheck, label: "État des lieux", path: "/prestataire/condition-report" },
     { id: "supports", icon: Headset, label: "Supports", path: "/prestataire/supports/my-tickets" },
     { id: "settings", icon: Settings, label: "Paramètres", path: "/prestataire/parameters" },
   ];
