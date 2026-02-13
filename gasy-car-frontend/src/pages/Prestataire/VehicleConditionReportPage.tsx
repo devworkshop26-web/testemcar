@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ChangeEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { Vehicule } from "@/types/vehiculeType";
 
 type DamagePoint = VehicleConditionPoint;
 
@@ -46,7 +47,37 @@ const levelOptions: DamagePoint["level"][] = ["léger", "moyen", "important"];
 
 const getPointLevelColor = (level: DamagePoint["level"]) => pointLevelClasses[level];
 
-const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+
+type VehicleProfile = "car" | "van" | "truck" | "bus";
+
+const inferVehicleProfile = (vehicle?: Vehicule): VehicleProfile => {
+  if (!vehicle) return "car";
+
+  const signal = [
+    vehicle.type_vehicule,
+    vehicle.titre,
+    vehicle.modele_data?.label,
+    vehicle.categorie_data?.nom,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (signal.includes("bus") || signal.includes("minibus") || signal.includes("coaster")) return "bus";
+  if (signal.includes("camion") || signal.includes("truck") || signal.includes("plateau") || signal.includes("benne")) return "truck";
+  if (signal.includes("fourgon") || signal.includes("van") || signal.includes("utilitaire")) return "van";
+
+  return "car";
+};
+
+const vehicleProfileLabels: Record<VehicleProfile, string> = {
+  car: "Berline / SUV",
+  van: "Fourgon / Utilitaire",
+  truck: "Camion",
+  bus: "Bus / Minibus",
+};
+
+const CarSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
     <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
       <path d="M42 118l8-23 36-20 64-13h186l68 10 26 20 8 26v16H42z" strokeWidth="2.6" />
@@ -58,6 +89,52 @@ const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
       <circle cx="344" cy="136" r="31" strokeWidth="2.6" />
       <circle cx="344" cy="136" r="17" strokeWidth="1.8" className="opacity-80" />
       <path d="M58 108h30M404 108h30" strokeWidth="1.5" className="opacity-70" />
+    </g>
+  </svg>
+);
+
+const VanSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="58" y="74" width="334" height="68" rx="10" strokeWidth="2.6" />
+      <path d="M94 74v-24h132l28 24" strokeWidth="2.1" />
+      <path d="M112 92h58M260 92h110M112 114h230" strokeWidth="1.6" className="opacity-80" />
+      <path d="M168 74v68M242 74v68M308 74v68" strokeWidth="1.6" className="opacity-70" />
+      <circle cx="138" cy="142" r="28" strokeWidth="2.6" />
+      <circle cx="138" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
+      <circle cx="332" cy="142" r="28" strokeWidth="2.6" />
+      <circle cx="332" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
+    </g>
+  </svg>
+);
+
+const TruckSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="36" y="92" width="212" height="50" rx="8" strokeWidth="2.5" />
+      <path d="M248 92h106l34 30v20H248z" strokeWidth="2.5" />
+      <path d="M282 92v50M318 92v50M68 110h132" strokeWidth="1.6" className="opacity-80" />
+      <circle cx="102" cy="145" r="26" strokeWidth="2.5" />
+      <circle cx="102" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="236" cy="145" r="26" strokeWidth="2.5" />
+      <circle cx="236" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="350" cy="145" r="26" strokeWidth="2.5" />
+      <circle cx="350" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
+    </g>
+  </svg>
+);
+
+const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="34" y="66" width="392" height="78" rx="14" strokeWidth="2.6" />
+      <path d="M66 88h286M66 106h286" strokeWidth="1.5" className="opacity-75" />
+      <path d="M86 66v78M126 66v78M166 66v78M206 66v78M246 66v78M286 66v78M326 66v78" strokeWidth="1.5" className="opacity-75" />
+      <path d="M354 84h52v42h-52z" strokeWidth="2" />
+      <circle cx="114" cy="146" r="24" strokeWidth="2.5" />
+      <circle cx="114" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="346" cy="146" r="24" strokeWidth="2.5" />
+      <circle cx="346" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
     </g>
   </svg>
 );
@@ -128,9 +205,19 @@ const InteriorRearOutline = () => (
   </svg>
 );
 
-const VehicleOutline = ({ view }: { view: VehicleView }) => {
-  if (view === "left") return <SideViewOutline />;
-  if (view === "right") return <SideViewOutline mirrored />;
+const VehicleOutline = ({ view, profile }: { view: VehicleView; profile: VehicleProfile }) => {
+  if (view === "left") {
+    if (profile === "bus") return <BusSideViewOutline />;
+    if (profile === "truck") return <TruckSideViewOutline />;
+    if (profile === "van") return <VanSideViewOutline />;
+    return <CarSideViewOutline />;
+  }
+  if (view === "right") {
+    if (profile === "bus") return <BusSideViewOutline mirrored />;
+    if (profile === "truck") return <TruckSideViewOutline mirrored />;
+    if (profile === "van") return <VanSideViewOutline mirrored />;
+    return <CarSideViewOutline mirrored />;
+  }
   if (view === "front") return <FrontViewOutline />;
   if (view === "rear") return <RearViewOutline />;
   if (view === "top") return <TopViewOutline />;
@@ -226,6 +313,8 @@ const VehicleConditionReportPage = () => {
     () => vehicules.find((vehicule) => vehicule.id === selectedVehicleId),
     [vehicules, selectedVehicleId]
   );
+
+  const vehicleProfile = useMemo(() => inferVehicleProfile(selectedVehicle), [selectedVehicle]);
 
   const groupedPoints = useMemo(
     () => points.reduce<Record<VehicleView, DamagePoint[]>>(
@@ -351,6 +440,10 @@ const VehicleConditionReportPage = () => {
               ))}
             </select>
 
+            <span className="inline-flex items-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
+              Schéma: {vehicleProfileLabels[vehicleProfile]}
+            </span>
+
             <button
               type="button"
               onClick={() => setUseCustomPhotos((prev) => !prev)}
@@ -444,7 +537,7 @@ const VehicleConditionReportPage = () => {
                   {useCustomPhotos && customPhotosByView.top ? (
                     <img src={customPhotosByView.top} alt={`Inspection ${viewLabels.top}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                   ) : (
-                    <VehicleOutline view="top" />
+                    <VehicleOutline view="top" profile={vehicleProfile} />
                   )}
                   {groupedPoints.top.map((point, index) => (
                     <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - point ${index + 1}`}>
@@ -523,7 +616,7 @@ const VehicleConditionReportPage = () => {
                       {useCustomPhotos && customPhotosByView[view] ? (
                         <img src={customPhotosByView[view]} alt={`Inspection ${viewLabels[view]}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                       ) : (
-                        <VehicleOutline view={view} />
+                        <VehicleOutline view={view} profile={vehicleProfile} />
                       )}
                       {groupedPoints[view].map((point, index) => (
                         <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - point ${index + 1}`}>
@@ -602,7 +695,7 @@ const VehicleConditionReportPage = () => {
                   {useCustomPhotos && customPhotosByView.bottom ? (
                     <img src={customPhotosByView.bottom} alt={`Inspection ${viewLabels.bottom}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                   ) : (
-                    <VehicleOutline view="bottom" />
+                    <VehicleOutline view="bottom" profile={vehicleProfile} />
                   )}
                   {groupedPoints.bottom.map((point, index) => (
                     <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - point ${index + 1}`}>
