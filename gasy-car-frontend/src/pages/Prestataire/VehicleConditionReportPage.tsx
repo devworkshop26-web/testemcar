@@ -159,52 +159,6 @@ const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   </svg>
 );
 
-const VanSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
-  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <rect x="58" y="74" width="334" height="68" rx="10" strokeWidth="2.6" />
-      <path d="M94 74v-24h132l28 24" strokeWidth="2.1" />
-      <path d="M112 92h58M260 92h110M112 114h230" strokeWidth="1.6" className="opacity-80" />
-      <path d="M168 74v68M242 74v68M308 74v68" strokeWidth="1.6" className="opacity-70" />
-      <circle cx="138" cy="142" r="28" strokeWidth="2.6" />
-      <circle cx="138" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
-      <circle cx="332" cy="142" r="28" strokeWidth="2.6" />
-      <circle cx="332" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
-    </g>
-  </svg>
-);
-
-const TruckSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
-  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <rect x="36" y="92" width="212" height="50" rx="8" strokeWidth="2.5" />
-      <path d="M248 92h106l34 30v20H248z" strokeWidth="2.5" />
-      <path d="M282 92v50M318 92v50M68 110h132" strokeWidth="1.6" className="opacity-80" />
-      <circle cx="102" cy="145" r="26" strokeWidth="2.5" />
-      <circle cx="102" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="236" cy="145" r="26" strokeWidth="2.5" />
-      <circle cx="236" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="350" cy="145" r="26" strokeWidth="2.5" />
-      <circle cx="350" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
-    </g>
-  </svg>
-);
-
-const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
-  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <rect x="34" y="66" width="392" height="78" rx="14" strokeWidth="2.6" />
-      <path d="M66 88h286M66 106h286" strokeWidth="1.5" className="opacity-75" />
-      <path d="M86 66v78M126 66v78M166 66v78M206 66v78M246 66v78M286 66v78M326 66v78" strokeWidth="1.5" className="opacity-75" />
-      <path d="M354 84h52v42h-52z" strokeWidth="2" />
-      <circle cx="114" cy="146" r="24" strokeWidth="2.5" />
-      <circle cx="114" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="346" cy="146" r="24" strokeWidth="2.5" />
-      <circle cx="346" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
-    </g>
-  </svg>
-);
-
 const FrontViewOutline = () => (
   <svg viewBox="0 0 250 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
     <path d="M32 140v-48l16-27 31-18h92l31 18 16 27v48z" strokeWidth="2.6" />
