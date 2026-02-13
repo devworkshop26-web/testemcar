@@ -201,6 +201,18 @@ class VehicleAvailabilitySerializer(serializers.ModelSerializer):
 
 
 class VehicleConditionReportSerializer(serializers.ModelSerializer):
+    ALLOWED_VIEWS = {
+        "left",
+        "right",
+        "front",
+        "rear",
+        "top",
+        "bottom",
+        "interior-front",
+        "interior-rear",
+    }
+    ALLOWED_LEVELS = {"léger", "moyen", "important"}
+
     class Meta:
         model = VehicleConditionReport
         fields = [
@@ -215,6 +227,55 @@ class VehicleConditionReportSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at", "vehicle"]
+
+    def validate_points(self, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Le champ points doit être une liste.")
+
+        normalized_points = []
+        for index, point in enumerate(value, start=1):
+            if not isinstance(point, dict):
+                raise serializers.ValidationError(f"Le point #{index} est invalide.")
+
+            view = point.get("view")
+            if view not in self.ALLOWED_VIEWS:
+                raise serializers.ValidationError(
+                    f"Le point #{index} contient une vue invalide: {view}."
+                )
+
+            level = point.get("level") or "léger"
+            if level not in self.ALLOWED_LEVELS:
+                raise serializers.ValidationError(
+                    f"Le point #{index} contient un niveau invalide: {level}."
+                )
+
+            try:
+                x = float(point.get("x", 0))
+                y = float(point.get("y", 0))
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(
+                    f"Le point #{index} contient des coordonnées invalides."
+                )
+
+            if x < 0 or x > 100 or y < 0 or y > 100:
+                raise serializers.ValidationError(
+                    f"Le point #{index} doit avoir des coordonnées entre 0 et 100."
+                )
+
+            normalized_points.append(
+                {
+                    "id": str(point.get("id") or ""),
+                    "view": view,
+                    "x": x,
+                    "y": y,
+                    "level": level,
+                    "description": str(point.get("description") or ""),
+                }
+            )
+
+        return normalized_points
 
 
 
