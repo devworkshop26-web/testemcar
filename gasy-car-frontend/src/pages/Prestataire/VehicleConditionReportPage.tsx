@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ChangeEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { Vehicule } from "@/types/vehiculeType";
 
 type DamagePoint = VehicleConditionPoint;
 
@@ -24,20 +25,59 @@ const viewLabels: Record<VehicleView, string> = {
   "interior-rear": "Intérieur arrière",
 };
 
-const viewColorClasses: Record<VehicleView, string> = {
-  top: "bg-blue-500 border-blue-300",
-  front: "bg-emerald-500 border-emerald-300",
-  left: "bg-violet-500 border-violet-300",
-  right: "bg-amber-500 border-amber-300",
-  rear: "bg-rose-500 border-rose-300",
-  bottom: "bg-cyan-500 border-cyan-300",
-  "interior-front": "bg-indigo-500 border-indigo-300",
-  "interior-rear": "bg-orange-500 border-orange-300",
+const levelLabels: Record<DamagePoint["level"], string> = {
+  léger: "Léger",
+  moyen: "Moyen",
+  important: "Important",
 };
 
-const getViewColor = (view: VehicleView) => viewColorClasses[view];
+const pointLevelClasses: Record<DamagePoint["level"], string> = {
+  léger: "bg-emerald-500 border-emerald-300",
+  moyen: "bg-amber-500 border-amber-300",
+  important: "bg-rose-500 border-rose-300",
+};
 
-const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+const pointLevelChipClasses: Record<DamagePoint["level"], string> = {
+  léger: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  moyen: "border-amber-200 bg-amber-50 text-amber-700",
+  important: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+const levelOptions: DamagePoint["level"][] = ["léger", "moyen", "important"];
+
+const getPointLevelColor = (level: DamagePoint["level"]) => pointLevelClasses[level];
+
+
+type VehicleProfile = "car" | "van" | "truck" | "bus";
+
+const inferVehicleProfile = (vehicle?: Vehicule): VehicleProfile => {
+  if (!vehicle) return "car";
+
+  const signal = [
+    vehicle.type_vehicule,
+    vehicle.titre,
+    vehicle.modele_data?.label,
+    vehicle.categorie_data?.nom,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (signal.includes("bus") || signal.includes("minibus") || signal.includes("coaster")) return "bus";
+  if (signal.includes("camion") || signal.includes("truck") || signal.includes("plateau") || signal.includes("benne")) return "truck";
+  if (signal.includes("fourgon") || signal.includes("van") || signal.includes("utilitaire")) return "van";
+
+  return "car";
+};
+
+const vehicleProfileLabels: Record<VehicleProfile, string> = {
+  car: "Berline / SUV",
+  van: "Fourgon / Utilitaire",
+  truck: "Camion",
+  bus: "Bus / Minibus",
+};
+
+const CarSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
     <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
       <path d="M42 118l8-23 36-20 64-13h186l68 10 26 20 8 26v16H42z" strokeWidth="2.6" />
@@ -49,6 +89,52 @@ const SideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
       <circle cx="344" cy="136" r="31" strokeWidth="2.6" />
       <circle cx="344" cy="136" r="17" strokeWidth="1.8" className="opacity-80" />
       <path d="M58 108h30M404 108h30" strokeWidth="1.5" className="opacity-70" />
+    </g>
+  </svg>
+);
+
+const VanSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="58" y="74" width="334" height="68" rx="10" strokeWidth="2.6" />
+      <path d="M94 74v-24h132l28 24" strokeWidth="2.1" />
+      <path d="M112 92h58M260 92h110M112 114h230" strokeWidth="1.6" className="opacity-80" />
+      <path d="M168 74v68M242 74v68M308 74v68" strokeWidth="1.6" className="opacity-70" />
+      <circle cx="138" cy="142" r="28" strokeWidth="2.6" />
+      <circle cx="138" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
+      <circle cx="332" cy="142" r="28" strokeWidth="2.6" />
+      <circle cx="332" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
+    </g>
+  </svg>
+);
+
+const TruckSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="36" y="92" width="212" height="50" rx="8" strokeWidth="2.5" />
+      <path d="M248 92h106l34 30v20H248z" strokeWidth="2.5" />
+      <path d="M282 92v50M318 92v50M68 110h132" strokeWidth="1.6" className="opacity-80" />
+      <circle cx="102" cy="145" r="26" strokeWidth="2.5" />
+      <circle cx="102" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="236" cy="145" r="26" strokeWidth="2.5" />
+      <circle cx="236" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="350" cy="145" r="26" strokeWidth="2.5" />
+      <circle cx="350" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
+    </g>
+  </svg>
+);
+
+const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="34" y="66" width="392" height="78" rx="14" strokeWidth="2.6" />
+      <path d="M66 88h286M66 106h286" strokeWidth="1.5" className="opacity-75" />
+      <path d="M86 66v78M126 66v78M166 66v78M206 66v78M246 66v78M286 66v78M326 66v78" strokeWidth="1.5" className="opacity-75" />
+      <path d="M354 84h52v42h-52z" strokeWidth="2" />
+      <circle cx="114" cy="146" r="24" strokeWidth="2.5" />
+      <circle cx="114" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="346" cy="146" r="24" strokeWidth="2.5" />
+      <circle cx="346" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
     </g>
   </svg>
 );
@@ -119,9 +205,19 @@ const InteriorRearOutline = () => (
   </svg>
 );
 
-const VehicleOutline = ({ view }: { view: VehicleView }) => {
-  if (view === "left") return <SideViewOutline />;
-  if (view === "right") return <SideViewOutline mirrored />;
+const VehicleOutline = ({ view, profile }: { view: VehicleView; profile: VehicleProfile }) => {
+  if (view === "left") {
+    if (profile === "bus") return <BusSideViewOutline />;
+    if (profile === "truck") return <TruckSideViewOutline />;
+    if (profile === "van") return <VanSideViewOutline />;
+    return <CarSideViewOutline />;
+  }
+  if (view === "right") {
+    if (profile === "bus") return <BusSideViewOutline mirrored />;
+    if (profile === "truck") return <TruckSideViewOutline mirrored />;
+    if (profile === "van") return <VanSideViewOutline mirrored />;
+    return <CarSideViewOutline mirrored />;
+  }
   if (view === "front") return <FrontViewOutline />;
   if (view === "rear") return <RearViewOutline />;
   if (view === "top") return <TopViewOutline />;
@@ -146,7 +242,6 @@ const VehicleConditionReportPage = () => {
   const { data: vehicules = [], isLoading } = useOwnerVehiculesQuery(user?.id);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
-  const [damageLevel, setDamageLevel] = useState<DamagePoint["level"]>("léger");
   const [points, setPoints] = useState<DamagePoint[]>([]);
   const [customPhotosByView, setCustomPhotosByView] = useState<Partial<Record<VehicleView, string>>>({});
   const [useCustomPhotos, setUseCustomPhotos] = useState(true);
@@ -219,6 +314,8 @@ const VehicleConditionReportPage = () => {
     [vehicules, selectedVehicleId]
   );
 
+  const vehicleProfile = useMemo(() => inferVehicleProfile(selectedVehicle), [selectedVehicle]);
+
   const groupedPoints = useMemo(
     () => points.reduce<Record<VehicleView, DamagePoint[]>>(
       (acc, point) => {
@@ -242,7 +339,7 @@ const VehicleConditionReportPage = () => {
         view,
         x,
         y,
-        level: damageLevel,
+        level: "léger",
         description: "",
       },
     ]);
@@ -283,6 +380,10 @@ const VehicleConditionReportPage = () => {
 
   const updatePointDescription = (pointId: string, description: string) => {
     setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, description } : point)));
+  };
+
+  const updatePointLevel = (pointId: string, level: DamagePoint["level"]) => {
+    setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, level } : point)));
   };
 
   const updateViewNote = (view: VehicleView, note: string) => {
@@ -339,22 +440,9 @@ const VehicleConditionReportPage = () => {
               ))}
             </select>
 
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-              {(["léger", "moyen", "important"] as const).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => setDamageLevel(level)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition ${
-                    damageLevel === level
-                      ? "bg-slate-900 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
+            <span className="inline-flex items-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
+              Schéma: {vehicleProfileLabels[vehicleProfile]}
+            </span>
 
             <button
               type="button"
@@ -416,9 +504,21 @@ const VehicleConditionReportPage = () => {
                         <div key={point.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                           <div className="mb-1 flex items-center justify-between">
                             <span className="text-xs font-semibold text-slate-700">Point #{index + 1}</span>
-                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor("top")}`}>{index + 1}</span>
-                          </div>
-                          <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                                <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`}>{index + 1}</span>
+                              </div>
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pointLevelChipClasses[point.level]}`}>{levelLabels[point.level]}</span>
+                                <select
+                                  value={point.level}
+                                  onChange={(event) => updatePointLevel(point.id, event.target.value as DamagePoint["level"])}
+                                  className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                                >
+                                  {levelOptions.map((level) => (
+                                    <option key={level} value={level}>{levelLabels[level]}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                           <button
                             type="button"
                             onClick={() => removePoint(point.id)}
@@ -437,10 +537,10 @@ const VehicleConditionReportPage = () => {
                   {useCustomPhotos && customPhotosByView.top ? (
                     <img src={customPhotosByView.top} alt={`Inspection ${viewLabels.top}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                   ) : (
-                    <VehicleOutline view="top" />
+                    <VehicleOutline view="top" profile={vehicleProfile} />
                   )}
                   {groupedPoints.top.map((point, index) => (
-                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getViewColor("top")}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - point ${index + 1}`}>
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.top} - point ${index + 1}`}>
                       {index + 1}
                     </span>
                   ))}
@@ -483,7 +583,19 @@ const VehicleConditionReportPage = () => {
                             <div key={point.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                               <div className="mb-1 flex items-center justify-between">
                                 <span className="text-xs font-semibold text-slate-700">Point #{index + 1}</span>
-                                <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor(view)}`}>{index + 1}</span>
+                                <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`}>{index + 1}</span>
+                              </div>
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pointLevelChipClasses[point.level]}`}>{levelLabels[point.level]}</span>
+                                <select
+                                  value={point.level}
+                                  onChange={(event) => updatePointLevel(point.id, event.target.value as DamagePoint["level"])}
+                                  className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                                >
+                                  {levelOptions.map((level) => (
+                                    <option key={level} value={level}>{levelLabels[level]}</option>
+                                  ))}
+                                </select>
                               </div>
                               <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                               <button
@@ -504,10 +616,10 @@ const VehicleConditionReportPage = () => {
                       {useCustomPhotos && customPhotosByView[view] ? (
                         <img src={customPhotosByView[view]} alt={`Inspection ${viewLabels[view]}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                       ) : (
-                        <VehicleOutline view={view} />
+                        <VehicleOutline view={view} profile={vehicleProfile} />
                       )}
                       {groupedPoints[view].map((point, index) => (
-                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getViewColor(view)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - point ${index + 1}`}>
+                        <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels[view]} - point ${index + 1}`}>
                           {index + 1}
                         </span>
                       ))}
@@ -550,7 +662,19 @@ const VehicleConditionReportPage = () => {
                         <div key={point.id} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                           <div className="mb-1 flex items-center justify-between">
                             <span className="text-xs font-semibold text-slate-700">Point #{index + 1}</span>
-                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getViewColor("bottom")}`}>{index + 1}</span>
+                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-1 py-0.5 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`}>{index + 1}</span>
+                          </div>
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pointLevelChipClasses[point.level]}`}>{levelLabels[point.level]}</span>
+                            <select
+                              value={point.level}
+                              onChange={(event) => updatePointLevel(point.id, event.target.value as DamagePoint["level"])}
+                              className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                            >
+                              {levelOptions.map((level) => (
+                                <option key={level} value={level}>{levelLabels[level]}</option>
+                              ))}
+                            </select>
                           </div>
                           <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                           <button
@@ -571,10 +695,10 @@ const VehicleConditionReportPage = () => {
                   {useCustomPhotos && customPhotosByView.bottom ? (
                     <img src={customPhotosByView.bottom} alt={`Inspection ${viewLabels.bottom}`} className="absolute inset-0 h-full w-full object-contain bg-black/30" />
                   ) : (
-                    <VehicleOutline view="bottom" />
+                    <VehicleOutline view="bottom" profile={vehicleProfile} />
                   )}
                   {groupedPoints.bottom.map((point, index) => (
-                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getViewColor("bottom")}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - point ${index + 1}`}>
+                    <span key={point.id} className={`absolute flex h-6 min-w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold text-white ${getPointLevelColor(point.level)}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} title={`${viewLabels.bottom} - point ${index + 1}`}>
                       {index + 1}
                     </span>
                   ))}
