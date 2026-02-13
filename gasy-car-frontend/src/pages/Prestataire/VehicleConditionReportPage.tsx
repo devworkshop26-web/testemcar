@@ -9,7 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChangeEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Vehicule } from "@/types/vehiculeType";
 
 type DamagePoint = VehicleConditionPoint;
@@ -159,52 +159,6 @@ const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   </svg>
 );
 
-const VanSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
-  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <rect x="58" y="74" width="334" height="68" rx="10" strokeWidth="2.6" />
-      <path d="M94 74v-24h132l28 24" strokeWidth="2.1" />
-      <path d="M112 92h58M260 92h110M112 114h230" strokeWidth="1.6" className="opacity-80" />
-      <path d="M168 74v68M242 74v68M308 74v68" strokeWidth="1.6" className="opacity-70" />
-      <circle cx="138" cy="142" r="28" strokeWidth="2.6" />
-      <circle cx="138" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
-      <circle cx="332" cy="142" r="28" strokeWidth="2.6" />
-      <circle cx="332" cy="142" r="15" strokeWidth="1.8" className="opacity-80" />
-    </g>
-  </svg>
-);
-
-const TruckSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
-  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <rect x="36" y="92" width="212" height="50" rx="8" strokeWidth="2.5" />
-      <path d="M248 92h106l34 30v20H248z" strokeWidth="2.5" />
-      <path d="M282 92v50M318 92v50M68 110h132" strokeWidth="1.6" className="opacity-80" />
-      <circle cx="102" cy="145" r="26" strokeWidth="2.5" />
-      <circle cx="102" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="236" cy="145" r="26" strokeWidth="2.5" />
-      <circle cx="236" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="350" cy="145" r="26" strokeWidth="2.5" />
-      <circle cx="350" cy="145" r="14" strokeWidth="1.7" className="opacity-80" />
-    </g>
-  </svg>
-);
-
-const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
-  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <rect x="34" y="66" width="392" height="78" rx="14" strokeWidth="2.6" />
-      <path d="M66 88h286M66 106h286" strokeWidth="1.5" className="opacity-75" />
-      <path d="M86 66v78M126 66v78M166 66v78M206 66v78M246 66v78M286 66v78M326 66v78" strokeWidth="1.5" className="opacity-75" />
-      <path d="M354 84h52v42h-52z" strokeWidth="2" />
-      <circle cx="114" cy="146" r="24" strokeWidth="2.5" />
-      <circle cx="114" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="346" cy="146" r="24" strokeWidth="2.5" />
-      <circle cx="346" cy="146" r="13" strokeWidth="1.7" className="opacity-80" />
-    </g>
-  </svg>
-);
-
 const FrontViewOutline = () => (
   <svg viewBox="0 0 250 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
     <path d="M32 140v-48l16-27 31-18h92l31 18 16 27v48z" strokeWidth="2.6" />
@@ -314,6 +268,8 @@ const VehicleConditionReportPage = () => {
   const [useCustomPhotos, setUseCustomPhotos] = useState(true);
   const [viewNotes, setViewNotes] = useState<Record<VehicleView, string>>(defaultViewNotes);
   const [savedViewTimestamps, setSavedViewTimestamps] = useState<Partial<Record<VehicleView, string>>>({});
+  const [hasHydratedReport, setHasHydratedReport] = useState(false);
+  const skipAutoSaveRef = useRef(true);
 
   useEffect(() => {
     if (!selectedVehicleId && vehicules.length > 0) {
@@ -341,6 +297,7 @@ const VehicleConditionReportPage = () => {
       setCustomPhotosByView({});
       setViewNotes(defaultViewNotes);
       setSavedViewTimestamps({});
+      setHasHydratedReport(false);
       return;
     }
 
@@ -351,7 +308,15 @@ const VehicleConditionReportPage = () => {
       ...defaultViewNotes,
       ...(conditionReport.view_notes || {}),
     });
+    skipAutoSaveRef.current = true;
+    setHasHydratedReport(true);
   }, [conditionReport]);
+
+  useEffect(() => {
+    if (!selectedVehicleId) return;
+    setHasHydratedReport(false);
+    skipAutoSaveRef.current = true;
+  }, [selectedVehicleId]);
 
   const saveReportMutation = useMutation({
     mutationFn: async (payload: {
@@ -422,24 +387,44 @@ const VehicleConditionReportPage = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
       if (!result) return;
       setCustomPhotosByView((prev) => ({ ...prev, [view]: result }));
+      event.target.value = "";
     };
     reader.readAsDataURL(file);
   };
 
-  const persistReport = (nextPhotosByView: Partial<Record<VehicleView, string>>) => {
+  const persistReport = (payload?: Partial<{
+    custom_photos_by_view: Partial<Record<VehicleView, string>>;
+    saved_view_timestamps: Partial<Record<VehicleView, string>>;
+  }>) => {
     saveReportMutation.mutate({
       view_notes: viewNotes,
-      saved_view_timestamps: savedViewTimestamps,
+      saved_view_timestamps: payload?.saved_view_timestamps ?? savedViewTimestamps,
       points,
-      custom_photos_by_view: nextPhotosByView,
+      custom_photos_by_view: payload?.custom_photos_by_view ?? customPhotosByView,
     });
   };
 
+  useEffect(() => {
+    if (!selectedVehicleId || !hasHydratedReport) return;
+
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      persistReport();
+    }, 800);
+
+    return () => window.clearTimeout(timeout);
+  }, [selectedVehicleId, hasHydratedReport, points, viewNotes, customPhotosByView]);
+
   const removePhotoForView = (view: VehicleView) => {
-    const nextPhotosByView = { ...customPhotosByView };
-    delete nextPhotosByView[view];
-    setCustomPhotosByView(nextPhotosByView);
-    persistReport(nextPhotosByView);
+    setCustomPhotosByView((prev) => {
+      const nextPhotosByView = { ...prev };
+      delete nextPhotosByView[view];
+      return nextPhotosByView;
+    });
   };
 
   const removePoint = (pointId: string) => {
@@ -465,12 +450,7 @@ const VehicleConditionReportPage = () => {
     };
 
     setSavedViewTimestamps(nextTimestamps);
-    saveReportMutation.mutate({
-      view_notes: viewNotes,
-      saved_view_timestamps: nextTimestamps,
-      points,
-      custom_photos_by_view: customPhotosByView,
-    });
+    persistReport({ saved_view_timestamps: nextTimestamps });
   };
 
   return (
@@ -482,6 +462,9 @@ const VehicleConditionReportPage = () => {
         </p>
         {selectedVehicleId && isConditionReportLoading && (
           <p className="text-xs text-slate-500">Chargement du rapport enregistré...</p>
+        )}
+        {selectedVehicleId && !isConditionReportLoading && saveReportMutation.isPending && (
+          <p className="text-xs text-slate-500">Synchronisation avec le backend...</p>
         )}
       </div>
 
