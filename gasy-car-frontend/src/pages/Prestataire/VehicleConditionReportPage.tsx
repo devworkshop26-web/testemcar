@@ -90,15 +90,71 @@ const vehicleProfileModeLabels: Record<VehicleProfileMode, string> = {
 const CarSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
   <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
     <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
-      <path d="M42 118l8-23 36-20 64-13h186l68 10 26 20 8 26v16H42z" strokeWidth="2.6" />
-      <path d="M116 73l30-30h133l45 30" strokeWidth="2.2" />
-      <path d="M176 73v59M240 73v59M304 73v59" strokeWidth="1.7" className="opacity-85" />
-      <path d="M90 120h52M318 120h58" strokeWidth="1.7" className="opacity-80" />
-      <circle cx="124" cy="136" r="31" strokeWidth="2.6" />
-      <circle cx="124" cy="136" r="17" strokeWidth="1.8" className="opacity-80" />
-      <circle cx="344" cy="136" r="31" strokeWidth="2.6" />
-      <circle cx="344" cy="136" r="17" strokeWidth="1.8" className="opacity-80" />
-      <path d="M58 108h30M404 108h30" strokeWidth="1.5" className="opacity-70" />
+      <path d="M36 124l10-26 39-24 66-14h170l58 10 34 24 11 30v16H36z" strokeWidth="2.6" />
+      <path d="M118 79l30-28h142l40 28" strokeWidth="2.2" className="opacity-95" />
+      <path d="M152 79h158v45H132z" strokeWidth="1.8" className="opacity-85" />
+      <path d="M186 79v45M242 79v45" strokeWidth="1.5" className="opacity-75" />
+      <path d="M84 121h46M338 121h50" strokeWidth="1.6" className="opacity-80" />
+      <path d="M52 131h356" strokeWidth="1.4" className="opacity-50" />
+      <circle cx="124" cy="140" r="32" strokeWidth="2.6" />
+      <circle cx="124" cy="140" r="18" strokeWidth="1.8" className="opacity-80" />
+      <circle cx="344" cy="140" r="32" strokeWidth="2.6" />
+      <circle cx="344" cy="140" r="18" strokeWidth="1.8" className="opacity-80" />
+      <path d="M64 109h24M396 109h24" strokeWidth="1.5" className="opacity-65" />
+    </g>
+  </svg>
+);
+
+const VanSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <path d="M48 130V96l26-24 56-12h194l38 10 34 24v36H48z" strokeWidth="2.6" />
+      <path d="M100 60v-18h122l28 18" strokeWidth="2" className="opacity-90" />
+      <path d="M116 84h230" strokeWidth="1.6" className="opacity-75" />
+      <path d="M116 102h250" strokeWidth="1.6" className="opacity-75" />
+      <path d="M158 60v70M214 60v70M270 60v70M326 60v70" strokeWidth="1.5" className="opacity-70" />
+      <rect x="332" y="83" width="36" height="47" rx="4" strokeWidth="1.6" className="opacity-75" />
+      <path d="M72 122h36" strokeWidth="1.4" className="opacity-65" />
+      <circle cx="136" cy="141" r="29" strokeWidth="2.6" />
+      <circle cx="136" cy="141" r="16" strokeWidth="1.8" className="opacity-80" />
+      <circle cx="334" cy="141" r="29" strokeWidth="2.6" />
+      <circle cx="334" cy="141" r="16" strokeWidth="1.8" className="opacity-80" />
+    </g>
+  </svg>
+);
+
+const TruckSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <rect x="34" y="84" width="224" height="58" rx="8" strokeWidth="2.6" />
+      <path d="M258 90h84l44 36v16h-128z" strokeWidth="2.6" />
+      <path d="M270 96h54l16 14h-70z" strokeWidth="1.8" className="opacity-80" />
+      <path d="M66 103h160M66 121h160" strokeWidth="1.6" className="opacity-75" />
+      <path d="M98 84v58M132 84v58M166 84v58M200 84v58" strokeWidth="1.4" className="opacity-65" />
+      <path d="M226 142h162" strokeWidth="1.4" className="opacity-55" />
+      <circle cx="102" cy="146" r="26" strokeWidth="2.5" />
+      <circle cx="102" cy="146" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="236" cy="146" r="26" strokeWidth="2.5" />
+      <circle cx="236" cy="146" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="350" cy="146" r="26" strokeWidth="2.5" />
+      <circle cx="350" cy="146" r="14" strokeWidth="1.7" className="opacity-80" />
+    </g>
+  </svg>
+);
+
+const BusSideViewOutline = ({ mirrored = false }: { mirrored?: boolean }) => (
+  <svg viewBox="0 0 460 190" className="h-full w-full text-slate-100" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <g transform={mirrored ? "translate(460 0) scale(-1 1)" : undefined}>
+      <path d="M26 72c0-12 10-22 22-22h348c12 0 22 10 22 22v70H26z" strokeWidth="2.6" />
+      <path d="M26 142h392" strokeWidth="2.2" />
+      <path d="M60 84h262M60 103h262" strokeWidth="1.5" className="opacity-75" />
+      <path d="M76 50v92M116 50v92M156 50v92M196 50v92M236 50v92M276 50v92M316 50v92" strokeWidth="1.5" className="opacity-72" />
+      <path d="M336 78h68v52h-68z" strokeWidth="1.8" className="opacity-80" />
+      <path d="M346 122h46" strokeWidth="1.4" className="opacity-65" />
+      <circle cx="114" cy="146" r="25" strokeWidth="2.5" />
+      <circle cx="114" cy="146" r="14" strokeWidth="1.7" className="opacity-80" />
+      <circle cx="346" cy="146" r="25" strokeWidth="2.5" />
+      <circle cx="346" cy="146" r="14" strokeWidth="1.7" className="opacity-80" />
     </g>
   </svg>
 );
