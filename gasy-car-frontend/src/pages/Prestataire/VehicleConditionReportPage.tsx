@@ -522,7 +522,8 @@ const VehicleConditionReportPage = () => {
               <select
                 value={vehicleProfileMode}
                 onChange={(event) => setVehicleProfileMode(event.target.value as VehicleProfileMode)}
-                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                disabled={isClientReadonly}
+                className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none ring-primary/20 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {(["auto", "car", "van", "truck", "bus"] as const).map((mode) => (
                   <option key={mode} value={mode}>{vehicleProfileModeLabels[mode]}</option>
@@ -534,19 +535,20 @@ const VehicleConditionReportPage = () => {
               Schéma actif: {vehicleProfileLabels[vehicleProfile]}{vehicleProfileMode === "auto" ? " (auto)" : " (manuel)"}
             </span>
 
-            <button
-              type="button"
-              onClick={() => setUseCustomPhotos((prev) => !prev)}
-              disabled={isClientReadonly}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                useCustomPhotos
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              <ImagePlus className="h-4 w-4" />
-              {useCustomPhotos ? "Mode photos réelles" : "Mode schéma"}
-            </button>
+            {!isClientReadonly && (
+              <button
+                type="button"
+                onClick={() => setUseCustomPhotos((prev) => !prev)}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  useCustomPhotos
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <ImagePlus className="h-4 w-4" />
+                {useCustomPhotos ? "Mode photos réelles" : "Mode schéma"}
+              </button>
+            )}
 
           </div>
         </CardContent>
@@ -561,21 +563,25 @@ const VehicleConditionReportPage = () => {
         </Card>
       ) : (
         <Card className="overflow-hidden border-slate-900 bg-slate-950 shadow-[0_24px_70px_-32px_rgba(2,8,23,0.9)]">
-          <CardContent className={`space-y-4 p-4 ${isClientReadonly ? "pointer-events-none opacity-95" : ""}`}>
+          <CardContent className={`space-y-4 p-4 ${isClientReadonly ? "opacity-95" : ""}`}>
             <div className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels.top}</span>
                 <div className="flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    Ajouter photo
-                    <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("top", event)} />
-                  </label>
-                  {customPhotosByView.top && (
-                    <button type="button" onClick={() => removePhotoForView("top")} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Effacer photo
-                    </button>
+                  {!isClientReadonly && (
+                    <>
+                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        Ajouter photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("top", event)} />
+                      </label>
+                      {customPhotosByView.top && (
+                        <button type="button" onClick={() => removePhotoForView("top")} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Effacer photo
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -585,10 +591,12 @@ const VehicleConditionReportPage = () => {
                     <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels.top}</p>
                     <div className="flex items-center gap-2">
                       {savedViewTimestamps.top && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps.top}</span>}
-                      <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport("top")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
+                      {!isClientReadonly && (
+                        <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport("top")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
+                      )}
                     </div>
                   </div>
-                  <textarea value={viewNotes.top} onChange={(event) => updateViewNote("top", event.target.value)} placeholder={`Observation générale - ${viewLabels.top}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                  <textarea value={viewNotes.top} readOnly={isClientReadonly} onChange={(event) => updateViewNote("top", event.target.value)} placeholder={`Observation générale - ${viewLabels.top}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                   {groupedPoints.top.length > 0 && (
                     <div className="space-y-2">
                       {groupedPoints.top.map((point, index) => (
@@ -602,14 +610,16 @@ const VehicleConditionReportPage = () => {
                                 <select
                                   value={point.level}
                                   onChange={(event) => updatePointLevel(point.id, event.target.value as DamagePoint["level"])}
-                                  className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                                  disabled={isClientReadonly}
+                                  className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                   {levelOptions.map((level) => (
                                     <option key={level} value={level}>{levelLabels[level]}</option>
                                   ))}
                                 </select>
                               </div>
-                              <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                              <input value={point.description} readOnly={isClientReadonly} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                          {!isClientReadonly && (
                           <button
                             type="button"
                             onClick={() => removePoint(point.id)}
@@ -618,6 +628,7 @@ const VehicleConditionReportPage = () => {
                             <Trash2 className="h-3.5 w-3.5" />
                             Supprimer #{index + 1}
                           </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -645,16 +656,20 @@ const VehicleConditionReportPage = () => {
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels[view]}</span>
                     <div className="flex items-center gap-2">
-                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
-                        <ImagePlus className="h-3.5 w-3.5" />
-                        Ajouter photo
-                        <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
-                      </label>
-                      {customPhotosByView[view] && (
-                        <button type="button" onClick={() => removePhotoForView(view)} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Effacer photo
-                        </button>
+                      {!isClientReadonly && (
+                        <>
+                          <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                            <ImagePlus className="h-3.5 w-3.5" />
+                            Ajouter photo
+                            <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView(view, event)} />
+                          </label>
+                          {customPhotosByView[view] && (
+                            <button type="button" onClick={() => removePhotoForView(view)} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Effacer photo
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -664,10 +679,12 @@ const VehicleConditionReportPage = () => {
                         <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels[view]}</p>
                         <div className="flex items-center gap-2">
                           {savedViewTimestamps[view] && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps[view]}</span>}
-                          <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport(view)} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
+                          {!isClientReadonly && (
+                            <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport(view)} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
+                          )}
                         </div>
                       </div>
-                      <textarea value={viewNotes[view]} onChange={(event) => updateViewNote(view, event.target.value)} placeholder={`Observation générale - ${viewLabels[view]}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                      <textarea value={viewNotes[view]} readOnly={isClientReadonly} onChange={(event) => updateViewNote(view, event.target.value)} placeholder={`Observation générale - ${viewLabels[view]}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                       {groupedPoints[view].length > 0 && (
                         <div className="space-y-2">
                           {groupedPoints[view].map((point, index) => (
@@ -681,14 +698,16 @@ const VehicleConditionReportPage = () => {
                                 <select
                                   value={point.level}
                                   onChange={(event) => updatePointLevel(point.id, event.target.value as DamagePoint["level"])}
-                                  className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                                  disabled={isClientReadonly}
+                                  className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                   {levelOptions.map((level) => (
                                     <option key={level} value={level}>{levelLabels[level]}</option>
                                   ))}
                                 </select>
                               </div>
-                              <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                              <input value={point.description} readOnly={isClientReadonly} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                              {!isClientReadonly && (
                               <button
                                 type="button"
                                 onClick={() => removePoint(point.id)}
@@ -697,6 +716,7 @@ const VehicleConditionReportPage = () => {
                                 <Trash2 className="h-3.5 w-3.5" />
                                 Supprimer #{index + 1}
                               </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -724,16 +744,20 @@ const VehicleConditionReportPage = () => {
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels.bottom}</span>
                 <div className="flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    Ajouter photo
-                    <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("bottom", event)} />
-                  </label>
-                  {customPhotosByView.bottom && (
-                    <button type="button" onClick={() => removePhotoForView("bottom")} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Effacer photo
-                    </button>
+                  {!isClientReadonly && (
+                    <>
+                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 transition hover:bg-slate-800">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        Ajouter photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(event) => handleUploadForView("bottom", event)} />
+                      </label>
+                      {customPhotosByView.bottom && (
+                        <button type="button" onClick={() => removePhotoForView("bottom")} className="inline-flex items-center gap-1 rounded-md border border-red-400/70 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-500/10">
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Effacer photo
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -743,10 +767,12 @@ const VehicleConditionReportPage = () => {
                     <p className="text-xs font-semibold text-slate-800">Rapport - {viewLabels.bottom}</p>
                     <div className="flex items-center gap-2">
                       {savedViewTimestamps.bottom && <span className="text-[10px] text-emerald-400">Enregistré à {savedViewTimestamps.bottom}</span>}
-                      <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport("bottom")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
+                      {!isClientReadonly && (
+                        <button type="button" disabled={saveReportMutation.isPending} onClick={() => saveViewReport("bottom")} className="rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{saveReportMutation.isPending ? "Sauvegarde..." : "Enregistrer"}</button>
+                      )}
                     </div>
                   </div>
-                  <textarea value={viewNotes.bottom} onChange={(event) => updateViewNote("bottom", event.target.value)} placeholder={`Observation générale - ${viewLabels.bottom}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                  <textarea value={viewNotes.bottom} readOnly={isClientReadonly} onChange={(event) => updateViewNote("bottom", event.target.value)} placeholder={`Observation générale - ${viewLabels.bottom}`} className="mb-2 min-h-16 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
                   {groupedPoints.bottom.length > 0 && (
                     <div className="space-y-2">
                       {groupedPoints.bottom.map((point, index) => (
@@ -760,14 +786,16 @@ const VehicleConditionReportPage = () => {
                             <select
                               value={point.level}
                               onChange={(event) => updatePointLevel(point.id, event.target.value as DamagePoint["level"])}
-                              className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2"
+                              disabled={isClientReadonly}
+                              className="h-7 rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 outline-none ring-primary/20 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-70"
                             >
                               {levelOptions.map((level) => (
                                 <option key={level} value={level}>{levelLabels[level]}</option>
                               ))}
                             </select>
                           </div>
-                          <input value={point.description} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                          <input value={point.description} readOnly={isClientReadonly} onChange={(event) => updatePointDescription(point.id, event.target.value)} placeholder="Description du dommage" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none ring-primary/20 focus:ring-2" />
+                          {!isClientReadonly && (
                           <button
                             type="button"
                             onClick={() => removePoint(point.id)}
@@ -776,6 +804,7 @@ const VehicleConditionReportPage = () => {
                             <Trash2 className="h-3.5 w-3.5" />
                             Supprimer #{index + 1}
                           </button>
+                          )}
                         </div>
                       ))}
                     </div>
