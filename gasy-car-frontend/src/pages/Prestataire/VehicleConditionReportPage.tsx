@@ -9,7 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChangeEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Vehicule } from "@/types/vehiculeType";
 
 type DamagePoint = VehicleConditionPoint;
@@ -268,6 +268,8 @@ const VehicleConditionReportPage = () => {
   const [useCustomPhotos, setUseCustomPhotos] = useState(true);
   const [viewNotes, setViewNotes] = useState<Record<VehicleView, string>>(defaultViewNotes);
   const [savedViewTimestamps, setSavedViewTimestamps] = useState<Partial<Record<VehicleView, string>>>({});
+  const [hasHydratedReport, setHasHydratedReport] = useState(false);
+  const skipAutoSaveRef = useRef(true);
 
   useEffect(() => {
     if (!selectedVehicleId && vehicules.length > 0) {
@@ -295,6 +297,7 @@ const VehicleConditionReportPage = () => {
       setCustomPhotosByView({});
       setViewNotes(defaultViewNotes);
       setSavedViewTimestamps({});
+      setHasHydratedReport(false);
       return;
     }
 
@@ -305,7 +308,15 @@ const VehicleConditionReportPage = () => {
       ...defaultViewNotes,
       ...(conditionReport.view_notes || {}),
     });
+    skipAutoSaveRef.current = true;
+    setHasHydratedReport(true);
   }, [conditionReport]);
+
+  useEffect(() => {
+    if (!selectedVehicleId) return;
+    setHasHydratedReport(false);
+    skipAutoSaveRef.current = true;
+  }, [selectedVehicleId]);
 
   const saveReportMutation = useMutation({
     mutationFn: async (payload: {
@@ -376,24 +387,44 @@ const VehicleConditionReportPage = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
       if (!result) return;
       setCustomPhotosByView((prev) => ({ ...prev, [view]: result }));
+      event.target.value = "";
     };
     reader.readAsDataURL(file);
   };
 
-  const persistReport = (nextPhotosByView: Partial<Record<VehicleView, string>>) => {
+  const persistReport = (payload?: Partial<{
+    custom_photos_by_view: Partial<Record<VehicleView, string>>;
+    saved_view_timestamps: Partial<Record<VehicleView, string>>;
+  }>) => {
     saveReportMutation.mutate({
       view_notes: viewNotes,
-      saved_view_timestamps: savedViewTimestamps,
+      saved_view_timestamps: payload?.saved_view_timestamps ?? savedViewTimestamps,
       points,
-      custom_photos_by_view: nextPhotosByView,
+      custom_photos_by_view: payload?.custom_photos_by_view ?? customPhotosByView,
     });
   };
 
+  useEffect(() => {
+    if (!selectedVehicleId || !hasHydratedReport) return;
+
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      persistReport();
+    }, 800);
+
+    return () => window.clearTimeout(timeout);
+  }, [selectedVehicleId, hasHydratedReport, points, viewNotes, customPhotosByView]);
+
   const removePhotoForView = (view: VehicleView) => {
-    const nextPhotosByView = { ...customPhotosByView };
-    delete nextPhotosByView[view];
-    setCustomPhotosByView(nextPhotosByView);
-    persistReport(nextPhotosByView);
+    setCustomPhotosByView((prev) => {
+      const nextPhotosByView = { ...prev };
+      delete nextPhotosByView[view];
+      return nextPhotosByView;
+    });
   };
 
   const removePoint = (pointId: string) => {
@@ -419,12 +450,7 @@ const VehicleConditionReportPage = () => {
     };
 
     setSavedViewTimestamps(nextTimestamps);
-    saveReportMutation.mutate({
-      view_notes: viewNotes,
-      saved_view_timestamps: nextTimestamps,
-      points,
-      custom_photos_by_view: customPhotosByView,
-    });
+    persistReport({ saved_view_timestamps: nextTimestamps });
   };
 
   return (
@@ -436,6 +462,9 @@ const VehicleConditionReportPage = () => {
         </p>
         {selectedVehicleId && isConditionReportLoading && (
           <p className="text-xs text-slate-500">Chargement du rapport enregistré...</p>
+        )}
+        {selectedVehicleId && !isConditionReportLoading && saveReportMutation.isPending && (
+          <p className="text-xs text-slate-500">Synchronisation avec le backend...</p>
         )}
       </div>
 
