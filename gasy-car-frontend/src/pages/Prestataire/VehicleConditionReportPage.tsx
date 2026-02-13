@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { vehiculeAPI, VehicleConditionPoint, VehicleView } from "@/Actions/vehiculeApi";
 import { useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
+import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
 import {
   Car,
   ImagePlus,
@@ -259,7 +260,23 @@ const defaultViewNotes: Record<VehicleView, string> = {
 
 const VehicleConditionReportPage = () => {
   const { user } = useCurentuser();
-  const { data: vehicules = [], isLoading } = useOwnerVehiculesQuery(user?.id);
+  const isClientReadonly = user?.role === "CLIENT";
+  const { data: ownerVehicules = [], isLoading: isOwnerVehiclesLoading } = useOwnerVehiculesQuery(isClientReadonly ? undefined : user?.id);
+  const { data: clientReservations = [], isLoading: isClientReservationsLoading } = useReservationClientQuery(isClientReadonly ? user?.id : undefined);
+
+  const clientVehicules = useMemo(() => {
+    const uniqueVehicules = new Map<string, Vehicule>();
+    clientReservations.forEach((reservation) => {
+      const vehicle = reservation.vehicle_data as Vehicule | undefined;
+      if (vehicle?.id && !uniqueVehicules.has(vehicle.id)) {
+        uniqueVehicules.set(vehicle.id, vehicle);
+      }
+    });
+    return Array.from(uniqueVehicules.values());
+  }, [clientReservations]);
+
+  const vehicules = isClientReadonly ? clientVehicules : ownerVehicules;
+  const isLoading = isClientReadonly ? isClientReservationsLoading : isOwnerVehiclesLoading;
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [vehicleProfileMode, setVehicleProfileMode] = useState<VehicleProfileMode>("auto");
@@ -361,6 +378,7 @@ const VehicleConditionReportPage = () => {
   );
 
   const addDamagePoint = (view: VehicleView, event: MouseEvent<HTMLDivElement>) => {
+    if (isClientReadonly) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - bounds.left) / bounds.width) * 100;
     const y = ((event.clientY - bounds.top) / bounds.height) * 100;
@@ -379,6 +397,7 @@ const VehicleConditionReportPage = () => {
   };
 
   const handleUploadForView = (view: VehicleView, event: ChangeEvent<HTMLInputElement>) => {
+    if (isClientReadonly) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -396,6 +415,7 @@ const VehicleConditionReportPage = () => {
     custom_photos_by_view: Partial<Record<VehicleView, string>>;
     saved_view_timestamps: Partial<Record<VehicleView, string>>;
   }>) => {
+    if (isClientReadonly) return;
     saveReportMutation.mutate({
       view_notes: viewNotes,
       saved_view_timestamps: payload?.saved_view_timestamps ?? savedViewTimestamps,
@@ -420,6 +440,7 @@ const VehicleConditionReportPage = () => {
   }, [selectedVehicleId, hasHydratedReport, points, viewNotes, customPhotosByView]);
 
   const removePhotoForView = (view: VehicleView) => {
+    if (isClientReadonly) return;
     setCustomPhotosByView((prev) => {
       const nextPhotosByView = { ...prev };
       delete nextPhotosByView[view];
@@ -428,22 +449,27 @@ const VehicleConditionReportPage = () => {
   };
 
   const removePoint = (pointId: string) => {
+    if (isClientReadonly) return;
     setPoints((prev) => prev.filter((point) => point.id !== pointId));
   };
 
   const updatePointDescription = (pointId: string, description: string) => {
+    if (isClientReadonly) return;
     setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, description } : point)));
   };
 
   const updatePointLevel = (pointId: string, level: DamagePoint["level"]) => {
+    if (isClientReadonly) return;
     setPoints((prev) => prev.map((point) => (point.id === pointId ? { ...point, level } : point)));
   };
 
   const updateViewNote = (view: VehicleView, note: string) => {
+    if (isClientReadonly) return;
     setViewNotes((prev) => ({ ...prev, [view]: note }));
   };
 
   const saveViewReport = (view: VehicleView) => {
+    if (isClientReadonly) return;
     const nextTimestamps = {
       ...savedViewTimestamps,
       [view]: new Date().toLocaleTimeString("fr-FR"),
@@ -463,7 +489,7 @@ const VehicleConditionReportPage = () => {
         {selectedVehicleId && isConditionReportLoading && (
           <p className="text-xs text-slate-500">Chargement du rapport enregistré...</p>
         )}
-        {selectedVehicleId && !isConditionReportLoading && saveReportMutation.isPending && (
+        {selectedVehicleId && !isClientReadonly && !isConditionReportLoading && saveReportMutation.isPending && (
           <p className="text-xs text-slate-500">Synchronisation avec le backend...</p>
         )}
       </div>
@@ -511,6 +537,7 @@ const VehicleConditionReportPage = () => {
             <button
               type="button"
               onClick={() => setUseCustomPhotos((prev) => !prev)}
+              disabled={isClientReadonly}
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
                 useCustomPhotos
                   ? "border-primary/40 bg-primary/10 text-primary"
@@ -534,7 +561,7 @@ const VehicleConditionReportPage = () => {
         </Card>
       ) : (
         <Card className="overflow-hidden border-slate-900 bg-slate-950 shadow-[0_24px_70px_-32px_rgba(2,8,23,0.9)]">
-          <CardContent className="space-y-4 p-4">
+          <CardContent className={`space-y-4 p-4 ${isClientReadonly ? "pointer-events-none opacity-95" : ""}`}>
             <div className="rounded-xl border border-slate-700/90 bg-gradient-to-b from-slate-900 to-slate-950 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-white/85">{viewLabels.top}</span>

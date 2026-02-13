@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CalendarRange,
   Headset,
+  ClipboardCheck,
   Heart,
   LayoutDashboard,
   MessageSquare,
@@ -28,6 +29,7 @@ export const menuItemsClient:ClientSidebarItem[] = [
   //   url: "/client/browse",
   // },
   {id: "rentals", icon: CalendarDays,   label: "Mes Locations",   url: "/client/rentals",  },
+  { id: "condition-report", icon: ClipboardCheck, label: "État des lieux", url: "/client/condition-report" },
   // { id: "favorites", icon: Heart, label: "Favoris", url: "/client/favorites" },
   // {
   //   id: "reservation",
