@@ -507,8 +507,17 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         user = request.user
         user_role = getattr(user, "role", None)
 
-        if vehicle.proprietaire_id != user.id and user_role not in ["ADMIN", "SUPPORT"] and not user.is_staff:
-            return Response({"detail": "Vous n'avez pas la permission de gérer ce rapport."}, status=status.HTTP_403_FORBIDDEN)
+        is_owner_or_staff = vehicle.proprietaire_id == user.id or user_role in ["ADMIN", "SUPPORT"] or user.is_staff
+        has_client_reservation = False
+
+        if user_role == "CLIENT":
+            has_client_reservation = Reservation.objects.filter(vehicle=vehicle, client=user).exists()
+
+        if request.method == "GET":
+            if not is_owner_or_staff and not has_client_reservation:
+                return Response({"detail": "Vous n'avez pas la permission de consulter ce rapport."}, status=status.HTTP_403_FORBIDDEN)
+        elif not is_owner_or_staff:
+            return Response({"detail": "Vous n'avez pas la permission de modifier ce rapport."}, status=status.HTTP_403_FORBIDDEN)
 
         report, _ = VehicleConditionReport.objects.get_or_create(
             vehicle=vehicle,
