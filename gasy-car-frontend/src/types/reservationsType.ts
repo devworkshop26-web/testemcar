@@ -181,3 +181,13 @@ export interface UpdateReservationPaymentPayload {
   status?: PaymentStatus;
   proof_image?: File | null;
 }
+
+export interface ReservationPricingConfig {
+  service_fee: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UpdateReservationPricingConfigPayload {
+  service_fee: number | string;
+}

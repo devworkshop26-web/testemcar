@@ -4,7 +4,7 @@ from rest_framework.exceptions import ValidationError
 import uuid
 from typing import Optional
 
-from .models import Reservation, ReservationService,ReservationPayment
+from .models import Reservation, ReservationService,ReservationPayment, ReservationPricingConfig
 from users.serializers import UserProfileSerializer
 from vehicule.serializers import VehiculeSerializer, VehicleEquipmentsSerializer
 from modepayment.models import ModePayment
@@ -242,6 +242,13 @@ class ReservationServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReservationService
         fields = "__all__"
+
+
+class ReservationPricingConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReservationPricingConfig
+        fields = ["service_fee", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
 
 
 class MonthlyReservationStatisticSerializer(serializers.Serializer):

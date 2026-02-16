@@ -50,10 +50,11 @@ from .serializers import (
     ReservationServiceSerializer,
     ReservationStatisticsSerializer,
     ReservationPaymentSerializer,
+    ReservationPricingConfigSerializer,
 )
 
 # import models
-from .models import Reservation, ReservationService, ReservationPayment
+from .models import Reservation, ReservationService, ReservationPayment, ReservationPricingConfig
 from .forms import ReservationPaymentForm
 from driver.models import Driver
 
@@ -166,6 +167,32 @@ class ReservationPaymentViewSet(viewsets.ModelViewSet):
         #             "Seul le personnel peut modifier le statut ou le champ processed_by."
         #         )
         return super().update(request, *args, **kwargs)
+
+
+class ReservationPricingConfigAPIView(APIView):
+    """Expose et met à jour la configuration globale de tarification réservation."""
+
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        config = ReservationPricingConfig.get_solo()
+        serializer = ReservationPricingConfigSerializer(config)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, format=None):
+        user = request.user
+        if getattr(user, "role", None) != "ADMIN" and not user.is_superuser:
+            return Response(
+                {"detail": "Seul un administrateur peut modifier cette configuration."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        config = ReservationPricingConfig.get_solo()
+        serializer = ReservationPricingConfigSerializer(config, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 def user_can_pay_reservation(user, reservation):

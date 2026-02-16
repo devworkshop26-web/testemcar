@@ -25,7 +25,7 @@ import {
 } from './reservationTypes';
 import { useVehiculeQuery } from '@/useQuery/vehiculeUseQuery';
 import { useAllVehicleEquipmentsQuery } from '@/useQuery/vehicleEquipmentsUseQuery';
-import { useCreateReservationMutation } from '@/useQuery/reservationsUseQuery';
+import { useCreateReservationMutation, useReservationPricingConfigQuery } from '@/useQuery/reservationsUseQuery';
 import { toast } from 'sonner';
 import { CreateReservationPayload } from '@/types/reservationsType';
 import Header from '@/components/Header';
@@ -44,6 +44,7 @@ const ReservationsPage: React.FC = () => {
 
   // Mutation and User
   const createReservationMutation = useCreateReservationMutation();
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
 
   const [selectedDriverOption, setSelectedDriverOption] = useState<ChauffeurChoice>('SANS_CHAUFFEUR');
   const [travelZone, setTravelZone] = useState<TravelZone>('TANA');
@@ -341,7 +342,7 @@ const ReservationsPage: React.FC = () => {
     [selectedAddons, durationDays, addonsList]
   );
 
-  const serviceFee = 5000;
+  const serviceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
   const totalPrice = basePrice + driverFee + totalAddOns + serviceFee;
 
   // Handlers for reservation creation
