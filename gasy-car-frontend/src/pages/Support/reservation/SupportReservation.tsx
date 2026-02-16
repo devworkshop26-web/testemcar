@@ -1,8 +1,8 @@
 // src/pages/support/SupportReservation.tsx
 "use client";
 
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
   User,
@@ -155,6 +155,7 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; style: string }> = 
 
 export default function SupportReservationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // États
   const [page, setPage] = useState(1);
@@ -169,7 +170,22 @@ export default function SupportReservationPage() {
   const [newPaymentStatus, setNewPaymentStatus] = useState("");
 
   /** ✅ NEW: filtre retrait (sans casser le reste) */
-  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">("ALL");
+  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">(() => {
+    const queryParams = new URLSearchParams(location.search);
+    return queryParams.get("filter") === "urgent" ? "UPCOMING_24H" : "ALL";
+  });
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const filter = queryParams.get("filter");
+
+    if (filter === "urgent") {
+      setPickupFilter("UPCOMING_24H");
+      return;
+    }
+
+    setPickupFilter("ALL");
+  }, [location.search]);
 
   const {
     data: reservations = [],

@@ -143,7 +143,7 @@ export default function CriticalReservationCard({ setActiveTab }: Props) {
         {/* Action globale */}
         <Button
           className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl"
-          onClick={() => navigate("/support/reservations")}
+          onClick={() => navigate("/support/reservations?filter=urgent")}
         >
           Gérer toutes les réservations urgentes
         </Button>
