@@ -59,6 +59,11 @@ export default function AdminVehicleEquipments() {
           { key: "code", header: "Code" },
           { key: "label", header: "Label" },
           { key: "description", header: "Description" },
+          {
+            key: "price",
+            header: "Prix / jour",
+            render: (row) => `${Number(row.price || 0).toLocaleString()} Ar`,
+          },
         ]}
         data={rows}
         onEditRow={(row) => setEditingEquipment(row)}
