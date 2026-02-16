@@ -74,6 +74,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showRates, setShowRates] = useState(false);
+  const finalTotal = Math.max(0, Math.round(basePrice + driverFee + totalAddOns + serviceFee));
 
   // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
@@ -497,7 +498,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         {driverFee > 0 && (
           <div className="flex justify-between text-xs font-medium text-gray-500">
             <span>Chauffeur</span>
-            <span className="text-gray-900">{driverFee.toLocaleString()} Ar</span>
+            <span className="text-gray-900">+{driverFee.toLocaleString()} Ar</span>
           </div>
         )}
         {totalAddOns > 0 && (
@@ -508,7 +509,11 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         )}
         <div className="flex justify-between text-xs font-medium text-gray-500">
           <span>Frais de service & assurance</span>
-          <span className="text-gray-900">{serviceFee.toLocaleString()} Ar</span>
+          <span className="text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
+        </div>
+        <div className="flex justify-between items-center rounded-xl bg-gray-900 px-3 py-2 text-sm font-bold text-white">
+          <span>Total à payer</span>
+          <span>{finalTotal.toLocaleString()} Ar</span>
         </div>
       </div>
 
