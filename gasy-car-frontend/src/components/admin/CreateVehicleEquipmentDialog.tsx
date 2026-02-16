@@ -33,6 +33,7 @@ export function CreateVehicleEquipmentDialog({
   const [code, setCode] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
   const [error, setError] = useState<string | null>(null);
   const createMutation = useCreateVehicleEquipmentMutation();
 
@@ -44,17 +45,25 @@ export function CreateVehicleEquipmentDialog({
       return;
     }
 
+    const normalizedPrice = price.trim() === "" ? undefined : Number(price);
+    if (normalizedPrice !== undefined && (!Number.isFinite(normalizedPrice) || normalizedPrice < 0)) {
+      setError("Le prix doit être un nombre positif.");
+      return;
+    }
+
     setError(null);
     try {
       const created = await createMutation.mutateAsync({
         code,
         label,
         description,
+        price: normalizedPrice,
       });
 
       setCode("");
       setLabel("");
       setDescription("");
+      setPrice("");
       setOpen(false);
       onCreated?.(created);
 
@@ -119,6 +128,20 @@ export function CreateVehicleEquipmentDialog({
                 placeholder="Détaillez l'équipement si nécessaire..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={createMutation.isPending}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="price-eq">Prix / jour (Ar)</Label>
+              <Input
+                id="price-eq"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Ex : 5000"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 disabled={createMutation.isPending}
               />
             </div>
