@@ -1,7 +1,7 @@
 // src/pages/support/SupportReservation.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
@@ -264,6 +264,10 @@ export default function SupportReservationPage() {
       return matchesSearch && matchesStatus && matchesPickup && matchesUrgent;
     });
   }, [reservations, searchQuery, statusFilter, pickupFilter, isUrgentMode]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, pickupFilter, isUrgentMode]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
