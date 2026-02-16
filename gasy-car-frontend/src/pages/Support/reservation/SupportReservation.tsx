@@ -170,7 +170,22 @@ export default function SupportReservationPage() {
   const [newPaymentStatus, setNewPaymentStatus] = useState("");
 
   /** ✅ NEW: filtre retrait (sans casser le reste) */
-  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">("ALL");
+  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">(() => {
+    const queryParams = new URLSearchParams(location.search);
+    return queryParams.get("filter") === "urgent" ? "UPCOMING_24H" : "ALL";
+  });
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const filter = queryParams.get("filter");
+
+    if (filter === "urgent") {
+      setPickupFilter("UPCOMING_24H");
+      return;
+    }
+
+    setPickupFilter("ALL");
+  }, [location.search]);
 
   const {
     data: reservations = [],
