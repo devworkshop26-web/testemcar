@@ -170,22 +170,20 @@ export default function SupportReservationPage() {
   const [newPaymentStatus, setNewPaymentStatus] = useState("");
 
   /** ✅ NEW: filtre retrait (sans casser le reste) */
-  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">(() => {
-    const queryParams = new URLSearchParams(location.search);
-    return queryParams.get("filter") === "urgent" ? "UPCOMING_24H" : "ALL";
-  });
+  const getPickupFilterFromSearch = (search: string): "ALL" | "UPCOMING_24H" | "OTHER" => {
+    const queryParams = new URLSearchParams(search);
+    const pickup = queryParams.get("pickup");
 
-  useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const filter = queryParams.get("filter");
-
-    if (filter === "urgent") {
-      setPickupFilter("UPCOMING_24H");
-      return;
+    if (pickup === "UPCOMING_24H" || pickup === "OTHER" || pickup === "ALL") {
+      return pickup;
     }
 
-    setPickupFilter("ALL");
-  }, [location.search]);
+    return "ALL";
+  };
+
+  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">(
+    () => getPickupFilterFromSearch(location.search)
+  );
 
   const {
     data: reservations = [],
@@ -232,6 +230,10 @@ export default function SupportReservationPage() {
   const isUrgentMode = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
     return queryParams.get("filter") === "urgent";
+  }, [location.search]);
+
+  useEffect(() => {
+    setPickupFilter(getPickupFilterFromSearch(location.search));
   }, [location.search]);
 
   useEffect(() => {
@@ -413,7 +415,9 @@ export default function SupportReservationPage() {
                 setStatusFilter("ALL");
                 setPickupFilter("ALL");
 
-                if (isUrgentMode) {
+                const queryParams = new URLSearchParams(location.search);
+
+                if (isUrgentMode || queryParams.has("pickup")) {
                   navigate("/support/reservations", { replace: true });
                 }
               }}
