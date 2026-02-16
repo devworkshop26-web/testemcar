@@ -1,8 +1,8 @@
 // src/pages/support/SupportReservation.tsx
 "use client";
 
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
   User,
@@ -155,6 +155,7 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; style: string }> = 
 
 export default function SupportReservationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // États
   const [page, setPage] = useState(1);
@@ -204,6 +205,26 @@ export default function SupportReservationPage() {
     );
   };
 
+  const isCriticalReservation = (reservation: Reservation) => {
+    const paymentStatus = reservation.payment?.status;
+    const unpaid = !paymentStatus || paymentStatus === "PENDING" || paymentStatus === "FAILED";
+
+    const active = reservation.status !== "CANCELLED" && reservation.status !== "COMPLETED";
+
+    return unpaid && active;
+  };
+
+  const isUrgentMode = useMemo(() => {
+    const queryParams = new URLSearchParams(location.search);
+    return queryParams.get("filter") === "urgent";
+  }, [location.search]);
+
+  useEffect(() => {
+    if (isUrgentMode) {
+      setPickupFilter("ALL");
+    }
+  }, [isUrgentMode]);
+
   // Filtrage
   const filteredData = useMemo(() => {
     return reservations.filter((row: any) => {
@@ -221,17 +242,25 @@ export default function SupportReservationPage() {
       /** ✅ NEW: filtre retrait */
       let matchesPickup = true;
 
-      if (pickupFilter === "UPCOMING_24H") {
-        matchesPickup = isPickupUpcoming24h(row.start_datetime);
+      if (!isUrgentMode) {
+        if (pickupFilter === "UPCOMING_24H") {
+          matchesPickup = isPickupUpcoming24h(row.start_datetime);
+        }
+
+        if (pickupFilter === "OTHER") {
+          matchesPickup = !isPickupUpcoming24h(row.start_datetime);
+        }
       }
 
-      if (pickupFilter === "OTHER") {
-        matchesPickup = !isPickupUpcoming24h(row.start_datetime);
-      }
+      const matchesUrgent = !isUrgentMode || isCriticalReservation(row);
 
-      return matchesSearch && matchesStatus && matchesPickup;
+      return matchesSearch && matchesStatus && matchesPickup && matchesUrgent;
     });
-  }, [reservations, searchQuery, statusFilter, pickupFilter]);
+  }, [reservations, searchQuery, statusFilter, pickupFilter, isUrgentMode]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, pickupFilter, isUrgentMode]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
@@ -340,7 +369,17 @@ export default function SupportReservationPage() {
           </Select>
 
           {/* ✅ NEW: Filtre retrait prévu / autres */}
-          <Select value={pickupFilter} onValueChange={(v: any) => setPickupFilter(v)}>
+          {isUrgentMode && (
+            <Badge className="bg-red-100 text-red-700 border border-red-200">
+              Filtre urgences actif
+            </Badge>
+          )}
+
+          <Select
+            value={pickupFilter}
+            onValueChange={(v: any) => setPickupFilter(v)}
+            disabled={isUrgentMode}
+          >
             <SelectTrigger className="w-full md:w-[220px] bg-white">
               <SelectValue placeholder="Type de retrait" />
             </SelectTrigger>
@@ -351,13 +390,17 @@ export default function SupportReservationPage() {
             </SelectContent>
           </Select>
 
-          {(searchQuery || statusFilter !== "ALL" || pickupFilter !== "ALL") && (
+          {(searchQuery || statusFilter !== "ALL" || pickupFilter !== "ALL" || isUrgentMode) && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearchQuery("");
                 setStatusFilter("ALL");
                 setPickupFilter("ALL");
+
+                if (isUrgentMode) {
+                  navigate("/support/reservations", { replace: true });
+                }
               }}
               className="text-slate-500"
             >
