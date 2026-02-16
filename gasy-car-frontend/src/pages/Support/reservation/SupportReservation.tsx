@@ -234,6 +234,12 @@ export default function SupportReservationPage() {
     return queryParams.get("filter") === "urgent";
   }, [location.search]);
 
+  useEffect(() => {
+    if (isUrgentMode) {
+      setPickupFilter("ALL");
+    }
+  }, [isUrgentMode]);
+
   // Filtrage
   const filteredData = useMemo(() => {
     return reservations.filter((row: any) => {
@@ -251,12 +257,14 @@ export default function SupportReservationPage() {
       /** ✅ NEW: filtre retrait */
       let matchesPickup = true;
 
-      if (pickupFilter === "UPCOMING_24H") {
-        matchesPickup = isPickupUpcoming24h(row.start_datetime);
-      }
+      if (!isUrgentMode) {
+        if (pickupFilter === "UPCOMING_24H") {
+          matchesPickup = isPickupUpcoming24h(row.start_datetime);
+        }
 
-      if (pickupFilter === "OTHER") {
-        matchesPickup = !isPickupUpcoming24h(row.start_datetime);
+        if (pickupFilter === "OTHER") {
+          matchesPickup = !isPickupUpcoming24h(row.start_datetime);
+        }
       }
 
       const matchesUrgent = !isUrgentMode || isCriticalReservation(row);
@@ -382,7 +390,11 @@ export default function SupportReservationPage() {
             </Badge>
           )}
 
-          <Select value={pickupFilter} onValueChange={(v: any) => setPickupFilter(v)}>
+          <Select
+            value={pickupFilter}
+            onValueChange={(v: any) => setPickupFilter(v)}
+            disabled={isUrgentMode}
+          >
             <SelectTrigger className="w-full md:w-[220px] bg-white">
               <SelectValue placeholder="Type de retrait" />
             </SelectTrigger>
