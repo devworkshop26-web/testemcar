@@ -77,6 +77,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   const finalTotal = Math.max(0, Math.round(basePrice + driverFee + totalAddOns + serviceFee));
   const cautionAmount = Math.max(0, Math.round(deposit));
   const totalWithCaution = finalTotal + cautionAmount;
+  const estimatedWithoutCaution = finalTotal;
 
   // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
@@ -173,7 +174,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           <Info size={40} />
         </div>
         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 z-10">
-          Total estimé
+          Total estimé (hors caution)
           <Popover open={showRates} onOpenChange={setShowRates}>
             <PopoverTrigger asChild>
               <button className="bg-white rounded-full p-1 text-gray-300 hover:text-primary-500 hover:shadow-sm transition-all shadow-none">
@@ -184,39 +185,69 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
               <div className="p-4 bg-gray-50 border-b border-gray-100">
                 <h4 className="font-bold text-gray-900">Détail des tarifs</h4>
               </div>
-              <div className="p-4 space-y-3 text-sm">
-                {pricingRates.hour && (
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span>Prix par heure</span>
-                    <span className="font-bold text-gray-900">{pricingRates.hour.toLocaleString()} Ar</span>
-                  </div>
-                )}
-                {pricingRates.day > 0 && (
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span>Prix par jour</span>
-                    <span className="font-bold text-gray-900">{pricingRates.day.toLocaleString()} Ar</span>
-                  </div>
-                )}
-                <Separator className="my-2" />
-                <div className="flex justify-between items-center text-gray-500 text-xs">
-                  <span>Caution</span>
-                  <span className="font-bold text-gray-700">{deposit.toLocaleString()} Ar</span>
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Location ({durationLabel})</span>
+                  <span className="font-bold text-gray-900">{basePrice.toLocaleString()} Ar</span>
                 </div>
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Chauffeur</span>
+                  <span className="font-bold text-gray-900">+{driverFee.toLocaleString()} Ar</span>
+                </div>
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Options</span>
+                  <span className="font-bold text-gray-900">+{totalAddOns.toLocaleString()} Ar</span>
+                </div>
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Frais de service</span>
+                  <span className="font-bold text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
+                </div>
+                <Separator className="my-2" />
+                <div className="flex justify-between items-center text-gray-800 text-xs">
+                  <span className="font-semibold">Total estimé (hors caution)</span>
+                  <span className="font-bold">{estimatedWithoutCaution.toLocaleString()} Ar</span>
+                </div>
+                {cautionAmount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-emerald-700 text-xs">
+                      <span>Caution remboursable</span>
+                      <span className="font-bold">+{cautionAmount.toLocaleString()} Ar</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-900 text-xs">
+                      <span className="font-semibold">Total à payer (avec caution)</span>
+                      <span className="font-bold">{totalWithCaution.toLocaleString()} Ar</span>
+                    </div>
+                  </>
+                )}
               </div>
             </PopoverContent>
           </Popover>
         </span>
         <div className="flex items-baseline gap-2 z-10">
           <span className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
-            {totalPrice.toLocaleString()}
+            {estimatedWithoutCaution.toLocaleString()}
           </span>
           <span className="text-xl font-bold text-gray-400">Ar</span>
+        </div>
+
+        <div className="z-10 text-[11px] text-gray-500 bg-white/80 border border-gray-100 rounded-xl px-3 py-2">
+          <p className="font-semibold text-gray-700">Calcul: location + chauffeur + options + frais de service</p>
+          <p className="mt-1">
+            {basePrice.toLocaleString()} + {driverFee.toLocaleString()} + {totalAddOns.toLocaleString()} + {serviceFee.toLocaleString()} =
+            <span className="font-bold text-gray-900"> {estimatedWithoutCaution.toLocaleString()} Ar</span>
+          </p>
+          {cautionAmount > 0 && (
+            <p className="mt-1 text-emerald-700">
+              Avec caution remboursable: {estimatedWithoutCaution.toLocaleString()} + {cautionAmount.toLocaleString()} =
+              <span className="font-bold"> {totalWithCaution.toLocaleString()} Ar</span>
+            </p>
+          )}
         </div>
 
         {deposit > 0 && (
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50/80 backdrop-blur-sm w-fit px-2.5 py-1 rounded-full border border-emerald-100/50 z-10 mt-1">
             <ShieldCheck size={12} />
-            Caution: {deposit.toLocaleString()} Ar
+            Caution remboursable: +{cautionAmount.toLocaleString()} Ar
           </div>
         )}
       </div>
