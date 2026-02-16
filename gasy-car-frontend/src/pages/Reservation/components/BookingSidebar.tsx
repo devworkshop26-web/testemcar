@@ -75,6 +75,8 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [showRates, setShowRates] = useState(false);
   const finalTotal = Math.max(0, Math.round(basePrice + driverFee + totalAddOns + serviceFee));
+  const cautionAmount = Math.max(0, Math.round(deposit));
+  const totalWithCaution = finalTotal + cautionAmount;
 
   // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
@@ -511,9 +513,15 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           <span>Frais de service & assurance</span>
           <span className="text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
         </div>
+        {cautionAmount > 0 && (
+          <div className="flex justify-between text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+            <span>Caution remboursable</span>
+            <span className="font-bold">+{cautionAmount.toLocaleString()} Ar</span>
+          </div>
+        )}
         <div className="flex justify-between items-center rounded-xl bg-gray-900 px-3 py-2 text-sm font-bold text-white">
-          <span>Total à payer</span>
-          <span>{finalTotal.toLocaleString()} Ar</span>
+          <span>Total à payer{cautionAmount > 0 ? ' (avec caution)' : ''}</span>
+          <span>{(cautionAmount > 0 ? totalWithCaution : finalTotal).toLocaleString()} Ar</span>
         </div>
       </div>
 
