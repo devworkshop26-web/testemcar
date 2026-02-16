@@ -1,7 +1,7 @@
 // src/pages/support/SupportReservation.tsx
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
@@ -220,6 +220,20 @@ export default function SupportReservationPage() {
     );
   };
 
+  const isCriticalReservation = (reservation: Reservation) => {
+    const paymentStatus = reservation.payment?.status;
+    const unpaid = !paymentStatus || paymentStatus === "PENDING" || paymentStatus === "FAILED";
+
+    const active = reservation.status !== "CANCELLED" && reservation.status !== "COMPLETED";
+
+    return unpaid && active;
+  };
+
+  const isUrgentMode = useMemo(() => {
+    const queryParams = new URLSearchParams(location.search);
+    return queryParams.get("filter") === "urgent";
+  }, [location.search]);
+
   // Filtrage
   const filteredData = useMemo(() => {
     return reservations.filter((row: any) => {
@@ -245,9 +259,11 @@ export default function SupportReservationPage() {
         matchesPickup = !isPickupUpcoming24h(row.start_datetime);
       }
 
-      return matchesSearch && matchesStatus && matchesPickup;
+      const matchesUrgent = !isUrgentMode || isCriticalReservation(row);
+
+      return matchesSearch && matchesStatus && matchesPickup && matchesUrgent;
     });
-  }, [reservations, searchQuery, statusFilter, pickupFilter]);
+  }, [reservations, searchQuery, statusFilter, pickupFilter, isUrgentMode]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
@@ -356,6 +372,12 @@ export default function SupportReservationPage() {
           </Select>
 
           {/* ✅ NEW: Filtre retrait prévu / autres */}
+          {isUrgentMode && (
+            <Badge className="bg-red-100 text-red-700 border border-red-200">
+              Filtre urgences actif
+            </Badge>
+          )}
+
           <Select value={pickupFilter} onValueChange={(v: any) => setPickupFilter(v)}>
             <SelectTrigger className="w-full md:w-[220px] bg-white">
               <SelectValue placeholder="Type de retrait" />
@@ -367,13 +389,17 @@ export default function SupportReservationPage() {
             </SelectContent>
           </Select>
 
-          {(searchQuery || statusFilter !== "ALL" || pickupFilter !== "ALL") && (
+          {(searchQuery || statusFilter !== "ALL" || pickupFilter !== "ALL" || isUrgentMode) && (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearchQuery("");
                 setStatusFilter("ALL");
                 setPickupFilter("ALL");
+
+                if (isUrgentMode) {
+                  navigate("/support/reservations", { replace: true });
+                }
               }}
               className="text-slate-500"
             >
