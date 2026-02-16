@@ -31,6 +31,7 @@ type AnyVehicule = {
   zone?: string;
   photo_principale?: string | null;
   prix_jour?: number | null;
+  nombre_locations?: number;
 
   est_disponible?: boolean;
   est_certifie?: boolean;
@@ -373,6 +374,10 @@ export default function FleetView() {
                     <span className="font-semibold text-gray-900">
                       {v.prix_jour ? `${v.prix_jour} Ar / jour` : "Prix non défini"}
                     </span>
+                  </div>
+
+                  <div className="inline-flex items-center rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 border border-blue-100">
+                    {Number(v.nombre_locations ?? 0)} réservation{Number(v.nombre_locations ?? 0) > 1 ? "s" : ""}
                   </div>
 
                   {/* Lien détail (là-bas on valide/certifie) */}

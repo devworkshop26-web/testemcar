@@ -358,7 +358,7 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         - LIST : Charge minimale via .only() et Prefetch ciblés.
         - DETAIL : Fetch complet pour l'édition/affichage.
         """
-        base_qs = Vehicule.objects.all().order_by("-created_at")
+        base_qs = Vehicule.objects.all().annotate(_reservation_count=Count("reservations", distinct=True)).order_by("-created_at")
 
         if self.action == "retrieve" or self.action == "update" or self.action == "partial_update":
             return base_qs.select_related(
@@ -380,6 +380,14 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
 
     # ✅🔥 OBLIGATOIRE POUR FORMData + IMAGES
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    @staticmethod
+    def _attach_reservation_count(items):
+        for item in items:
+            computed = getattr(item, "_reservation_count", None)
+            if computed is not None:
+                item.nombre_locations = int(computed)
+        return items
 
     @swagger_auto_schema(
         operation_description="Récupère la liste des véhicules. Filtres: ?type_vehicule=UTILITAIRE ou TOURISME",
@@ -405,9 +413,11 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(queryset)
         if page is not None:
+             page = self._attach_reservation_count(page)
              serializer = self.get_serializer(page, many=True)
              return self.get_paginated_response(serializer.data)
 
+        queryset = self._attach_reservation_count(queryset)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -823,7 +833,7 @@ def getAllMyVehicles(request, user_id):
     
     user = get_object_or_404(User, id=user_id)
     vehicule_data = (
-        Vehicule.objects.filter(proprietaire=user)
+        Vehicule.objects.filter(proprietaire=user).annotate(_reservation_count=Count("reservations", distinct=True))
         .select_related("marque", "modele", "transmission", "type_carburant")
         .prefetch_related(
             models.Prefetch("photos", queryset=VehiclePhoto.objects.only("id", "vehicle", "image", "is_primary")),
@@ -842,6 +852,11 @@ def getAllMyVehicles(request, user_id):
         )
         .order_by("-created_at")
     )
+    for vehicle in vehicule_data:
+        computed = getattr(vehicle, "_reservation_count", None)
+        if computed is not None:
+            vehicle.nombre_locations = int(computed)
+
     serializer = VehiculeCardSerializer(vehicule_data, many=True, context={"request": request})
     return Response(serializer.data)
 
