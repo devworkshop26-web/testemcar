@@ -78,6 +78,20 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   const cautionAmount = Math.max(0, Math.round(deposit));
   const totalWithCaution = finalTotal + cautionAmount;
   const estimatedWithoutCaution = finalTotal;
+  const pricingBreakdown = [
+    { key: 'location', label: `Location (${durationLabel})`, value: basePrice, show: true },
+    { key: 'driver', label: 'Chauffeur', value: driverFee, show: driverFee > 0 },
+    { key: 'options', label: 'Options', value: totalAddOns, show: totalAddOns > 0 },
+    { key: 'service', label: 'Frais de service', value: serviceFee, show: serviceFee > 0 },
+  ].filter((item) => item.show);
+
+  const breakdownLabelText = pricingBreakdown
+    .map((item) => item.label.toLowerCase().replace(` (${durationLabel.toLowerCase()})`, ''))
+    .join(' + ');
+
+  const breakdownValueText = pricingBreakdown
+    .map((item) => item.value.toLocaleString())
+    .join(' + ');
 
   // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
@@ -186,22 +200,14 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                 <h4 className="font-bold text-gray-900">Détail des tarifs</h4>
               </div>
               <div className="p-4 space-y-2 text-sm">
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Location ({durationLabel})</span>
-                  <span className="font-bold text-gray-900">{basePrice.toLocaleString()} Ar</span>
-                </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Chauffeur</span>
-                  <span className="font-bold text-gray-900">+{driverFee.toLocaleString()} Ar</span>
-                </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Options</span>
-                  <span className="font-bold text-gray-900">+{totalAddOns.toLocaleString()} Ar</span>
-                </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Frais de service</span>
-                  <span className="font-bold text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
-                </div>
+                {pricingBreakdown.map((item, index) => (
+                  <div key={item.key} className="flex justify-between items-center text-gray-600">
+                    <span>{item.label}</span>
+                    <span className="font-bold text-gray-900">
+                      {index === 0 ? '' : '+'}{item.value.toLocaleString()} Ar
+                    </span>
+                  </div>
+                ))}
                 <Separator className="my-2" />
                 <div className="flex justify-between items-center text-gray-800 text-xs">
                   <span className="font-semibold">Total estimé (hors caution)</span>
@@ -231,9 +237,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         </div>
 
         <div className="z-10 text-[11px] text-gray-500 bg-white/80 border border-gray-100 rounded-xl px-3 py-2">
-          <p className="font-semibold text-gray-700">Calcul: location + chauffeur + options + frais de service</p>
+          <p className="font-semibold text-gray-700">Calcul: {breakdownLabelText}</p>
           <p className="mt-1">
-            {basePrice.toLocaleString()} + {driverFee.toLocaleString()} + {totalAddOns.toLocaleString()} + {serviceFee.toLocaleString()} =
+            {breakdownValueText} =
             <span className="font-bold text-gray-900"> {estimatedWithoutCaution.toLocaleString()} Ar</span>
           </p>
           {cautionAmount > 0 && (
