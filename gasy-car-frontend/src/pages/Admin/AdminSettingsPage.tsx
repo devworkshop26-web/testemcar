@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { AdminPageShell } from "@/components/admin/AdminPageShell";
 import { useNavigate } from "react-router-dom";
 import { accessTokenKey, refreshTokenKey } from "@/helper/InstanceAxios";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useReservationPricingConfigQuery,
   useUpdateReservationPricingConfigMutation,
@@ -14,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export function AdminSettingsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: pricingConfig, isLoading: isLoadingPricing } = useReservationPricingConfigQuery();
@@ -57,7 +59,12 @@ export function AdminSettingsPage() {
   const handleLogout = () => {
     localStorage.removeItem(accessTokenKey);
     localStorage.removeItem(refreshTokenKey);
-    navigate("/login");
+
+    // Important: clear cached user to avoid immediate redirect back to dashboard.
+    queryClient.removeQueries({ queryKey: ["currentUser"] });
+    queryClient.setQueryData(["currentUser"], null);
+
+    navigate("/login", { replace: true });
   };
 
   return (
