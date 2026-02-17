@@ -78,6 +78,20 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   const cautionAmount = Math.max(0, Math.round(deposit));
   const totalWithCaution = finalTotal + cautionAmount;
   const estimatedWithoutCaution = finalTotal;
+  const pricingBreakdown = [
+    { key: 'location', label: `Location (${durationLabel})`, value: basePrice, show: true },
+    { key: 'driver', label: 'Chauffeur', value: driverFee, show: driverFee > 0 },
+    { key: 'options', label: 'Options', value: totalAddOns, show: totalAddOns > 0 },
+    { key: 'service', label: 'Frais de service', value: serviceFee, show: serviceFee > 0 },
+  ].filter((item) => item.show);
+
+  const breakdownLabelText = pricingBreakdown
+    .map((item) => item.label.toLowerCase().replace(` (${durationLabel.toLowerCase()})`, ''))
+    .join(' + ');
+
+  const breakdownValueText = pricingBreakdown
+    .map((item) => item.value.toLocaleString())
+    .join(' + ');
 
   // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
@@ -132,30 +146,30 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         key={addon.id}
         onClick={() => onToggleAddon(addon.id)}
         className={`group flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isSelected
-          ? 'border-primary-500 bg-primary-50/50 shadow-sm'
-          : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/50'
+          ? 'border-primary-700 bg-primary-700 shadow-lg shadow-primary-900/25 text-white'
+          : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/60'
           }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-110' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-800 text-primary-50 shadow-lg shadow-primary-900/30 scale-110 ring-2 ring-primary-400/60' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
             }`}>
             <Icon size={18} strokeWidth={2.5} />
             {isSelected && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-primary-100 shadow-md">
                 <Check size={12} className="text-white" strokeWidth={3} />
               </div>
             )}
           </div>
           <div className="flex flex-col">
-            <span className={`text-sm font-bold transition-colors ${isSelected ? 'text-primary-900' : 'text-gray-700'}`}>
+            <span className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-700'}`}>
               {addon.label}
             </span>
             {addon.description && (
-              <span className="text-[10px] text-gray-500 line-clamp-1">{addon.description}</span>
+              <span className={`text-[10px] line-clamp-1 ${isSelected ? 'text-primary-100' : 'text-gray-500'}`}>{addon.description}</span>
             )}
           </div>
         </div>
-        <Badge variant={isSelected ? "default" : "secondary"} className={`text-xs font-bold px-2 py-0.5 transition-colors ${isSelected ? 'bg-primary-100 text-primary-700 hover:bg-primary-200' : 'bg-gray-100 text-gray-500'
+        <Badge variant="secondary" className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected ? 'bg-primary-900 text-primary-50 border-primary-400 hover:bg-primary-800' : 'bg-gray-100 text-gray-500 border-gray-200'
           }`}>
           +{price.toLocaleString()} Ar
         </Badge>
@@ -186,22 +200,14 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                 <h4 className="font-bold text-gray-900">Détail des tarifs</h4>
               </div>
               <div className="p-4 space-y-2 text-sm">
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Location ({durationLabel})</span>
-                  <span className="font-bold text-gray-900">{basePrice.toLocaleString()} Ar</span>
-                </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Chauffeur</span>
-                  <span className="font-bold text-gray-900">+{driverFee.toLocaleString()} Ar</span>
-                </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Options</span>
-                  <span className="font-bold text-gray-900">+{totalAddOns.toLocaleString()} Ar</span>
-                </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Frais de service</span>
-                  <span className="font-bold text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
-                </div>
+                {pricingBreakdown.map((item, index) => (
+                  <div key={item.key} className="flex justify-between items-center text-gray-600">
+                    <span>{item.label}</span>
+                    <span className="font-bold text-gray-900">
+                      {index === 0 ? '' : '+'}{item.value.toLocaleString()} Ar
+                    </span>
+                  </div>
+                ))}
                 <Separator className="my-2" />
                 <div className="flex justify-between items-center text-gray-800 text-xs">
                   <span className="font-semibold">Total estimé (hors caution)</span>
@@ -231,9 +237,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         </div>
 
         <div className="z-10 text-[11px] text-gray-500 bg-white/80 border border-gray-100 rounded-xl px-3 py-2">
-          <p className="font-semibold text-gray-700">Calcul: location + chauffeur + options + frais de service</p>
+          <p className="font-semibold text-gray-700">Calcul: {breakdownLabelText}</p>
           <p className="mt-1">
-            {basePrice.toLocaleString()} + {driverFee.toLocaleString()} + {totalAddOns.toLocaleString()} + {serviceFee.toLocaleString()} =
+            {breakdownValueText} =
             <span className="font-bold text-gray-900"> {estimatedWithoutCaution.toLocaleString()} Ar</span>
           </p>
           {cautionAmount > 0 && (
