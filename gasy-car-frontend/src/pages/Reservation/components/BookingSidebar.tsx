@@ -146,8 +146,8 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         key={addon.id}
         onClick={() => onToggleAddon(addon.id)}
         className={`group flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isSelected
-          ? 'border-primary-500 bg-primary-50/50 shadow-sm'
-          : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/50'
+          ? 'border-primary-600 bg-gradient-to-r from-primary-600 to-primary-500 shadow-lg shadow-primary-500/20 text-white'
+          : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/60'
           }`}
       >
         <div className="flex items-center gap-3">
@@ -161,15 +161,15 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             )}
           </div>
           <div className="flex flex-col">
-            <span className={`text-sm font-bold transition-colors ${isSelected ? 'text-primary-900' : 'text-gray-700'}`}>
+            <span className={`text-sm font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-700'}`}>
               {addon.label}
             </span>
             {addon.description && (
-              <span className="text-[10px] text-gray-500 line-clamp-1">{addon.description}</span>
+              <span className={`text-[10px] line-clamp-1 ${isSelected ? 'text-primary-100' : 'text-gray-500'}`}>{addon.description}</span>
             )}
           </div>
         </div>
-        <Badge variant={isSelected ? "default" : "secondary"} className={`text-xs font-bold px-2 py-0.5 transition-colors ${isSelected ? 'bg-primary-100 text-primary-700 hover:bg-primary-200' : 'bg-gray-100 text-gray-500'
+        <Badge variant="secondary" className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected ? 'bg-white/15 text-white border-white/30 hover:bg-white/20' : 'bg-gray-100 text-gray-500 border-gray-200'
           }`}>
           +{price.toLocaleString()} Ar
         </Badge>
