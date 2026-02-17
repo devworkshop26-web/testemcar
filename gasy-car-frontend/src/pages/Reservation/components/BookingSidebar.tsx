@@ -146,16 +146,16 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         key={addon.id}
         onClick={() => onToggleAddon(addon.id)}
         className={`group flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isSelected
-          ? 'border-primary-600 bg-gradient-to-r from-primary-600 to-primary-500 shadow-lg shadow-primary-500/20 text-white'
+          ? 'border-primary-700 bg-primary-700 shadow-lg shadow-primary-900/25 text-white'
           : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/60'
           }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-110' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-800 text-primary-50 shadow-lg shadow-primary-900/30 scale-110 ring-2 ring-primary-400/60' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
             }`}>
             <Icon size={18} strokeWidth={2.5} />
             {isSelected && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-primary-100 shadow-md">
                 <Check size={12} className="text-white" strokeWidth={3} />
               </div>
             )}
@@ -169,7 +169,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             )}
           </div>
         </div>
-        <Badge variant="secondary" className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected ? 'bg-white/15 text-white border-white/30 hover:bg-white/20' : 'bg-gray-100 text-gray-500 border-gray-200'
+        <Badge variant="secondary" className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected ? 'bg-primary-900 text-primary-50 border-primary-400 hover:bg-primary-800' : 'bg-gray-100 text-gray-500 border-gray-200'
           }`}>
           +{price.toLocaleString()} Ar
         </Badge>
