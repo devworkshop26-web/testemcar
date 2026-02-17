@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import WhiteLogo from "@/components/WhiteLogo";
 
 const Footer = () => {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-foreground text-white pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -16,16 +18,16 @@ const Footer = () => {
               La plateforme de location de voitures de confiance à Madagascar.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
+              <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
+              <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
+              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
+              <a href="mailto:support@madagasycar.com" className="w-10 h-10 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors">
                 <Mail className="w-5 h-5" />
               </a>
             </div>
@@ -35,10 +37,10 @@ const Footer = () => {
           <div>
             <h3 className="font-poppins font-semibold text-lg mb-4">Explorer</h3>
             <ul className="space-y-3 font-roboto text-sm">
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Louer une voiture</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Aéroport Ivato</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Location mensuelle</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Avec livraison</a></li>
+              <li><Link to="/allCars" className="text-white/70 hover:text-secondary transition-colors">Louer une voiture</Link></li>
+              <li><Link to="/search-results" className="text-white/70 hover:text-secondary transition-colors">Aéroport Ivato</Link></li>
+              <li><Link to="/allCars" className="text-white/70 hover:text-secondary transition-colors">Location mensuelle</Link></li>
+              <li><Link to="/allCars" className="text-white/70 hover:text-secondary transition-colors">Avec livraison</Link></li>
             </ul>
           </div>
 
@@ -46,10 +48,10 @@ const Footer = () => {
           <div>
             <h3 className="font-poppins font-semibold text-lg mb-4">Propriétaires</h3>
             <ul className="space-y-3 font-roboto text-sm">
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Devenir propriétaire</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Ajouter un véhicule</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Tableau de bord</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Assurance & Protection</a></li>
+              <li><Link to="/devenir-proprietaire" className="text-white/70 hover:text-secondary transition-colors">Devenir propriétaire</Link></li>
+              <li><Link to="/devenir-proprietaire" className="text-white/70 hover:text-secondary transition-colors">Ajouter un véhicule</Link></li>
+              <li><Link to="/login" className="text-white/70 hover:text-secondary transition-colors">Tableau de bord</Link></li>
+              <li><Link to="/faq" className="text-white/70 hover:text-secondary transition-colors">Assurance & Protection</Link></li>
             </ul>
           </div>
 
@@ -57,10 +59,10 @@ const Footer = () => {
           <div>
             <h3 className="font-poppins font-semibold text-lg mb-4">Support</h3>
             <ul className="space-y-3 font-roboto text-sm">
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Comment ça marche</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">FAQ</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Conditions d'utilisation</a></li>
-              <li><a href="#" className="text-white/70 hover:text-secondary transition-colors">Politique de confidentialité</a></li>
+              <li><Link to="/comment-ca-marche" className="text-white/70 hover:text-secondary transition-colors">Comment ça marche</Link></li>
+              <li><Link to="/faq" className="text-white/70 hover:text-secondary transition-colors">FAQ</Link></li>
+              <li><Link to="/faq" className="text-white/70 hover:text-secondary transition-colors">Conditions d'utilisation</Link></li>
+              <li><Link to="/faq" className="text-white/70 hover:text-secondary transition-colors">Politique de confidentialité</Link></li>
             </ul>
           </div>
         </div>
@@ -68,7 +70,7 @@ const Footer = () => {
         {/* Bottom Section: Copyright & Powered by */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-white/60 font-roboto text-sm text-center md:text-left">
-            © 2025 MadagasyCar. Tous droits réservés.
+            © {currentYear} MadagasyCar. Tous droits réservés.
           </p>
 
           {/* Logo Kinva Dynamique */}
