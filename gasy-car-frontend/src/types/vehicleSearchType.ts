@@ -23,7 +23,10 @@ export interface VehicleSearchItem {
   nombre_locations: number;
   est_certifie: boolean;
   est_coup_de_coeur?: boolean;
+  est_sponsorise?: boolean;
   photo_principale: string | null;
+  transmission_nom?: string;
+  type_carburant_nom?: string;
   
   // Propriétés supplémentaires pour l'affichage détaillé
   annee: number;
@@ -40,11 +43,13 @@ export interface VehicleSearchItem {
   };
   transmission?: {
     id: string;
-    label: string;
+    label?: string;
+    nom?: string;
   };
   type_carburant?: {
     id: string;
-    label: string;
+    label?: string;
+    nom?: string;
   };
   photos?: Array<{
     id: string;
