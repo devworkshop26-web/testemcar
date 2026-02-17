@@ -136,6 +136,12 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 
   const hasMoreAddons = addons && addons.length > 3 && !searchTerm;
 
+  const hiddenAddons = useMemo(() => {
+    if (!addons || addons.length <= 3 || searchTerm.trim()) return [];
+    return addons.slice(3, 8);
+  }, [addons, searchTerm]);
+
+
   const renderAddon = (addon: ReservationAddon) => {
     const Icon = ICON_MAP[addon.iconKey] || LayoutList;
     const isSelected = selectedAddons.includes(addon.id);
@@ -155,7 +161,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             }`}>
             <Icon size={18} strokeWidth={2.5} />
             {isSelected && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                 <Check size={12} className="text-white" strokeWidth={3} />
               </div>
             )}
@@ -495,12 +501,33 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             placeholder="Rechercher une option (ex: Siège bébé...)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            list="addons-suggestions"
             className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 block w-full p-3 pl-10 outline-none transition-all focus:bg-white focus:shadow-sm"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <LayoutList className="h-4 w-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
           </div>
+          <datalist id="addons-suggestions">
+            {addons.map((addon) => (
+              <option key={addon.id} value={addon.label} />
+            ))}
+          </datalist>
         </div>
+
+        {hiddenAddons.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {hiddenAddons.map((addon) => (
+              <button
+                key={addon.id}
+                type="button"
+                onClick={() => setSearchTerm(addon.label)}
+                className="text-[10px] px-2.5 py-1 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
+              >
+                {addon.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-3 mt-4">
           {isLoadingAddons ? (
