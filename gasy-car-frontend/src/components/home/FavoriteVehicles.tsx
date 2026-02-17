@@ -68,8 +68,16 @@ export const FavoriteVehicles = () => {
                 vehicle.modele_label ??
                 vehicle.titre ??
                 "Modèle non spécifié";
-              const transmission = vehicle.transmission?.label ?? "Transmission inconnue";
-              const fuel = vehicle.type_carburant?.label ?? "Carburant inconnu";
+              const transmission =
+                vehicle.transmission?.label ??
+                (vehicle.transmission as { nom?: string } | null)?.nom ??
+                vehicle.transmission_nom ??
+                "Transmission inconnue";
+              const fuel =
+                vehicle.type_carburant?.label ??
+                (vehicle.type_carburant as { nom?: string } | null)?.nom ??
+                vehicle.type_carburant_nom ??
+                "Carburant inconnu";
               const rating = vehicle.note_moyenne ? Number(vehicle.note_moyenne) : 0;
 
               return (
