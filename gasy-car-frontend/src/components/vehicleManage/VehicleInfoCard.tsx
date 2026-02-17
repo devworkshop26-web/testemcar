@@ -1,5 +1,5 @@
 import React from "react";
-import { Car, Fuel, Settings2, Calendar, Palette, Cog, Fingerprint } from "lucide-react";
+import { Fuel, Calendar, Cog, Fingerprint, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Vehicule } from "@/types/vehiculeType";
 
@@ -11,10 +11,9 @@ interface InfoItemProps {
   icon: React.ReactNode;
   label: string;
   value: string;
-  className?: string;
 }
 
-const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value, className }) => (
+const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value }) => (
   <div className="flex flex-col gap-1 p-2.5 rounded-2xl bg-slate-50/50 border border-slate-100/50 transition-all hover:bg-white hover:shadow-sm hover:border-slate-200 group">
     <div className="flex items-center gap-2">
       <div className="text-slate-400 group-hover:text-primary transition-colors">
@@ -24,9 +23,7 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value, className }) =>
         {label}
       </span>
     </div>
-    <p className={`text-sm font-bold text-slate-900 truncate ${className}`}>
-      {value}
-    </p>
+    <p className="text-sm font-bold text-slate-900 truncate">{value}</p>
   </div>
 );
 
@@ -38,10 +35,16 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   };
 
   const infoItems = [
-    { key: "marque", icon: <Car />, label: "Marque", value: clean(vehicle.marque_data?.nom) },
-    { key: "modele", icon: <Settings2 />, label: "Modèle", value: clean(vehicle.modele_data?.label) },
     { key: "annee", icon: <Calendar />, label: "Année", value: clean(vehicle.annee) },
-    { key: "couleur", icon: <Palette />, label: "Couleur", value: clean(vehicle.couleur), className: "capitalize" },
+    {
+      key: "places",
+      icon: <Users />,
+      label: "Places",
+      value:
+        typeof vehicle.nombre_places === "number" && vehicle.nombre_places > 0
+          ? `${vehicle.nombre_places}`
+          : null,
+    },
     { key: "boite", icon: <Cog />, label: "Boîte", value: clean(vehicle.transmission_data?.nom) },
     { key: "energie", icon: <Fuel />, label: "Énergie", value: clean(vehicle.type_carburant_data?.nom) },
   ].filter((item) => item.value);
@@ -59,13 +62,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         {infoItems.length > 0 ? (
           <div className="grid grid-cols-2 gap-2">
             {infoItems.map((item) => (
-              <InfoItem
-                key={item.key}
-                icon={item.icon}
-                label={item.label}
-                value={item.value as string}
-                className={item.className}
-              />
+              <InfoItem key={item.key} icon={item.icon} label={item.label} value={item.value as string} />
             ))}
           </div>
         ) : (
