@@ -87,9 +87,13 @@ export const PopularVehicles = () => {
                   "Modèle non spécifié";
                 const transmission =
                   vehicle.transmission?.label ??
+                  vehicle.transmission?.nom ??
+                  vehicle.transmission_nom ??
                   "Transmission inconnue";
                 const fuel =
                   vehicle.type_carburant?.label ??
+                  vehicle.type_carburant?.nom ??
+                  vehicle.type_carburant_nom ??
                   "Carburant inconnu";
                 const price = Number(vehicle.prix_jour) || 0;
                 const rating = vehicle.note_moyenne ? Number(vehicle.note_moyenne) : 0;

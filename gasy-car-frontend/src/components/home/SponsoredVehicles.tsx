@@ -96,11 +96,13 @@ export const SponsoredVehicles = () => {
                 const transmission =
                   vehicle.transmission?.label ??
                   vehicle.transmission?.nom ??
+                  vehicle.transmission_nom ??
                   "Transmission inconnue";
 
                 const fuel =
                   vehicle.type_carburant?.label ??
                   vehicle.type_carburant?.nom ??
+                  vehicle.type_carburant_nom ??
                   "Carburant inconnu";
 
                 const price = Number(vehicle.prix_jour) || 0;
