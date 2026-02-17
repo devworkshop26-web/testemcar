@@ -626,7 +626,8 @@ class VehiculeListSerializer(serializers.ModelSerializer):
     marque_nom = serializers.CharField(source="marque.nom", read_only=True)
     modele_label = serializers.CharField(source="modele.label", read_only=True)
     categorie_nom = serializers.CharField(source="categorie.nom", read_only=True)
-    transmission_nom = TransmissionSerializer(source="transmission.nom", read_only=True)
+    transmission_nom = serializers.CharField(source="transmission.nom", read_only=True)
+    type_carburant_nom = serializers.CharField(source="type_carburant.nom", read_only=True)
 
     # Computed fields
     prix_jour = serializers.SerializerMethodField()
@@ -668,6 +669,7 @@ class VehiculeListSerializer(serializers.ModelSerializer):
             "equipements_count",
             "equipements_labels",
             "transmission_nom",
+            "type_carburant_nom",
         ]
 
     def get_prix_jour(self, obj):
