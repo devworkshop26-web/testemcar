@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Reservation } from "@/types/reservationsType";
 import { ReservationStatusBadge } from "@/components/reservation/ReservationStatusBadge";
-import { useUpdateReservationPaymentMutation } from "@/useQuery/reservationsUseQuery";
+import { useReservationPricingConfigQuery, useUpdateReservationPaymentMutation } from "@/useQuery/reservationsUseQuery";
 
 interface ReservationDetailProProps {
     reservation: Reservation | undefined;
@@ -43,6 +43,7 @@ export const ReservationDetailPro = ({
 }: ReservationDetailProProps) => {
     const navigate = useNavigate();
     const updatePaymentMutation = useUpdateReservationPaymentMutation();
+    const { data: pricingConfig } = useReservationPricingConfigQuery();
 
     const handleProviderPayment = async () => {
         if (!reservation?.payment?.id) {
@@ -128,6 +129,50 @@ export const ReservationDetailPro = ({
                 return "Aucun";
         }
     };
+
+    const financials = useMemo(() => {
+        if (!reservation) {
+            return {
+                totalDays: 1,
+                baseAmount: 0,
+                optionsAmount: 0,
+                serviceFee: 0,
+                cautionAmount: 0,
+                totalToPay: 0,
+            };
+        }
+
+        const totalDays = Math.max(1, Number(reservation.total_days ?? 1) || 1);
+        const baseAmount = Number(reservation.base_amount ?? 0) || 0;
+        const rawOptionsAmount = Number(reservation.options_amount ?? 0) || 0;
+        const equipmentsAmount = (reservation.equipments_data ?? []).reduce(
+            (sum, equipment) => sum + (Number(equipment.price ?? 0) || 0) * totalDays,
+            0
+        );
+        const servicesAmount = (reservation.services_data ?? []).reduce(
+            (sum, service) => sum + (Number(service.price ?? 0) || 0) * (Number(service.quantity ?? 1) || 1),
+            0
+        );
+
+        const optionsAmount = Math.max(rawOptionsAmount, equipmentsAmount + servicesAmount);
+        const configuredServiceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
+        const rawTotal = Number(reservation.total_amount ?? 0) || 0;
+
+        const totalWithoutCaution = Math.max(
+            rawTotal,
+            baseAmount + optionsAmount + configuredServiceFee,
+            baseAmount + optionsAmount
+        );
+
+        return {
+            totalDays,
+            baseAmount,
+            optionsAmount,
+            serviceFee: Math.max(0, totalWithoutCaution - baseAmount - optionsAmount),
+            cautionAmount: Number(reservation.caution_amount ?? 0) || 0,
+            totalToPay: totalWithoutCaution + (Number(reservation.caution_amount ?? 0) || 0),
+        };
+    }, [reservation, pricingConfig?.service_fee]);
 
     // ============ LOADING STATE ============
     if (isLoading) {
@@ -225,15 +270,21 @@ export const ReservationDetailPro = ({
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center py-2">
                                         <span className="text-gray-600">Montant de base ({reservation.total_days} jours)</span>
-                                        <span className="font-semibold text-gray-900">{formatCurrency(reservation.base_amount)}</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(financials.baseAmount)}</span>
                                     </div>
                                     <div className="flex justify-between items-center py-2">
                                         <span className="text-gray-600">Options & Services</span>
-                                        <span className="font-semibold text-gray-900">{formatCurrency(reservation.options_amount)}</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(financials.optionsAmount)}</span>
                                     </div>
+                                    {financials.serviceFee > 0 && (
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-gray-600">Frais de service</span>
+                                            <span className="font-semibold text-gray-900">{formatCurrency(financials.serviceFee)}</span>
+                                        </div>
+                                    )}
                                     <div className="border-t border-gray-200 pt-4 flex justify-between items-center">
                                         <span className="text-lg font-bold text-gray-900">Total</span>
-                                        <span className="text-3xl font-bold text-primary">{formatCurrency(reservation.total_amount)}</span>
+                                        <span className="text-3xl font-bold text-primary">{formatCurrency(financials.totalToPay)}</span>
                                     </div>
                                 </div>
 
@@ -243,7 +294,7 @@ export const ReservationDetailPro = ({
                                         <ShieldCheck className="w-5 h-5 text-orange-600" />
                                         <p className="text-xs font-bold text-orange-700 uppercase tracking-wide">Caution remboursable</p>
                                     </div>
-                                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(reservation.caution_amount)}</p>
+                                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(financials.cautionAmount)}</p>
                                 </div>
 
                                 {/* État paiement */}
@@ -452,9 +503,9 @@ export const ReservationDetailPro = ({
                                                     {reservation.equipments_data?.map((equipment) => (
                                                         <tr key={equipment.id} className="hover:bg-gray-50 transition-colors">
                                                             <td className="py-3 px-4 text-sm font-medium text-gray-900">{equipment.label}</td>
-                                                            <td className="py-3 px-4 text-sm text-center text-gray-600">1</td>
+                                                            <td className="py-3 px-4 text-sm text-center text-gray-600">{financials.totalDays}</td>
                                                             <td className="py-3 px-4 text-sm text-right text-gray-600">{formatCurrency(equipment.price || 0)}</td>
-                                                            <td className="py-3 px-4 text-sm text-right font-semibold text-gray-900">{formatCurrency(equipment.price || 0)}</td>
+                                                            <td className="py-3 px-4 text-sm text-right font-semibold text-gray-900">{formatCurrency((Number(equipment.price || 0) || 0) * financials.totalDays)}</td>
                                                         </tr>
                                                     ))}
 
@@ -473,7 +524,7 @@ export const ReservationDetailPro = ({
                                                     {/* Total */}
                                                     <tr className="bg-gray-50 font-bold">
                                                         <td colSpan={3} className="py-4 px-4 text-right text-gray-900">Total Options & Services</td>
-                                                        <td className="py-4 px-4 text-right text-primary text-lg">{formatCurrency(reservation.options_amount)}</td>
+                                                        <td className="py-4 px-4 text-right text-primary text-lg">{formatCurrency(financials.optionsAmount)}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
