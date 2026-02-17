@@ -521,6 +521,21 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           </datalist>
         </div>
 
+        {hiddenAddons.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {hiddenAddons.map((addon) => (
+              <button
+                key={addon.id}
+                type="button"
+                onClick={() => setSearchTerm(addon.label)}
+                className="text-[10px] px-2.5 py-1 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
+              >
+                {addon.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="space-y-3 mt-4">
           {isLoadingAddons ? (
             <div className="space-y-3">
