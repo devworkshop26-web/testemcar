@@ -145,6 +145,12 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
     );
   }, [addons, selectedAddons, filteredAddons]);
 
+  const hiddenAddons = useMemo(() => {
+    const displayedAddonIds = new Set(displayedAddons.map((addon) => addon.id));
+
+    return addons.filter((addon) => !displayedAddonIds.has(addon.id)).slice(0, 6);
+  }, [addons, displayedAddons]);
+
 
   const renderAddon = (addon: ReservationAddon) => {
     const Icon = ICON_MAP[addon.iconKey] || LayoutList;
