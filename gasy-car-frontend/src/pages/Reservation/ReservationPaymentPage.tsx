@@ -212,7 +212,13 @@ const ReservationPaymentPage = () => {
     }
 
     const baseAmount = Number(reservation.base_amount ?? 0) || 0;
-    const optionsAmount = Number(reservation.options_amount ?? 0) || 0;
+    const rawOptionsAmount = Number(reservation.options_amount ?? 0) || 0;
+    const equipmentOptionsAmount = (reservation.equipments_data ?? []).reduce(
+      (sum, equipment) => sum + (Number(equipment.price ?? 0) || 0) * (Number(reservation.total_days ?? 1) || 1),
+      0
+    );
+    const optionsAmount = Math.max(rawOptionsAmount, equipmentOptionsAmount);
+
     const cautionAmount = Number(reservation.caution_amount ?? 0) || 0;
     const apiTotalAmount = Number(reservation.total_amount ?? 0) || 0;
 
