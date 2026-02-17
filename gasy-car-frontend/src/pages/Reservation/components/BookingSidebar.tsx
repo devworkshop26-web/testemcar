@@ -136,10 +136,14 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 
   const hasMoreAddons = addons && addons.length > 3 && !searchTerm;
 
-  const hiddenAddons = useMemo(() => {
-    if (!addons || addons.length <= 3 || searchTerm.trim()) return [];
-    return addons.slice(3, 8);
-  }, [addons, searchTerm]);
+  const displayedAddons = useMemo(() => {
+    const selectedAddonItems = addons.filter((addon) => selectedAddons.includes(addon.id));
+    const merged = [...selectedAddonItems, ...filteredAddons];
+
+    return merged.filter((addon, index, arr) =>
+      arr.findIndex((item) => item.id === addon.id) === index
+    );
+  }, [addons, selectedAddons, filteredAddons]);
 
 
   const renderAddon = (addon: ReservationAddon) => {
@@ -150,7 +154,10 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
     return (
       <div
         key={addon.id}
-        onClick={() => onToggleAddon(addon.id)}
+        onClick={() => {
+          onToggleAddon(addon.id);
+          if (searchTerm.trim()) setSearchTerm('');
+        }}
         className={`group flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isSelected
           ? 'border-primary-300 bg-primary-50 shadow-sm text-gray-900'
           : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/60'
@@ -534,9 +541,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
             </div>
-          ) : filteredAddons.length > 0 ? (
+          ) : displayedAddons.length > 0 ? (
             <>
-              {filteredAddons.map((addon) => renderAddon(addon))}
+              {displayedAddons.map((addon) => renderAddon(addon))}
               {!searchTerm && hasMoreAddons && (
                 <div
                   onClick={() => document.querySelector('input')?.focus()}
