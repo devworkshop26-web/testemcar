@@ -515,7 +515,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             <LayoutList className="h-4 w-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
           </div>
           <datalist id="addons-suggestions">
-            {addons.map((addon) => (
+            {(addons ?? []).map((addon) => (
               <option key={addon.id} value={addon.label} />
             ))}
           </datalist>
