@@ -344,6 +344,42 @@ class UserListView(APIView):
         return Response(serializer.data)
 
 
+class DeleteNonAdminUsersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        current_user = request.user
+
+        if current_user.role != "ADMIN" and not current_user.is_superuser:
+            return Response(
+                {"detail": "Accès réservé aux administrateurs."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        password = request.data.get("password")
+        if not password:
+            return Response(
+                {"detail": "Le mot de passe administrateur est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not current_user.check_password(password):
+            return Response(
+                {"detail": "Mot de passe administrateur invalide."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        deleted_count, _ = User.objects.exclude(role="ADMIN").delete()
+
+        return Response(
+            {
+                "message": "Suppression en masse terminée.",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 # signup User endpoint for testing
 @api_view(["POST"])
 def signup(request):

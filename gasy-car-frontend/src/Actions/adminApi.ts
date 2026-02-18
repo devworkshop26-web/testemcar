@@ -17,4 +17,8 @@ export const adminAPI = {
   get_all_support: async () => {
     return await InstanceAxis.get("/users/users-support/");
   },
+
+  delete_non_admin_users: async (password: string) => {
+    return await InstanceAxis.post("/users/delete-non-admin/", { password });
+  },
 };
