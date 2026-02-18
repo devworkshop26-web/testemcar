@@ -80,7 +80,8 @@ const uploadProfilePhoto = useMutation({
   // DELETE — user complet
   // -------------------------------------------------------
   const deleteUser = useMutation({
-    mutationFn: (id: string) => usersAPI.deleteUser(id),
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      usersAPI.deleteUser(id, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },

@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 export function AdminClientsPage() {
   const { clientData } = adminUseQuery();
@@ -36,7 +37,9 @@ export function AdminClientsPage() {
   const { deleteUser } = usersUseQuery();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [adminPassword, setAdminPassword] = useState("");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const filteredData = clientData?.filter((user) =>
     user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,10 +52,22 @@ export function AdminClientsPage() {
   };
 
   const confirmDelete = () => {
+    const trimmedPassword = adminPassword.trim();
+
+    if (!trimmedPassword) {
+      toast({
+        title: "Mot de passe requis",
+        description: "Veuillez saisir votre mot de passe administrateur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (deletingUser) {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      deleteUser.mutate(deletingUser.id, {
+      deleteUser.mutate({ id: deletingUser.id, password: trimmedPassword }, {
         onSuccess: () => {
+          setAdminPassword("");
           setDeletingUser(null);
         },
       });
@@ -137,7 +152,15 @@ export function AdminClientsPage() {
         onClose={() => setEditingUser(null)}
       />
 
-      <AlertDialog open={!!deletingUser} onOpenChange={() => setDeletingUser(null)}>
+      <AlertDialog
+        open={!!deletingUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAdminPassword("");
+            setDeletingUser(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
@@ -149,8 +172,27 @@ export function AdminClientsPage() {
               .
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="admin-password-delete-client" className="text-sm font-medium">
+              Mot de passe administrateur
+            </label>
+            <Input
+              id="admin-password-delete-client"
+              type="password"
+              placeholder="Votre mot de passe"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel
+              onClick={() => {
+                setAdminPassword("");
+                setDeletingUser(null);
+              }}
+            >
+              Annuler
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmDelete}
