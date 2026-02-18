@@ -16,7 +16,7 @@ import { adminUseQuery } from "@/useQuery/adminUseQuery";
 import { usersUseQuery } from "@/useQuery/usersUseQuery";
 import { useEffect, useMemo, useState } from "react";
 import { User } from "@/types/userType";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { EditUserSheet } from "./EditUserSheet";
 import {
   AlertDialog,
@@ -49,11 +49,33 @@ export function AdminUsersPage() {
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
+  const [isAdminPasswordVisible, setIsAdminPasswordVisible] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
+
+  const getDeleteAllErrorMessage = (error: unknown) => {
+    if (typeof error === "object" && error !== null) {
+      const maybeError = error as {
+        response?: {
+          data?: {
+            detail?: string;
+            message?: string;
+          };
+        };
+      };
+
+      return (
+        maybeError.response?.data?.detail ||
+        maybeError.response?.data?.message ||
+        "Une erreur est survenue lors de la suppression des comptes."
+      );
+    }
+
+    return "Une erreur est survenue lors de la suppression des comptes.";
+  };
 
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -117,16 +139,17 @@ export function AdminUsersPage() {
 
     try {
       setIsBulkDeleting(true);
-      const { data } = await adminAPI.delete_non_admin_users(trimmedPassword);
+      const { data } = await adminAPI.delete_non_admin_users(adminPassword);
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setIsDeleteAllDialogOpen(false);
       setAdminPassword("");
+      setIsAdminPasswordVisible(false);
       toast({
         title: "Suppression terminée",
         description: `${data.deleted_count ?? 0} compte(s) non admin supprimé(s).`,
       });
-    } catch (error: any) {
-      const message = error?.response?.data?.detail || "Une erreur est survenue.";
+    } catch (error: unknown) {
+      const message = getDeleteAllErrorMessage(error);
       toast({
         title: "Échec de la suppression",
         description: message,
@@ -375,7 +398,17 @@ export function AdminUsersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
+      <AlertDialog
+        open={isDeleteAllDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteAllDialogOpen(open);
+
+          if (!open) {
+            setAdminPassword("");
+            setIsAdminPasswordVisible(false);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer tous les comptes non-admin ?</AlertDialogTitle>
@@ -389,19 +422,33 @@ export function AdminUsersPage() {
             <label htmlFor="admin-password" className="text-sm font-medium">
               Mot de passe administrateur
             </label>
-            <Input
-              id="admin-password"
-              type="password"
-              placeholder="Votre mot de passe"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="admin-password"
+                type={isAdminPasswordVisible ? "text" : "password"}
+                placeholder="Votre mot de passe"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setIsAdminPasswordVisible((current) => !current)}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={
+                  isAdminPasswordVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                }
+              >
+                {isAdminPasswordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
                 setAdminPassword("");
+                setIsAdminPasswordVisible(false);
                 setIsDeleteAllDialogOpen(false);
               }}
             >
