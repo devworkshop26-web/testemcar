@@ -2,7 +2,11 @@ import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check, X, Eye } from "lucide-react";
-import { useAllReservationOfMyvehiculeQuery, useCreateReservationMutation } from "@/useQuery/reservationsUseQuery";
+import {
+  useAllReservationOfMyvehiculeQuery,
+  useCreateReservationMutation,
+  useReservationPricingConfigQuery,
+} from "@/useQuery/reservationsUseQuery";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
@@ -21,11 +25,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useOwnerClientsQuery, useOwnerVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
+import { Reservation } from "@/types/reservationsType";
 
 const BookingsView = () => {
   const { user } = useCurentuser();
   const navigate = useNavigate();
   const { data: allReservations = [], isLoading: isLoadingReservations } = useAllReservationOfMyvehiculeQuery(user?.id);
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
   const { data: ownerClients = [] } = useOwnerClientsQuery(user?.id);
   const { data: ownerVehicles = [] } = useOwnerVehiculesQuery(user?.id);
   const createReservationMutation = useCreateReservationMutation();
@@ -62,6 +68,32 @@ const BookingsView = () => {
     const normalized = value.replace(/,/g, ".");
     const parsed = Number.parseFloat(normalized);
     return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const getReservationDisplayTotal = (reservation: Reservation) => {
+    const baseAmount = getNumberValue(reservation.base_amount);
+    const rawOptionsAmount = getNumberValue(reservation.options_amount);
+    const rawTotalAmount = getNumberValue(reservation.total_amount);
+    const totalDays = Math.max(1, getNumberValue(reservation.total_days) || 1);
+
+    const equipmentsAmount = (reservation.equipments_data ?? []).reduce(
+      (sum, equipment) => sum + getNumberValue(equipment?.price) * totalDays,
+      0
+    );
+    const servicesAmount = (reservation.services_data ?? []).reduce(
+      (sum, service) =>
+        sum + getNumberValue(service?.price) * Math.max(1, getNumberValue(service?.quantity) || 1),
+      0
+    );
+
+    const optionsAmount = Math.max(rawOptionsAmount, equipmentsAmount + servicesAmount);
+    const configuredServiceFee = Math.max(0, getNumberValue(pricingConfig?.service_fee) || 0);
+
+    return Math.max(
+      rawTotalAmount,
+      baseAmount + optionsAmount + configuredServiceFee,
+      baseAmount + optionsAmount
+    );
   };
 
   const calculateTotalDays = (start: string, end: string) => {
@@ -200,8 +232,8 @@ const BookingsView = () => {
       toast.success("Réservation créée avec succès.");
       setDialogOpen(false);
       resetForm();
-    } catch (err: any) {
-      const message = err?.message ?? "Impossible de créer la réservation.";
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Impossible de créer la réservation.";
       setError(message);
       toast.error(message);
     }
@@ -494,7 +526,7 @@ const BookingsView = () => {
                   </tr>
                 ))
               ) : allReservations.length > 0 ? (
-                allReservations?.map((reservation: any, index: number) => {
+                allReservations?.map((reservation: Reservation) => {
                   const guestFirstName = reservation.guest_first_name;
                   const guestLastName = reservation.guest_last_name;
                   const guestEmail = reservation.guest_email;
@@ -551,7 +583,7 @@ const BookingsView = () => {
                       <td className="px-6 py-4 text-gray-500">
                         {new Date(reservation.start_datetime).toLocaleDateString()} - {new Date(reservation.end_datetime).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 font-medium">{parseInt(reservation.total_amount).toLocaleString()} Ar</td>
+                      <td className="px-6 py-4 font-medium">{Math.round(getReservationDisplayTotal(reservation)).toLocaleString()} Ar</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(reservation.status)}`}>
                           {getStatusLabel(reservation.status)}
