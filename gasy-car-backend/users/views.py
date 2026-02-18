@@ -501,6 +501,28 @@ class UserProfileView(APIView):
     def delete(self, request, user_id=None):
         user = self.get_user(request, user_id)
 
+        if user_id is not None:
+            current_user = request.user
+
+            if current_user.role != "ADMIN" and not current_user.is_superuser:
+                return Response(
+                    {"detail": "Accès réservé aux administrateurs."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            password = request.data.get("password")
+            if not password:
+                return Response(
+                    {"detail": "Le mot de passe administrateur est requis."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not current_user.check_password(password):
+                return Response(
+                    {"detail": "Mot de passe administrateur invalide."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
         user.delete()
         return Response(
             {"message": "User deleted successfully"},

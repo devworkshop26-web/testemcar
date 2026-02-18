@@ -47,6 +47,7 @@ export function AdminUsersPage() {
   const { deleteUser } = usersUseQuery();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [singleDeletePassword, setSingleDeletePassword] = useState("");
   const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [isAdminPasswordVisible, setIsAdminPasswordVisible] = useState(false);
@@ -111,14 +112,36 @@ export function AdminUsersPage() {
   };
 
   const confirmDelete = () => {
+    const trimmedPassword = singleDeletePassword.trim();
+
+    if (!trimmedPassword) {
+      toast({
+        title: "Mot de passe requis",
+        description: "Veuillez saisir votre mot de passe administrateur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (deletingUser) {
-      deleteUser.mutate(deletingUser.id, {
+      deleteUser.mutate(
+        { id: deletingUser.id, password: trimmedPassword },
+        {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["users"] });
+          setSingleDeletePassword("");
           setDeletingUser(null);
           toast({
             title: "Compte supprimé",
             description: "L'utilisateur a été supprimé avec succès.",
+          });
+        },
+        onError: (error: unknown) => {
+          const message = getDeleteAllErrorMessage(error);
+          toast({
+            title: "Échec de la suppression",
+            description: message,
+            variant: "destructive",
           });
         },
       });
@@ -374,7 +397,15 @@ export function AdminUsersPage() {
 
       <EditUserSheet user={editingUser} isOpen={!!editingUser} onClose={() => setEditingUser(null)} />
 
-      <AlertDialog open={!!deletingUser} onOpenChange={() => setDeletingUser(null)}>
+      <AlertDialog
+        open={!!deletingUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSingleDeletePassword("");
+            setDeletingUser(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
@@ -386,8 +417,27 @@ export function AdminUsersPage() {
               .
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="single-delete-admin-password" className="text-sm font-medium">
+              Mot de passe administrateur
+            </label>
+            <Input
+              id="single-delete-admin-password"
+              type="password"
+              placeholder="Votre mot de passe"
+              value={singleDeletePassword}
+              onChange={(e) => setSingleDeletePassword(e.target.value)}
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel
+              onClick={() => {
+                setSingleDeletePassword("");
+                setDeletingUser(null);
+              }}
+            >
+              Annuler
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmDelete}
