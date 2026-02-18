@@ -33,6 +33,7 @@ urlpatterns = [
     path("reset-password/<str:uidb64>/<str:token>", views.reset_password, name="reset_password"),
     # users routs
     path("users-all/", views.UserListView.as_view(), name="user_list"),
+    path("users/delete-non-admin/", views.DeleteNonAdminUsersView.as_view(), name="delete_non_admin_users"),
     path(
         "users-prestataire/", views.get_prestataire_users, name="get_prestataire_users"
     ),
