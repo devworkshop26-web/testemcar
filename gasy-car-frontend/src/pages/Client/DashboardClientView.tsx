@@ -8,13 +8,48 @@ import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useReservationPricingConfigQuery } from "@/useQuery/reservationsUseQuery";
+import { Reservation } from "@/types/reservationsType";
 
 const DashboardOverClientView = () => {
   const { user } = useCurentuser();
   const { data: reservations = [] } = useReservationClientQuery(user?.id);
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
   const navigate = useNavigate();
 
+  const getNumberValue = (value?: string | number | null) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
+    const normalized = value.replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
 
+  const getReservationDisplayTotal = (reservation: Reservation) => {
+    const baseAmount = getNumberValue(reservation.base_amount);
+    const rawOptionsAmount = getNumberValue(reservation.options_amount);
+    const rawTotalAmount = getNumberValue(reservation.total_amount);
+    const totalDays = Math.max(1, getNumberValue(reservation.total_days) || 1);
+
+    const equipmentsAmount = (reservation.equipments_data ?? []).reduce(
+      (sum, equipment) => sum + getNumberValue(equipment?.price) * totalDays,
+      0
+    );
+    const servicesAmount = (reservation.services_data ?? []).reduce(
+      (sum, service) =>
+        sum + getNumberValue(service?.price) * Math.max(1, getNumberValue(service?.quantity) || 1),
+      0
+    );
+
+    const optionsAmount = Math.max(rawOptionsAmount, equipmentsAmount + servicesAmount);
+    const configuredServiceFee = Math.max(0, getNumberValue(pricingConfig?.service_fee) || 0);
+
+    return Math.max(
+      rawTotalAmount,
+      baseAmount + optionsAmount + configuredServiceFee,
+      baseAmount + optionsAmount
+    );
+  };
 
   const activeReservations = reservations.filter(r =>
     ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(r.status)
@@ -106,7 +141,7 @@ const DashboardOverClientView = () => {
                           <div className="text-right">
                             <p className="text-xs text-gray-400">Montant total</p>
                             <p className="font-bold text-blue-600 text-lg">
-                              {parseInt(res.total_amount).toLocaleString()} Ar
+                              {Math.round(getReservationDisplayTotal(res)).toLocaleString()} Ar
                             </p>
                           </div>
                         </div>
