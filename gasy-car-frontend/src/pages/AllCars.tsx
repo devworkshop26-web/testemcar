@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import { useVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
-import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 
 // --- TYPES ET CONSTANTES ---
@@ -127,7 +126,6 @@ const AllCars = () => {
   const { data: allcarsdata = [], isLoading, isError, error, refetch } =
     useVehiculesQuery(typeFilter);
 
-  const { user } = useCurentuser();
   const navigate = useNavigate();
 
   const queryErrorMessage =
@@ -274,7 +272,6 @@ const AllCars = () => {
 
   // CLICK RESERVER
   const handleReserve = (carId: string) => {
-    if (!user) return navigate("/login");
     navigate(`/reservation/${carId}`);
   };
 

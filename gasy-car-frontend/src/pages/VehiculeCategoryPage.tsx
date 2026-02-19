@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import VehicleCard from "@/components/VehicleCard";
 import { Search, Loader2, ArrowLeft, XCircle } from "lucide-react";
 import { useCategoryVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
-import { useCurentuser } from "@/useQuery/authUseQuery";
 
 type VehicleCardData = {
     id: string;
@@ -21,7 +20,6 @@ const isRecentListing = (date?: string | null) => {
 export default function VehiculeCategory() {
     const { id } = useParams<{ id: string }>();
     const { data: categoryVehicles = [], isLoading, isError, error } = useCategoryVehiculesQuery(id);
-    const { user } = useCurentuser();
     const navigate = useNavigate();
     const queryErrorMessage = error instanceof Error ? error.message : "Une erreur est survenue.";
 
@@ -66,11 +64,7 @@ export default function VehiculeCategory() {
     const categoryName = vehicles[0]?.brand ? categoryVehicles[0]?.categorie_data?.nom : "Catégorie";
 
     const handleReserve = (carId: string) => {
-        if (!user) {
-            navigate("/auth/login");
-        } else {
-            navigate(`/reservation/${carId}`);
-        }
+        navigate(`/reservation/${carId}`);
     };
 
     const filteredVehicles = useMemo(() => {
