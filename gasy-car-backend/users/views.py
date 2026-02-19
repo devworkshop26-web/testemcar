@@ -45,6 +45,7 @@ from .serializers import (
     UserLoginSerializer,
     UserProfileSerializer,
     UserUpdateSerializer,
+    AdminUserUpdateSerializer,
     OTPRequestSerializer,
     OTPVerifySerializer,
     PasswordResetSerializer,
@@ -482,8 +483,16 @@ class UserProfileView(APIView):
     def put(self, request, user_id=None):
         user = self.get_user(request, user_id)
 
-        # Sécurité : un utilisateur ne peut modifier QUE son propre profil,
-        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        current_user = request.user
+        is_admin_edit = (
+            user_id is not None
+            and (current_user.role == "ADMIN" or current_user.is_superuser)
+            and str(current_user.id) != str(user.id)
+        )
+
+        serializer_class = AdminUserUpdateSerializer if is_admin_edit else UserUpdateSerializer
+        serializer = serializer_class(user, data=request.data, partial=True)
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
