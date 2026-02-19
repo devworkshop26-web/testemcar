@@ -90,6 +90,18 @@ export const useDeleteReservationMutation = () => {
   });
 };
 
+
+export const useDeleteAllReservationsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (password: string) =>
+      reservationAPI.delete_all_reservations(password).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+    },
+  });
+};
+
 // 🔹 Reservation Services
 
 export const useReservationServicesQuery = (reservationId?: string) => {

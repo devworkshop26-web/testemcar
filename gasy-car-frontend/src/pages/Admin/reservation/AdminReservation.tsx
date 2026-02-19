@@ -2,8 +2,12 @@ import { Button } from "@/components/ui/button";
 import { CreateReservationDialog } from "@/components/admin/CreateReservationDialog";
 import { ResourceListPage } from "@/components/admin/ResourceListPage";
 import { Reservation } from "@/types/reservationsType";
-import { useDeleteReservationMutation, useReservationsQuery } from "@/useQuery/reservationsUseQuery";
-import { useState, useMemo } from "react";
+import {
+  useDeleteAllReservationsMutation,
+  useDeleteReservationMutation,
+  useReservationsQuery,
+} from "@/useQuery/reservationsUseQuery";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -18,17 +22,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function AdminReservationsPage() {
   const { data: reservations = [] } = useReservationsQuery();
   const deleteMutation = useDeleteReservationMutation();
+  const deleteAllMutation = useDeleteAllReservationsMutation();
   const [localData, setLocalData] = useState<Reservation[] | null>(null);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   const [deletingReservation, setDeletingReservation] = useState<Reservation | null>(null);
+  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isAdminPasswordVisible, setIsAdminPasswordVisible] = useState(false);
+  const { toast } = useToast();
 
   const rows = localData ?? reservations;
 
-  // Reduced unnecessary maps since we have populated data
+  const getDeleteAllErrorMessage = (error: unknown) => {
+    if (typeof error === "object" && error !== null) {
+      const maybeError = error as {
+        response?: {
+          data?: {
+            detail?: string;
+            message?: string;
+          };
+        };
+      };
+
+      return (
+        maybeError.response?.data?.detail ||
+        maybeError.response?.data?.message ||
+        "Une erreur est survenue lors de la suppression des réservations."
+      );
+    }
+
+    return "Une erreur est survenue lors de la suppression des réservations.";
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; className: string }> = {
@@ -60,9 +91,49 @@ export default function AdminReservationsPage() {
     }
   };
 
+  const confirmDeleteAll = () => {
+    const trimmedPassword = adminPassword.trim();
+
+    if (!trimmedPassword) {
+      toast({
+        title: "Mot de passe requis",
+        description: "Veuillez saisir votre mot de passe administrateur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    deleteAllMutation.mutate(trimmedPassword, {
+      onSuccess: (data) => {
+        setLocalData([]);
+        setIsDeleteAllDialogOpen(false);
+        setAdminPassword("");
+        setIsAdminPasswordVisible(false);
+        toast({
+          title: "Suppression terminée",
+          description: `${data.deleted_count ?? 0} réservation(s) supprimée(s).`,
+        });
+      },
+      onError: (error: unknown) => {
+        toast({
+          title: "Échec de la suppression",
+          description: getDeleteAllErrorMessage(error),
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <Button
+          variant="destructive"
+          onClick={() => setIsDeleteAllDialogOpen(true)}
+          disabled={rows.length === 0}
+        >
+          Supprimer toutes les réservations
+        </Button>
         <CreateReservationDialog
           onCreated={(r) =>
             setLocalData((prev) => (prev ? [r, ...prev] : [r, ...reservations]))
@@ -180,10 +251,7 @@ export default function AdminReservationsPage() {
                 size="sm"
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  // navigate to detail view
                   window.location.href = `/admin/reservations/${row.id}`;
-                  // Note: window.location.href is a quick hack, better to use useNavigate from react-router-dom if accessible or pass it down.
-                  // Check if I can use useNavigate here. Yes I can.
                 }}
               >
                 Voir
@@ -201,7 +269,7 @@ export default function AdminReservationsPage() {
         onOpenChange={(open) => !open && setEditingReservation(null)}
         reservation={editingReservation}
         onUpdated={() => {
-          setLocalData(null); // Force refresh from query
+          setLocalData(null);
         }}
       />
 
@@ -220,6 +288,75 @@ export default function AdminReservationsPage() {
               onClick={confirmDelete}
             >
               Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isDeleteAllDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteAllDialogOpen(open);
+          if (!open) {
+            setAdminPassword("");
+            setIsAdminPasswordVisible(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer toutes les réservations ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Toutes les réservations et les photos de preuve de paiement liées seront supprimées.
+              Entrez votre mot de passe administrateur pour confirmer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2">
+            <label htmlFor="admin-password-delete-all-reservations" className="text-sm font-medium">
+              Mot de passe administrateur
+            </label>
+            <div className="relative">
+              <Input
+                id="admin-password-delete-all-reservations"
+                type={isAdminPasswordVisible ? "text" : "password"}
+                placeholder="Votre mot de passe"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setIsAdminPasswordVisible((current) => !current)}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={
+                  isAdminPasswordVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"
+                }
+              >
+                {isAdminPasswordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setAdminPassword("");
+                setIsAdminPasswordVisible(false);
+                setIsDeleteAllDialogOpen(false);
+              }}
+            >
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDeleteAll();
+              }}
+              disabled={deleteAllMutation.isPending}
+            >
+              {deleteAllMutation.isPending ? "Suppression..." : "Confirmer la suppression"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

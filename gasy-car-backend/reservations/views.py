@@ -234,6 +234,55 @@ class ReservationViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=False, methods=["post"], url_path="delete-all")
+    def delete_all(self, request):
+        current_user = request.user
+
+        if not getattr(current_user, "is_authenticated", False):
+            return Response(
+                {"detail": "Authentification requise."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if getattr(current_user, "role", None) != "ADMIN" and not current_user.is_superuser:
+            return Response(
+                {"detail": "Accès réservé aux administrateurs."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        password = request.data.get("password")
+        if not password:
+            return Response(
+                {"detail": "Le mot de passe administrateur est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not current_user.check_password(password):
+            return Response(
+                {"detail": "Mot de passe administrateur invalide."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        reservations_qs = Reservation.objects.all()
+        reservation_count = reservations_qs.count()
+
+        if reservation_count == 0:
+            return Response(
+                {"message": "Aucune réservation à supprimer.", "deleted_count": 0},
+                status=status.HTTP_200_OK,
+            )
+
+        with transaction.atomic():
+            reservations_qs.delete()
+
+        return Response(
+            {
+                "message": "Toutes les réservations et preuves de paiement liées ont été supprimées.",
+                "deleted_count": reservation_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def assign_driver(self, request, pk=None):
         """
