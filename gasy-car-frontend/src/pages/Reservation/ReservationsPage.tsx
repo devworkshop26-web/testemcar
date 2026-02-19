@@ -9,7 +9,7 @@ import VehicleGallery from './components/VehicleGallery';
 import VehicleHeader from './components/VehicleHeader';
 import { ArrowLeft, CalendarIcon, Clock, Info, MessageSquare, AlertCircle, Lock, Wrench } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { addDays, startOfToday, format } from "date-fns";
+import { addDays, startOfToday, format, isBefore } from "date-fns";
 import { fr } from "date-fns/locale";
 
 import ReviewsSection from './components/ReviewsSection';
@@ -67,6 +67,7 @@ const ReservationsPage: React.FC = () => {
     from: tomorrow,
     to: dayAfter
   });
+  const [dateSelectionStep, setDateSelectionStep] = useState<'start' | 'end'>('start');
 
   // permissions liées à la réservation (sans redirection forcée)
   useEffect(() => {
@@ -83,11 +84,27 @@ const ReservationsPage: React.FC = () => {
   useEffect(() => {
     if (dateRange.from) {
       setPickupDate(format(dateRange.from, 'yyyy-MM-dd'));
-    }
-    if (dateRange.to) {
-      setReturnDate(format(dateRange.to, 'yyyy-MM-dd'));
+      setReturnDate(format(dateRange.to ?? dateRange.from, 'yyyy-MM-dd'));
     }
   }, [dateRange]);
+
+  const handleDateClick = (day: Date, modifiers: { disabled?: boolean }) => {
+    if (modifiers.disabled) return;
+
+    if (dateSelectionStep === 'start' || !dateRange.from || dateRange.to) {
+      setDateRange({ from: day, to: undefined });
+      setDateSelectionStep('end');
+      return;
+    }
+
+    if (isBefore(day, dateRange.from)) {
+      setDateRange({ from: day, to: dateRange.from });
+    } else {
+      setDateRange({ from: dateRange.from, to: day });
+    }
+
+    setDateSelectionStep('start');
+  };
 
   const toggleAddon = (addonId: string) => {
     setSelectedAddons((prev) => (prev.includes(addonId) ? prev.filter((id) => id !== addonId) : [...prev, addonId]));
@@ -350,6 +367,11 @@ const ReservationsPage: React.FC = () => {
       return;
     }
 
+    if (!dateRange.from || !dateRange.to) {
+      toast.error("Veuillez sélectionner une date de début et une date de fin.");
+      return;
+    }
+
     // Calcul des dates
     const startDateTime = new Date(`${pickupDate}T${pickupTime}`);
     const endDateTime = new Date(`${returnDate}T${returnTime}`);
@@ -573,7 +595,7 @@ const ReservationsPage: React.FC = () => {
                     <Calendar
                       mode="range"
                       selected={dateRange}
-                      onSelect={(range) => setDateRange(range ? { from: range.from, to: range.to } : { from: undefined, to: undefined })}
+                      onDayClick={handleDateClick}
                       disabled={isDateUnavailable}
                       modifiers={calendarModifiers}
                       modifiersClassNames={{
