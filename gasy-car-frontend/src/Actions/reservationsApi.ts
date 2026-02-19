@@ -46,6 +46,14 @@ export const reservationAPI = {
     return await InstanceAxis.delete<void>(`/bookings/reservations/${id}/`);
   },
 
+
+  delete_all_reservations: async (password: string) => {
+    return await InstanceAxis.post<{ message: string; deleted_count: number }>(
+      "/bookings/reservations/delete-all/",
+      { password }
+    );
+  },
+
   get_reservation_pricing_config: async () => {
     return await InstanceAxis.get<ReservationPricingConfig>("/bookings/pricing-config/");
   },
