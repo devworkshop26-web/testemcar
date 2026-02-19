@@ -68,22 +68,15 @@ const ReservationsPage: React.FC = () => {
     to: dayAfter
   });
 
-  // verification authentication
-
+  // permissions liées à la réservation (sans redirection forcée)
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    if (currentUser && currentUser.role !== "CLIENT") {
+    if (isAuthenticated && currentUser && currentUser.role !== "CLIENT") {
       setDesableReservation(true);
       return;
     }
 
     setDesableReservation(false);
-  }, [isAuthenticated, currentUser, navigate]);
-
+  }, [isAuthenticated, currentUser]);
 
 
   // Sync DateSelector change to string format
@@ -347,8 +340,8 @@ const ReservationsPage: React.FC = () => {
 
   // Handlers for reservation creation
   const handleReservationSubmit = () => {
-    if (!currentUser) {
-      toast.error("Veuillez vous connecter pour effectuer une réservation.");
+    if (!currentUser || !isAuthenticated) {
+      navigate("/login");
       return;
     }
 
