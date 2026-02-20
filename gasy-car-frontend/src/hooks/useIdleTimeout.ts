@@ -3,10 +3,19 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { accessTokenKey, refreshTokenKey } from '@/helper/InstanceAxios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://madagasycar.com/api';
+
 export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
   const { logout, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTokens = useCallback(() => {
+    localStorage.removeItem(accessTokenKey);
+    localStorage.removeItem(refreshTokenKey);
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+  }, []);
 
   const clearIdleTimer = useCallback(() => {
     if (timeoutRef.current) {
@@ -21,13 +30,10 @@ export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
     } catch {
       // La déconnexion côté API peut échouer si le token est déjà expiré.
     } finally {
-      localStorage.removeItem(accessTokenKey);
-      localStorage.removeItem(refreshTokenKey);
-      localStorage.removeItem('access');
-      localStorage.removeItem('refresh');
+      clearTokens();
       navigate('/login', { replace: true });
     }
-  }, [logout, navigate]);
+  }, [clearTokens, logout, navigate]);
 
   const startIdleTimer = useCallback(() => {
     clearIdleTimer();
@@ -35,6 +41,24 @@ export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
       void performLogout();
     }, timeoutMs);
   }, [clearIdleTimer, performLogout, timeoutMs]);
+
+  const logoutOnTabClose = useCallback(() => {
+    const token = localStorage.getItem(accessTokenKey) || localStorage.getItem('access');
+
+    if (token) {
+      void fetch(`${API_BASE_URL}/users/logout/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'include',
+        keepalive: true,
+      });
+    }
+
+    clearTokens();
+  }, [clearTokens]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -59,13 +83,20 @@ export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
       window.addEventListener(eventName, onUserActivity, { passive: true });
     });
 
+    const onPageHide = () => {
+      logoutOnTabClose();
+    };
+
+    window.addEventListener('pagehide', onPageHide);
+
     startIdleTimer();
 
     return () => {
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, onUserActivity);
       });
+      window.removeEventListener('pagehide', onPageHide);
       clearIdleTimer();
     };
-  }, [clearIdleTimer, isAuthenticated, startIdleTimer]);
+  }, [clearIdleTimer, isAuthenticated, logoutOnTabClose, startIdleTimer]);
 };
