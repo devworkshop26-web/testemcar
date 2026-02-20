@@ -9,6 +9,8 @@ import type {
   ReservationGraphiqueDay,
   ReservationGraphiqueWeek,
   ReservationGraphiqueMonth,
+  ReservationPricingConfig,
+  UpdateReservationPricingConfigPayload,
 } from "@/types/reservationsType";
 import { Reservation } from "@/types/reservationsType";
 
@@ -42,6 +44,22 @@ export const reservationAPI = {
   // DELETE /bookings/reservations/:id/
   delete_reservation: async (id: string) => {
     return await InstanceAxis.delete<void>(`/bookings/reservations/${id}/`);
+  },
+
+
+  delete_all_reservations: async (password: string) => {
+    return await InstanceAxis.post<{ message: string; deleted_count: number }>(
+      "/bookings/reservations/delete-all/",
+      { password }
+    );
+  },
+
+  get_reservation_pricing_config: async () => {
+    return await InstanceAxis.get<ReservationPricingConfig>("/bookings/pricing-config/");
+  },
+
+  update_reservation_pricing_config: async (payload: UpdateReservationPricingConfigPayload) => {
+    return await InstanceAxis.patch<ReservationPricingConfig>("/bookings/pricing-config/", payload);
   },
 
   // all resevation of vehicule

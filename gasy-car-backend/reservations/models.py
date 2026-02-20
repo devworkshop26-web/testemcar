@@ -144,6 +144,28 @@ class Reservation(models.Model):
         return f"Reservation {self.reference} - {self.client.email}"
 
 
+class ReservationPricingConfig(models.Model):
+    """Configuration globale de tarification appliquée au tunnel de réservation."""
+
+    service_fee = models.DecimalField(max_digits=10, decimal_places=2, default=5000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuration tarification réservation"
+        verbose_name_plural = "Configuration tarification réservation"
+
+    def __str__(self):
+        return f"Frais de service: {self.service_fee} Ar"
+
+    @classmethod
+    def get_solo(cls):
+        config = cls.objects.order_by("created_at").first()
+        if config:
+            return config
+        return cls.objects.create(service_fee=5000)
+
+
 class ReservationServiceQuerySet(models.QuerySet):
     def with_relations(self):
         return self.select_related(

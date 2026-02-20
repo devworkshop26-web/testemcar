@@ -31,6 +31,7 @@ export function AdminSidebar() {
   const location = useLocation();
 
   const { data: currentUser } = useCurrentUserQuery(); // to refresh user data on sidebar load
+  const currentYear = new Date().getFullYear();
 
 
   const renderSection = (label: string, items: AdminSidebarItem[]) => (
@@ -100,7 +101,7 @@ export function AdminSidebar() {
             <span className="font-medium text-foreground">
             {currentUser?.first_name + " "+currentUser?.last_name || 'Admin'}
             </span>
-            <span>Gasy&apos;Car © 2025</span>
+            <span>Gasy&apos;Car © {currentYear}</span>
           </div>
 
           {/* futur avatar admin */}

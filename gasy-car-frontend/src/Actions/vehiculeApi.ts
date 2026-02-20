@@ -7,14 +7,55 @@ import type {
 } from "@/types/vehiculeType";
 import { Vehicule } from "@/types/vehiculeType";
 
+export type VehicleView = "left" | "right" | "front" | "rear" | "top" | "bottom" | "interior-front" | "interior-rear";
+
+export type VehicleConditionPoint = {
+  id: string;
+  view: VehicleView;
+  x: number;
+  y: number;
+  level: "léger" | "moyen" | "important";
+  description: string;
+};
+
+export type VehicleConditionReport = {
+  id: string;
+  vehicle: string;
+  created_by: string | null;
+  view_notes: Partial<Record<VehicleView, string>>;
+  saved_view_timestamps: Partial<Record<VehicleView, string>>;
+  points: VehicleConditionPoint[];
+  custom_photos_by_view: Partial<Record<VehicleView, string>>;
+  created_at: string;
+  updated_at: string;
+};
+
 export const vehiculeAPI = {
   // GET /vehicule/vehicule/
-  get_all_vehicules: async (type_vehicule?: string) => {
-    let url = "/vehicule/vehicule/";
-    if (type_vehicule) {
-      url += `?type_vehicule=${type_vehicule}`;
+  get_all_vehicules: async (
+    filters?:
+      | string
+      | {
+          type_vehicule?: string;
+          est_sponsorise?: boolean;
+          est_disponible?: boolean;
+          est_coup_de_coeur?: boolean;
+        }
+  ) => {
+    const params = new URLSearchParams();
+
+    if (typeof filters === "string" && filters) {
+      params.set("type_vehicule", filters);
+    } else if (filters) {
+      if (filters.type_vehicule) params.set("type_vehicule", filters.type_vehicule);
+      if (typeof filters.est_sponsorise === "boolean") params.set("est_sponsorise", String(filters.est_sponsorise));
+      if (typeof filters.est_disponible === "boolean") params.set("est_disponible", String(filters.est_disponible));
+      if (typeof filters.est_coup_de_coeur === "boolean") params.set("est_coup_de_coeur", String(filters.est_coup_de_coeur));
     }
-    return await InstanceAxis.get<Vehicule[]>(url);
+
+    const query = params.toString();
+    const url = query ? `/vehicule/vehicule/?${query}` : "/vehicule/vehicule/";
+    return await InstanceAxis.get<Vehicule[]>(url, { _skipAuth: true, _skipRefresh: true });
   },
 
   // GET /vehicule/vehicule/:id/
@@ -90,6 +131,17 @@ export const vehiculeAPI = {
   remove_driver: async (vehiculeId: string) => {
     return await InstanceAxis.post(`/vehicule/vehicule/${vehiculeId}/remove_driver/`);
   },
+
+  get_vehicle_condition_report: async (vehiculeId: string) => {
+    return await InstanceAxis.get<VehicleConditionReport>(`/vehicule/vehicule/${vehiculeId}/condition-report/`);
+  },
+
+  patch_vehicle_condition_report: async (
+    vehiculeId: string,
+    payload: Pick<VehicleConditionReport, "view_notes" | "saved_view_timestamps" | "points" | "custom_photos_by_view">
+  ) => {
+    return await InstanceAxis.patch<VehicleConditionReport>(`/vehicule/vehicule/${vehiculeId}/condition-report/`, payload);
+  },
 };
 
 export const searchVehicles = async (filters: VehicleSearchFilters) => {
@@ -102,27 +154,38 @@ export const searchVehicles = async (filters: VehicleSearchFilters) => {
   });
 
   const { data } = await InstanceAxis.get(
-    `/vehicule/vehicule-search/search/?${params.toString()}`
+    `/vehicule/vehicule-search/search/?${params.toString()}`,
+    { _skipAuth: true, _skipRefresh: true }
   );
   return data;
 };
 
 export const vehiculeSearchAPI = {
+  sponsored: async () => {
+    const res = await InstanceAxis.get("/vehicule/vehicule-search/sponsored/", {
+      _skipAuth: true,
+      _skipRefresh: true,
+    });
+    return res.data;
+  },
+
   popular: async () => {
-    const res = await InstanceAxis.get("/vehicule/vehicule-search/popular/");
+    const res = await InstanceAxis.get("/vehicule/vehicule-search/popular/", { _skipAuth: true, _skipRefresh: true });
     return res.data;
   },
 
   coupDeCoeur: async () => {
     const res = await InstanceAxis.get(
-      "/vehicule/vehicule-search/coup-de-coeur/"
+      "/vehicule/vehicule-search/coup-de-coeur/",
+      { _skipAuth: true, _skipRefresh: true }
     );
     return res.data;
   },
 
   mostBooked: async () => {
     const res = await InstanceAxis.get(
-      "/vehicule/vehicule-search/most-booked/"
+      "/vehicule/vehicule-search/most-booked/",
+      { _skipAuth: true, _skipRefresh: true }
     );
     return res.data;
   },

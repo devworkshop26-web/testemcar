@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleCardSkeleton from "@/components/VehicleCardSkeleton";
 import { AnimatedSection, AnimatedItem } from "@/components/animations";
-import { usePopularVehicles } from "@/useQuery/vehiculeStatsUseQuery";
+import { usePopularVehicles, useSponsoredVehicles } from "@/useQuery/vehiculeStatsUseQuery";
 import {
   Carousel,
   CarouselContent,
@@ -18,14 +18,19 @@ import { Star } from "lucide-react";
 import { useReservationAction } from "@/hooks/useReservationAction";
 
 export const PopularVehicles = () => {
-  const { data: vehicles = [], isLoading } = usePopularVehicles();
-  const plugin = useRef(Autoplay({ delay: 3500, stopOnInteraction: true }));
+  const { data: sponsoredVehicles = [], isLoading, isError } = useSponsoredVehicles();
+  const shouldLoadPopularFallback = !isLoading && (isError || sponsoredVehicles.length === 0);
+  const { data: popularVehicles = [] } = usePopularVehicles({ enabled: shouldLoadPopularFallback });
+  const vehicles = shouldLoadPopularFallback && popularVehicles.length > 0
+    ? popularVehicles
+    : sponsoredVehicles;
+  const plugin = useRef(Autoplay({ delay: 3000, stopOnMouseEnter: true, stopOnInteraction: false }));
   const { handleReserve } = useReservationAction();
 
 
 
   const skeletonCount = 6;
-  if (!isLoading && vehicles.length === 0) return null;
+  const hasVehicles = vehicles.length > 0;
 
 
   return (
@@ -51,9 +56,7 @@ export const PopularVehicles = () => {
         <Carousel
           plugins={[plugin.current]}
           className="w-full"
-          onMouseEnter={plugin.current.stop}
-          onMouseLeave={plugin.current.reset}
-          opts={{ align: "start", loop: true }}
+          opts={{ align: "start", loop: true, slidesToScroll: 1 }}
         >
           <CarouselContent className="-ml-2 md:-ml-4">
 
@@ -64,7 +67,7 @@ export const PopularVehicles = () => {
               Array.from({ length: skeletonCount }).map((_, index) => (
                 <CarouselItem
                   key={index}
-                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
                 >
                   <VehicleCardSkeleton />
                 </CarouselItem>
@@ -84,9 +87,13 @@ export const PopularVehicles = () => {
                   "Modèle non spécifié";
                 const transmission =
                   vehicle.transmission?.label ??
+                  vehicle.transmission?.nom ??
+                  vehicle.transmission_nom ??
                   "Transmission inconnue";
                 const fuel =
                   vehicle.type_carburant?.label ??
+                  vehicle.type_carburant?.nom ??
+                  vehicle.type_carburant_nom ??
                   "Carburant inconnu";
                 const price = Number(vehicle.prix_jour) || 0;
                 const rating = vehicle.note_moyenne ? Number(vehicle.note_moyenne) : 0;
@@ -95,7 +102,7 @@ export const PopularVehicles = () => {
                 return (
                   <CarouselItem
                     key={vehicle.id}
-                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
                   >
                     <AnimatedItem delay={index * 80}>
                       <Link to={`/vehicule/${vehicle.id}`}>
@@ -119,11 +126,19 @@ export const PopularVehicles = () => {
                   </CarouselItem>
                 );
               })}
+
+            {!isLoading && !hasVehicles && (
+              <CarouselItem className="pl-2 md:pl-4 basis-full">
+                <div className="rounded-xl border bg-card px-6 py-10 text-center text-muted-foreground">
+                  Aucun véhicule disponible actuellement.
+                </div>
+              </CarouselItem>
+            )}
           </CarouselContent>
 
           {/* Flèches */}
-          <CarouselPrevious className="absolute left-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />
-          <CarouselNext className="absolute right-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />
+          <CarouselPrevious className="absolute left-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" disabled={false} />
+          <CarouselNext className="absolute right-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" disabled={false} />
         </Carousel>
       </div>
     </AnimatedSection>

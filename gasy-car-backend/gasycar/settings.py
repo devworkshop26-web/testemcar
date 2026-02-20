@@ -56,7 +56,7 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=15),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
@@ -183,12 +183,13 @@ AUTH_USER_MODEL = "users.User"
 
 # Email configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = "workshop@widea.center"
-EMAIL_HOST_PASSWORD = "jifa ogik bulp jtry"
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
+EMAIL_HOST = "smtp.hostinger.com"
+EMAIL_PORT = 465
+EMAIL_HOST_USER = "contact@madagasycar.com"
+EMAIL_HOST_PASSWORD = "Cocolap1n?"
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+DEFAULT_FROM_EMAIL = "contact@madagasycar.com"
 
 # EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
 # EMAIL_HOST="smtp-relay.brevo.com"

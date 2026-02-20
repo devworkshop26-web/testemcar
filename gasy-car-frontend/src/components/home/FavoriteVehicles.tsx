@@ -20,16 +20,13 @@ import { useReservationAction } from "@/hooks/useReservationAction";
  * Affiche les véhicules les plus favoris avec vraies données API
  */
 export const FavoriteVehicles = () => {
-  const { data: vehicles = [], isLoading } = useCoupDeCoeurVehicles();
+  const { data: vehicles = [], isLoading, isError } = useCoupDeCoeurVehicles();
   const plugin = useRef(
-    Autoplay({ delay: 3500, stopOnInteraction: true })
+    Autoplay({ delay: 3000, stopOnMouseEnter: true, stopOnInteraction: false })
   );
   const { handleReserve } = useReservationAction();
 
-  // Ne rien afficher s'il n'y a pas de données et pas de chargement
-  if (!isLoading && vehicles.length === 0) {
-    return null;
-  }
+  const hasVehicles = vehicles.length > 0;
 
   return (
     <AnimatedSection className="pb-16 pt-10" delay={0}>
@@ -56,16 +53,35 @@ export const FavoriteVehicles = () => {
         <Carousel
           plugins={[plugin.current]}
           className="w-full"
-          onMouseEnter={plugin.current.stop}
-          onMouseLeave={plugin.current.reset}
           opts={{
             align: "start",
             loop: true,
+            slidesToScroll: 1,
           }}
         >
           <CarouselContent className="-ml-2 md:-ml-4">
-            {vehicles?.map((vehicle, index) => (
-              <CarouselItem key={vehicle.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
+            {vehicles?.map((vehicle, index) => {
+              const brand = vehicle.marque?.nom ?? vehicle.marque_nom ?? "Marque inconnue";
+              const model =
+                vehicle.modele?.label ??
+                (vehicle.modele as { nom?: string } | null)?.nom ??
+                vehicle.modele_label ??
+                vehicle.titre ??
+                "Modèle non spécifié";
+              const transmission =
+                vehicle.transmission?.label ??
+                (vehicle.transmission as { nom?: string } | null)?.nom ??
+                vehicle.transmission_nom ??
+                "Transmission inconnue";
+              const fuel =
+                vehicle.type_carburant?.label ??
+                (vehicle.type_carburant as { nom?: string } | null)?.nom ??
+                vehicle.type_carburant_nom ??
+                "Carburant inconnu";
+              const rating = vehicle.note_moyenne ? Number(vehicle.note_moyenne) : 0;
+
+              return (
+              <CarouselItem key={vehicle.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3">
                 <AnimatedItem delay={index * 100}>
                   <Link to={`/vehicule/${vehicle.id}`}>
                     <div className="relative">
@@ -75,17 +91,17 @@ export const FavoriteVehicles = () => {
                         {vehicle.nombre_favoris}
                       </div>
                       <VehicleCard
-                        image={vehicle.photo_principale}
+                        image={vehicle.photo_principale ?? ""}
                         year={vehicle.annee}
-                        brand={vehicle.marque?.nom || ""}
-                        model={vehicle.modele?.label || ""}
-                        rating={vehicle.note_moyenne ? parseFloat(vehicle.note_moyenne.toString()) : 0}
-                        trips={vehicle.nombre_locations}
-                        price={Number(vehicle.prix_jour)}
+                        brand={brand}
+                        model={model}
+                        rating={rating}
+                        trips={vehicle.nombre_locations ?? 0}
+                        price={Number(vehicle.prix_jour) || 0}
                         distance={0}
-                        seats={vehicle.nombre_places}
-                        transmission={vehicle.transmission?.label || ""}
-                        fuel={vehicle.type_carburant?.label || ""}
+                        seats={vehicle.nombre_places ?? 0}
+                        transmission={transmission}
+                        fuel={fuel}
                         certified={vehicle.est_certifie}
                         deliveryAvailable={true}
                         onReserve={() => handleReserve(vehicle.id)}
@@ -94,10 +110,21 @@ export const FavoriteVehicles = () => {
                   </Link>
                 </AnimatedItem>
               </CarouselItem>
-            ))}
+              );
+            })}
+
+            {!hasVehicles && (
+              <CarouselItem className="pl-2 md:pl-4 basis-full">
+                <div className="rounded-xl border bg-card px-6 py-10 text-center text-muted-foreground">
+                  {isError
+                    ? "Impossible de charger les coups de cœur pour le moment."
+                    : "Aucun véhicule coup de cœur disponible actuellement."}
+                </div>
+              </CarouselItem>
+            )}
           </CarouselContent>
-          <CarouselPrevious className="hidden md:flex" />
-          <CarouselNext className="hidden md:flex" />
+          <CarouselPrevious className="absolute left-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />
+          <CarouselNext className="absolute right-[-1vw] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />
         </Carousel>
       )}
     </AnimatedSection>

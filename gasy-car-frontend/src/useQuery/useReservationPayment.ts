@@ -22,8 +22,10 @@ export const useCreateReservationPaymentMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateReservationPaymentPayload) => paymentApi.create(data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["reservation-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-one", variables.reservation] });
+      queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
       toast.success("Paiement soumis avec succès !");
     },
     onError: (error: any) => {

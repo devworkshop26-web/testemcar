@@ -26,9 +26,9 @@ import { useReservationAction } from "@/hooks/useReservationAction";
  * - 4 cards en même temps
  */
 export const MostBookedVehicles = () => {
-  const { data: vehicles = [], isLoading } = useMostBookedVehicles();
+  const { data: vehicles = [], isLoading, isError } = useMostBookedVehicles();
   const plugin = useRef(
-    Autoplay({ delay: 3800, stopOnInteraction: true })
+    Autoplay({ delay: 3200, stopOnMouseEnter: true, stopOnInteraction: false })
   );
   const { handleReserve } = useReservationAction();
 
@@ -36,7 +36,7 @@ export const MostBookedVehicles = () => {
 
   
 
-  if (!isLoading && vehicles.length === 0) return null;
+  const hasVehicles = vehicles.length > 0;
 
   return (
     <AnimatedSection className="pb-16 pt-10" delay={0}>
@@ -63,11 +63,10 @@ export const MostBookedVehicles = () => {
         <Carousel
           plugins={[plugin.current]}
           className="w-full"
-          onMouseEnter={plugin.current.stop}
-          onMouseLeave={plugin.current.reset}
           opts={{
             align: "start",
             loop: true,
+            slidesToScroll: 1,
           }}
         >
           <CarouselContent className="-ml-2 md:-ml-4">
@@ -79,7 +78,7 @@ export const MostBookedVehicles = () => {
               Array.from({ length: skeletonCount }).map((_, index) => (
                 <CarouselItem
                   key={index}
-                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
                 >
                   <VehicleCardSkeleton />
                 </CarouselItem>
@@ -97,11 +96,21 @@ export const MostBookedVehicles = () => {
                   vehicle.modele_label ??
                   vehicle.titre ??
                   "Modèle non spécifié";
+                const transmission =
+                  vehicle.transmission?.label ??
+                  (vehicle.transmission as { nom?: string } | null)?.nom ??
+                  vehicle.transmission_nom ??
+                  "";
+                const fuel =
+                  vehicle.type_carburant?.label ??
+                  (vehicle.type_carburant as { nom?: string } | null)?.nom ??
+                  vehicle.type_carburant_nom ??
+                  "";
 
                 return (
                   <CarouselItem
                     key={vehicle.id}
-                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
                   >
                     <AnimatedItem delay={index * 80}>
                       <Link to={`/vehicule/${vehicle.id}`}>
@@ -120,17 +129,17 @@ export const MostBookedVehicles = () => {
                           </div>
 
                           <VehicleCard
-                            image={vehicle.photo_principale}
+                            image={vehicle.photo_principale ?? ""}
                             year={vehicle.annee}
                             brand={brand}
                             model={model}
                             rating={vehicle.note_moyenne ? Number(vehicle.note_moyenne) : 0}
-                            trips={vehicle.nombre_locations}
-                            price={Number(vehicle.prix_jour)}
+                            trips={vehicle.nombre_locations ?? 0}
+                            price={Number(vehicle.prix_jour) || 0}
                             distance={0}
-                            seats={vehicle.nombre_places}
-                            transmission={vehicle.transmission?.label}
-                            fuel={vehicle.type_carburant?.label}
+                            seats={vehicle.nombre_places ?? 0}
+                            transmission={transmission}
+                            fuel={fuel}
                             certified={vehicle.est_certifie}
                             deliveryAvailable={true}
                             onReserve={() => handleReserve(vehicle.id)}
@@ -141,6 +150,16 @@ export const MostBookedVehicles = () => {
                   </CarouselItem>
                 );
               })}
+
+                        {!hasVehicles && (
+              <CarouselItem className="pl-2 md:pl-4 basis-full">
+                <div className="rounded-xl border bg-card px-6 py-10 text-center text-muted-foreground">
+                  {isError
+                    ? "Impossible de charger les véhicules les plus réservés pour le moment."
+                    : "Aucun véhicule réservé disponible actuellement."}
+                </div>
+              </CarouselItem>
+            )}
           </CarouselContent>
 
           {/* ==== FLÈCHES COLLÉES ==== */}

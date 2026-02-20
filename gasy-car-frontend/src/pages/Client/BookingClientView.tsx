@@ -5,17 +5,48 @@ import {  Filter, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
+import { useReservationPricingConfigQuery } from "@/useQuery/reservationsUseQuery";
+import { Reservation } from "@/types/reservationsType";
 
 const BookingsClientsView = () => {
   const { data: currentUser } = useCurrentUserQuery();
   const { data, isLoading } = useReservationClientQuery(currentUser?.id);
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
   const navigate = useNavigate();
 
+  const getNumberValue = (value?: string | number | null) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
+    const normalized = value.replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
 
+  const getReservationDisplayTotal = (reservation: Reservation) => {
+    const baseAmount = getNumberValue(reservation.base_amount);
+    const rawOptionsAmount = getNumberValue(reservation.options_amount);
+    const rawTotalAmount = getNumberValue(reservation.total_amount);
+    const totalDays = Math.max(1, getNumberValue(reservation.total_days) || 1);
 
+    const equipmentsAmount = (reservation.equipments_data ?? []).reduce(
+      (sum, equipment) => sum + getNumberValue(equipment?.price) * totalDays,
+      0
+    );
+    const servicesAmount = (reservation.services_data ?? []).reduce(
+      (sum, service) =>
+        sum + getNumberValue(service?.price) * Math.max(1, getNumberValue(service?.quantity) || 1),
+      0
+    );
 
+    const optionsAmount = Math.max(rawOptionsAmount, equipmentsAmount + servicesAmount);
+    const configuredServiceFee = Math.max(0, getNumberValue(pricingConfig?.service_fee) || 0);
 
-
+    return Math.max(
+      rawTotalAmount,
+      baseAmount + optionsAmount + configuredServiceFee,
+      baseAmount + optionsAmount
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -142,7 +173,7 @@ const BookingsClientsView = () => {
                         {new Date(item.start_datetime).toLocaleDateString()} - {new Date(item.end_datetime).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 font-medium text-gray-900">
-                        {Number(item.total_amount).toLocaleString()} Ar
+                        {Math.round(getReservationDisplayTotal(item)).toLocaleString()} Ar
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${item.status === "PENDING" ? "bg-orange-100 text-orange-700 border-orange-200" :

@@ -18,6 +18,7 @@ from .models import (
     VehicleAvailability,
     VehiclePricing,
     VehicleDocuments,
+    VehicleConditionReport,
 )
 from driver.models import Driver
 from driver.serializers import DriverReadSerializer
@@ -197,6 +198,86 @@ class VehicleAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = VehicleAvailability
         fields = "__all__"
+
+
+class VehicleConditionReportSerializer(serializers.ModelSerializer):
+    ALLOWED_VIEWS = {
+        "left",
+        "right",
+        "front",
+        "rear",
+        "top",
+        "bottom",
+        "interior-front",
+        "interior-rear",
+    }
+    ALLOWED_LEVELS = {"léger", "moyen", "important"}
+
+    class Meta:
+        model = VehicleConditionReport
+        fields = [
+            "id",
+            "vehicle",
+            "created_by",
+            "view_notes",
+            "saved_view_timestamps",
+            "points",
+            "custom_photos_by_view",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at", "vehicle"]
+
+    def validate_points(self, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Le champ points doit être une liste.")
+
+        normalized_points = []
+        for index, point in enumerate(value, start=1):
+            if not isinstance(point, dict):
+                raise serializers.ValidationError(f"Le point #{index} est invalide.")
+
+            view = point.get("view")
+            if view not in self.ALLOWED_VIEWS:
+                raise serializers.ValidationError(
+                    f"Le point #{index} contient une vue invalide: {view}."
+                )
+
+            level = point.get("level") or "léger"
+            if level not in self.ALLOWED_LEVELS:
+                raise serializers.ValidationError(
+                    f"Le point #{index} contient un niveau invalide: {level}."
+                )
+
+            try:
+                x = float(point.get("x", 0))
+                y = float(point.get("y", 0))
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(
+                    f"Le point #{index} contient des coordonnées invalides."
+                )
+
+            if x < 0 or x > 100 or y < 0 or y > 100:
+                raise serializers.ValidationError(
+                    f"Le point #{index} doit avoir des coordonnées entre 0 et 100."
+                )
+
+            normalized_points.append(
+                {
+                    "id": str(point.get("id") or ""),
+                    "view": view,
+                    "x": x,
+                    "y": y,
+                    "level": level,
+                    "description": str(point.get("description") or ""),
+                }
+            )
+
+        return normalized_points
+
+
 
 
 # ============================================================
@@ -494,6 +575,7 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
     
     # On utilise SerializerMethodField intelligemment avec le cache prefetch
     prix_jour = serializers.SerializerMethodField()
+    province_prix_jour = serializers.SerializerMethodField()
     photo_principale = serializers.SerializerMethodField()
     driver_photo = serializers.SerializerMethodField()
 
@@ -502,7 +584,7 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
         fields = [
             "id", "titre", "marque_nom", "modele_label", "annee",
             "nombre_places", "note_moyenne", "nombre_locations",
-            "prix_jour", "photo_principale", "est_certifie", "est_disponible",
+            "prix_jour", "province_prix_jour", "photo_principale", "est_certifie", "est_disponible", "est_coup_de_coeur",
             "ville", "created_at", "driver_name", "driver_last_name", "numero_immatriculation",
             "transmission_nom", "type_carburant_nom", "kilometrage_actuel_km", "driver_photo"
         ]
@@ -512,6 +594,13 @@ class VehiculeCardSerializer(serializers.ModelSerializer):
         for p in pricings:
             if p.zone_type == "URBAIN": return p.prix_jour
         return pricings[0].prix_jour if pricings else None
+
+    def get_province_prix_jour(self, obj):
+        pricings = getattr(obj, "_prefetched_objects_cache", {}).get("pricing_grid", obj.pricing_grid.all())
+        for p in pricings:
+            if p.zone_type == "PROVINCE":
+                return p.prix_jour
+        return None
 
     def get_photo_principale(self, obj):
         request = self.context.get("request")
@@ -537,7 +626,8 @@ class VehiculeListSerializer(serializers.ModelSerializer):
     marque_nom = serializers.CharField(source="marque.nom", read_only=True)
     modele_label = serializers.CharField(source="modele.label", read_only=True)
     categorie_nom = serializers.CharField(source="categorie.nom", read_only=True)
-    transmission_nom = TransmissionSerializer(source="transmission.nom", read_only=True)
+    transmission_nom = serializers.CharField(source="transmission.nom", read_only=True)
+    type_carburant_nom = serializers.CharField(source="type_carburant.nom", read_only=True)
 
     # Computed fields
     prix_jour = serializers.SerializerMethodField()
@@ -556,10 +646,12 @@ class VehiculeListSerializer(serializers.ModelSerializer):
             "modele_label",
             "categorie_nom",
             "annee",
+            "nombre_places",
             "type_vehicule",
             "ville",
             "zone",
             "est_certifie",
+            "est_coup_de_coeur",
             "statut",
             
             # Key metrics
@@ -578,6 +670,7 @@ class VehiculeListSerializer(serializers.ModelSerializer):
             "equipements_count",
             "equipements_labels",
             "transmission_nom",
+            "type_carburant_nom",
         ]
 
     def get_prix_jour(self, obj):

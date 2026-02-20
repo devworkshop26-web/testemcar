@@ -27,6 +27,26 @@ const money = (v: number | string | undefined | null) => {
 };
 
 const OverviewTab: React.FC<OverviewTabProps> = ({ vehicle }) => {
+  const description = (vehicle.description || "").trim();
+  const isPlaceholderDescription = /^lorem ipsum/i.test(description);
+  const generatedDescription = [
+    `${vehicle.marque_data?.nom || "Ce véhicule"} ${vehicle.modele_data?.label || ""}`.trim(),
+    vehicle.annee ? `(${vehicle.annee})` : "",
+    vehicle.transmission_data?.nom ? `avec boîte ${vehicle.transmission_data.nom}` : "",
+    vehicle.type_carburant_data?.nom ? `fonctionnant au ${vehicle.type_carburant_data.nom}` : "",
+    typeof vehicle.nombre_places === "number" && vehicle.nombre_places > 0
+      ? `et ${vehicle.nombre_places} places`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const professionalDescription =
+    !description || isPlaceholderDescription
+      ? `${generatedDescription || "Véhicule professionnel"}. Contrôlé par notre équipe, prêt à la location avec des informations techniques vérifiées.`
+      : description;
+
   return (
     <div className="space-y-12 pb-10">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -84,8 +104,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ vehicle }) => {
             </CardHeader>
             <CardContent className="px-8 py-8">
               <p className="text-[15px] text-slate-600 leading-relaxed font-medium whitespace-pre-line">
-                {vehicle.description ||
-                  "Aucune description fournie pour ce véhicule."}
+                {professionalDescription}
               </p>
             </CardContent>
           </Card>

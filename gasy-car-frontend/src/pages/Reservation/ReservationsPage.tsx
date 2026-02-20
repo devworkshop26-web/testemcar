@@ -9,7 +9,7 @@ import VehicleGallery from './components/VehicleGallery';
 import VehicleHeader from './components/VehicleHeader';
 import { ArrowLeft, CalendarIcon, Clock, Info, MessageSquare, AlertCircle, Lock, Wrench } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { addDays, startOfToday, format } from "date-fns";
+import { addDays, startOfToday, format, isBefore } from "date-fns";
 import { fr } from "date-fns/locale";
 
 import ReviewsSection from './components/ReviewsSection';
@@ -25,8 +25,7 @@ import {
 } from './reservationTypes';
 import { useVehiculeQuery } from '@/useQuery/vehiculeUseQuery';
 import { useAllVehicleEquipmentsQuery } from '@/useQuery/vehicleEquipmentsUseQuery';
-import { useCreateReservationMutation } from '@/useQuery/reservationsUseQuery';
-import { useCurentuser } from '@/useQuery/authUseQuery';
+import { useCreateReservationMutation, useReservationPricingConfigQuery } from '@/useQuery/reservationsUseQuery';
 import { toast } from 'sonner';
 import { CreateReservationPayload } from '@/types/reservationsType';
 import Header from '@/components/Header';
@@ -45,6 +44,7 @@ const ReservationsPage: React.FC = () => {
 
   // Mutation and User
   const createReservationMutation = useCreateReservationMutation();
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
 
   const [selectedDriverOption, setSelectedDriverOption] = useState<ChauffeurChoice>('SANS_CHAUFFEUR');
   const [travelZone, setTravelZone] = useState<TravelZone>('TANA');
@@ -67,35 +67,44 @@ const ReservationsPage: React.FC = () => {
     from: tomorrow,
     to: dayAfter
   });
+  const [dateSelectionStep, setDateSelectionStep] = useState<'start' | 'end'>('start');
 
-  // verification authentication
-
+  // permissions liées à la réservation (sans redirection forcée)
   useEffect(() => {
-    return () => {
-      if (!isAuthenticated) {
-        navigate("/login");
-        return;
-      }
-      if (currentUser && currentUser.role !== "CLIENT") {
-        setDesableReservation(true);
-        toast.error("Vous n'avez pas la permission d'effectuer une réservation.");
-        return;
-      }
+    if (isAuthenticated && currentUser && currentUser.role !== "CLIENT") {
+      setDesableReservation(true);
+      return;
+    }
 
-    };
-  }, []);
-
+    setDesableReservation(false);
+  }, [isAuthenticated, currentUser]);
 
 
   // Sync DateSelector change to string format
   useEffect(() => {
     if (dateRange.from) {
       setPickupDate(format(dateRange.from, 'yyyy-MM-dd'));
-    }
-    if (dateRange.to) {
-      setReturnDate(format(dateRange.to, 'yyyy-MM-dd'));
+      setReturnDate(format(dateRange.to ?? dateRange.from, 'yyyy-MM-dd'));
     }
   }, [dateRange]);
+
+  const handleDateClick = (day: Date, modifiers: { disabled?: boolean }) => {
+    if (modifiers.disabled) return;
+
+    if (dateSelectionStep === 'start' || !dateRange.from || dateRange.to) {
+      setDateRange({ from: day, to: undefined });
+      setDateSelectionStep('end');
+      return;
+    }
+
+    if (isBefore(day, dateRange.from)) {
+      setDateRange({ from: day, to: dateRange.from });
+    } else {
+      setDateRange({ from: dateRange.from, to: day });
+    }
+
+    setDateSelectionStep('start');
+  };
 
   const toggleAddon = (addonId: string) => {
     setSelectedAddons((prev) => (prev.includes(addonId) ? prev.filter((id) => id !== addonId) : [...prev, addonId]));
@@ -343,18 +352,23 @@ const ReservationsPage: React.FC = () => {
     [selectedAddons, durationDays, addonsList]
   );
 
-  const serviceFee = 5000;
+  const serviceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
   const totalPrice = basePrice + driverFee + totalAddOns + serviceFee;
 
   // Handlers for reservation creation
   const handleReservationSubmit = () => {
-    if (!currentUser) {
-      toast.error("Veuillez vous connecter pour effectuer une réservation.");
+    if (!currentUser || !isAuthenticated) {
+      navigate("/login");
       return;
     }
 
     if (!vehicle) {
       toast.error("Véhicule non trouvé.");
+      return;
+    }
+
+    if (!dateRange.from || !dateRange.to) {
+      toast.error("Veuillez sélectionner une date de début et une date de fin.");
       return;
     }
 
@@ -581,7 +595,7 @@ const ReservationsPage: React.FC = () => {
                     <Calendar
                       mode="range"
                       selected={dateRange}
-                      onSelect={(range) => setDateRange(range ? { from: range.from, to: range.to } : { from: undefined, to: undefined })}
+                      onDayClick={handleDateClick}
                       disabled={isDateUnavailable}
                       modifiers={calendarModifiers}
                       modifiersClassNames={{
@@ -610,7 +624,7 @@ const ReservationsPage: React.FC = () => {
                         day_today: "bg-white text-primary font-bold border-2 border-primary/20",
                         day_outside: "text-gray-300 opacity-30",
                         day_disabled: "opacity-50 cursor-not-allowed",
-                        day_range_middle: "aria-selected:bg-primary/5 aria-selected:text-primary-700 rounded-none my-0",
+                        day_range_middle: "aria-selected:bg-primary aria-selected:text-white hover:aria-selected:bg-primary rounded-none my-0",
                         day_hidden: "invisible",
                       }}
                     />
@@ -626,10 +640,6 @@ const ReservationsPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-primary rounded shadow-sm" />
                         <span className="text-gray-700 font-medium">Sélectionné</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 bg-white border-2 border-primary/30 rounded shadow-sm" />
-                        <span className="text-gray-700 font-medium">Aujourd'hui</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-red-100 border border-red-300 rounded shadow-sm flex items-center justify-center">

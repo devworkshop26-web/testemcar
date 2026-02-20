@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import { useVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
-import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 
 // --- TYPES ET CONSTANTES ---
@@ -127,7 +126,6 @@ const AllCars = () => {
   const { data: allcarsdata = [], isLoading, isError, error, refetch } =
     useVehiculesQuery(typeFilter);
 
-  const { user } = useCurentuser();
   const navigate = useNavigate();
 
   const queryErrorMessage =
@@ -159,8 +157,30 @@ const AllCars = () => {
       const price = parseFloat(String(vehicle.prix_jour || 0).replace(/[^\d.-]/g, "")) || 0;
 
       const image = (vehicle as any).photo_principale || vehicle.photos?.[0]?.image || "";
-      const brand = vehicle.marque_data?.nom || (vehicle as any).marque_nom || "Marque inconnue";
-      const model = vehicle.modele_data?.label || (vehicle as any).modele_label || vehicle.titre || "Modèle inconnu";
+      const brand =
+        (vehicle as any).marque?.nom ||
+        vehicle.marque_data?.nom ||
+        (vehicle as any).marque_nom ||
+        "Marque inconnue";
+      const model =
+        (vehicle as any).modele?.label ||
+        (vehicle as any).modele?.nom ||
+        vehicle.modele_data?.label ||
+        (vehicle as any).modele_label ||
+        vehicle.titre ||
+        "Modèle inconnu";
+      const transmission =
+        (vehicle as any).transmission?.label ||
+        (vehicle as any).transmission?.nom ||
+        vehicle.transmission_data?.nom ||
+        (vehicle as any).transmission_nom ||
+        "Transmission inconnue";
+      const fuel =
+        (vehicle as any).type_carburant?.label ||
+        (vehicle as any).type_carburant?.nom ||
+        vehicle.type_carburant_data?.nom ||
+        (vehicle as any).type_carburant_nom ||
+        "Carburant inconnu";
 
       return {
         id: vehicle.id,
@@ -173,8 +193,8 @@ const AllCars = () => {
         trips: vehicle.nombre_locations ?? 0,
         price,
         seats: vehicle.nombre_places ?? 0,
-        transmission: vehicle.transmission_data?.nom || (vehicle.transmission as any)?.nom || (vehicle.transmission as any)?.label || "Auto",
-        fuel: vehicle.type_carburant_data?.nom || (vehicle.type_carburant as any)?.nom || (vehicle.type_carburant as any)?.label || "Essence",
+        transmission,
+        fuel,
         certified: vehicle.est_certifie,
         superHost: (vehicle.nombre_locations ?? 0) >= 40,
         newListing: isRecentListing(vehicle.created_at),
@@ -252,7 +272,6 @@ const AllCars = () => {
 
   // CLICK RESERVER
   const handleReserve = (carId: string) => {
-    if (!user) return navigate("/login");
     navigate(`/reservation/${carId}`);
   };
 

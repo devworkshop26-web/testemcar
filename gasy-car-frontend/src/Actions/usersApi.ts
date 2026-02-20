@@ -21,8 +21,10 @@ export const usersAPI = {
     }),
 
   // Supprimer un utilisateur
-  deleteUser: (id: string): Promise<{ data: { message: string } }> =>
-    InstanceAxis.delete(`/users/profile/${id}/`),
+  deleteUser: (id: string, password: string): Promise<{ data: { message: string } }> =>
+    InstanceAxis.delete(`/users/profile/${id}/`, {
+      data: { password },
+    }),
 
   // Upload photo profil
   uploadProfilePhoto: (user_id: string, formData: FormData) =>

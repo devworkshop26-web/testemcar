@@ -67,6 +67,11 @@ export interface Reservation {
   driving_mode: "SELF_DRIVE" | "WITH_DRIVER";
   pricing_zone: "URBAIN" | "PROVINCE";
   driver_source: "NONE" | "PROVIDER" | "ADMIN_POOL";
+
+  guest_first_name?: string;
+  guest_last_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
 }
 
 
@@ -84,7 +89,7 @@ export interface ReservationService {
 
 // Payload pour création (admin)
 export interface CreateReservationPayload {
-  client: string;
+  client?: string;
   vehicle: string;
   start_datetime: string;
   end_datetime: string;
@@ -103,6 +108,11 @@ export interface CreateReservationPayload {
   driving_mode?: "SELF_DRIVE" | "WITH_DRIVER";
   pricing_zone?: "URBAIN" | "PROVINCE";
   equipments?: string[];
+
+  guest_first_name?: string;
+  guest_last_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
 }
 
 export type UpdateReservationPayload = Partial<CreateReservationPayload>;
@@ -170,4 +180,14 @@ export interface UpdateReservationPaymentPayload {
   reason?: string;
   status?: PaymentStatus;
   proof_image?: File | null;
+}
+
+export interface ReservationPricingConfig {
+  service_fee: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UpdateReservationPricingConfigPayload {
+  service_fee: number | string;
 }

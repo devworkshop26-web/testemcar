@@ -74,18 +74,39 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showRates, setShowRates] = useState(false);
+  const finalTotal = Math.max(0, Math.round(basePrice + driverFee + totalAddOns + serviceFee));
+  const cautionAmount = Math.max(0, Math.round(deposit));
+  const totalWithCaution = finalTotal + cautionAmount;
+  const estimatedWithoutCaution = finalTotal;
+  const pricingBreakdown = [
+    { key: 'location', label: `Location (${durationLabel})`, value: basePrice, show: true },
+    { key: 'driver', label: 'Chauffeur', value: driverFee, show: driverFee > 0 },
+    { key: 'options', label: 'Options', value: totalAddOns, show: totalAddOns > 0 },
+    { key: 'service', label: 'Frais de service', value: serviceFee, show: serviceFee > 0 },
+  ].filter((item) => item.show);
 
-  // Check which zones are available based on pricing_grid
+  const breakdownLabelText = pricingBreakdown
+    .map((item) => item.label.toLowerCase().replace(` (${durationLabel.toLowerCase()})`, ''))
+    .join(' + ');
+
+  const breakdownValueText = pricingBreakdown
+    .map((item) => item.value.toLocaleString())
+    .join(' + ');
+
+  // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
     const pricingGrid = vehicle.pricing_grid || [];
-    const hasUrbain = pricingGrid.some(p => p.zone_type === 'URBAIN');
-    const hasProvince = pricingGrid.some(p => p.zone_type === 'PROVINCE');
+    const normalizeZoneType = (zoneType: unknown) => String(zoneType ?? '').toUpperCase();
+    const hasUrbain = pricingGrid.some(p => normalizeZoneType(p.zone_type) === 'URBAIN');
+    const hasProvince = pricingGrid.some(p => normalizeZoneType(p.zone_type) === 'PROVINCE');
+    const baseDayPrice = Number(vehicle.pricePerDay ?? vehicle.prix_jour ?? 0);
+    const provinceDayPrice = Number(vehicle.province_prix_jour ?? 0);
 
     return {
-      urbain: hasUrbain,
-      province: hasProvince
+      urbain: hasUrbain || baseDayPrice > 0,
+      province: hasProvince || provinceDayPrice > 0
     };
-  }, [vehicle.pricing_grid]);
+  }, [vehicle.pricing_grid, vehicle.pricePerDay, vehicle.prix_jour, vehicle.province_prix_jour]);
 
   // Auto-select available zone if current selection is not available
   React.useEffect(() => {
@@ -115,6 +136,22 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 
   const hasMoreAddons = addons && addons.length > 3 && !searchTerm;
 
+  const displayedAddons = useMemo(() => {
+    const selectedAddonItems = addons.filter((addon) => selectedAddons.includes(addon.id));
+    const merged = [...selectedAddonItems, ...filteredAddons];
+
+    return merged.filter((addon, index, arr) =>
+      arr.findIndex((item) => item.id === addon.id) === index
+    );
+  }, [addons, selectedAddons, filteredAddons]);
+
+  const hiddenAddons = useMemo(() => {
+    const displayedAddonIds = new Set(displayedAddons.map((addon) => addon.id));
+
+    return addons.filter((addon) => !displayedAddonIds.has(addon.id)).slice(0, 6);
+  }, [addons, displayedAddons]);
+
+
   const renderAddon = (addon: ReservationAddon) => {
     const Icon = ICON_MAP[addon.iconKey] || LayoutList;
     const isSelected = selectedAddons.includes(addon.id);
@@ -123,32 +160,35 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
     return (
       <div
         key={addon.id}
-        onClick={() => onToggleAddon(addon.id)}
+        onClick={() => {
+          onToggleAddon(addon.id);
+          if (searchTerm.trim()) setSearchTerm('');
+        }}
         className={`group flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all duration-300 ${isSelected
-          ? 'border-primary-500 bg-primary-50/50 shadow-sm'
-          : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/50'
+          ? 'border-primary-300 bg-primary-50 shadow-sm text-gray-900'
+          : 'border-gray-100 hover:bg-white hover:shadow-md hover:border-gray-200 bg-white/60'
           }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30 scale-110' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-100 text-gray-900 shadow-sm scale-105 ring-2 ring-primary-300/70' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
             }`}>
             <Icon size={18} strokeWidth={2.5} />
             {isSelected && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                 <Check size={12} className="text-white" strokeWidth={3} />
               </div>
             )}
           </div>
           <div className="flex flex-col">
-            <span className={`text-sm font-bold transition-colors ${isSelected ? 'text-primary-900' : 'text-gray-700'}`}>
+            <span className={`text-sm font-bold transition-colors ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>
               {addon.label}
             </span>
             {addon.description && (
-              <span className="text-[10px] text-gray-500 line-clamp-1">{addon.description}</span>
+              <span className={`text-[10px] line-clamp-1 ${isSelected ? 'text-gray-700' : 'text-gray-500'}`}>{addon.description}</span>
             )}
           </div>
         </div>
-        <Badge variant={isSelected ? "default" : "secondary"} className={`text-xs font-bold px-2 py-0.5 transition-colors ${isSelected ? 'bg-primary-100 text-primary-700 hover:bg-primary-200' : 'bg-gray-100 text-gray-500'
+        <Badge variant="secondary" className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected ? 'bg-primary-100 text-gray-900 border-primary-300 hover:bg-primary-200' : 'bg-gray-100 text-gray-500 border-gray-200'
           }`}>
           +{price.toLocaleString()} Ar
         </Badge>
@@ -167,7 +207,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           <Info size={40} />
         </div>
         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 z-10">
-          Total estimé
+          Total estimé (hors caution)
           <Popover open={showRates} onOpenChange={setShowRates}>
             <PopoverTrigger asChild>
               <button className="bg-white rounded-full p-1 text-gray-300 hover:text-primary-500 hover:shadow-sm transition-all shadow-none">
@@ -178,39 +218,61 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
               <div className="p-4 bg-gray-50 border-b border-gray-100">
                 <h4 className="font-bold text-gray-900">Détail des tarifs</h4>
               </div>
-              <div className="p-4 space-y-3 text-sm">
-                {pricingRates.hour && (
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span>Prix par heure</span>
-                    <span className="font-bold text-gray-900">{pricingRates.hour.toLocaleString()} Ar</span>
+              <div className="p-4 space-y-2 text-sm">
+                {pricingBreakdown.map((item, index) => (
+                  <div key={item.key} className="flex justify-between items-center text-gray-600">
+                    <span>{item.label}</span>
+                    <span className="font-bold text-gray-900">
+                      {index === 0 ? '' : '+'}{item.value.toLocaleString()} Ar
+                    </span>
                   </div>
-                )}
-                {pricingRates.day > 0 && (
-                  <div className="flex justify-between items-center text-gray-600">
-                    <span>Prix par jour</span>
-                    <span className="font-bold text-gray-900">{pricingRates.day.toLocaleString()} Ar</span>
-                  </div>
-                )}
+                ))}
                 <Separator className="my-2" />
-                <div className="flex justify-between items-center text-gray-500 text-xs">
-                  <span>Caution</span>
-                  <span className="font-bold text-gray-700">{deposit.toLocaleString()} Ar</span>
+                <div className="flex justify-between items-center text-gray-800 text-xs">
+                  <span className="font-semibold">Total estimé (hors caution)</span>
+                  <span className="font-bold">{estimatedWithoutCaution.toLocaleString()} Ar</span>
                 </div>
+                {cautionAmount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-emerald-700 text-xs">
+                      <span>Caution remboursable</span>
+                      <span className="font-bold">+{cautionAmount.toLocaleString()} Ar</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-900 text-xs">
+                      <span className="font-semibold">Total à payer (avec caution)</span>
+                      <span className="font-bold">{totalWithCaution.toLocaleString()} Ar</span>
+                    </div>
+                  </>
+                )}
               </div>
             </PopoverContent>
           </Popover>
         </span>
         <div className="flex items-baseline gap-2 z-10">
           <span className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
-            {totalPrice.toLocaleString()}
+            {estimatedWithoutCaution.toLocaleString()}
           </span>
           <span className="text-xl font-bold text-gray-400">Ar</span>
+        </div>
+
+        <div className="z-10 text-[11px] text-gray-500 bg-white/80 border border-gray-100 rounded-xl px-3 py-2">
+          <p className="font-semibold text-gray-700">Calcul: {breakdownLabelText}</p>
+          <p className="mt-1">
+            {breakdownValueText} =
+            <span className="font-bold text-gray-900"> {estimatedWithoutCaution.toLocaleString()} Ar</span>
+          </p>
+          {cautionAmount > 0 && (
+            <p className="mt-1 text-emerald-700">
+              Avec caution remboursable: {estimatedWithoutCaution.toLocaleString()} + {cautionAmount.toLocaleString()} =
+              <span className="font-bold"> {totalWithCaution.toLocaleString()} Ar</span>
+            </p>
+          )}
         </div>
 
         {deposit > 0 && (
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50/80 backdrop-blur-sm w-fit px-2.5 py-1 rounded-full border border-emerald-100/50 z-10 mt-1">
             <ShieldCheck size={12} />
-            Caution: {deposit.toLocaleString()} Ar
+            Caution remboursable: +{cautionAmount.toLocaleString()} Ar
           </div>
         )}
       </div>
@@ -452,21 +514,42 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             placeholder="Rechercher une option (ex: Siège bébé...)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            list="addons-suggestions"
             className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 block w-full p-3 pl-10 outline-none transition-all focus:bg-white focus:shadow-sm"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <LayoutList className="h-4 w-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
           </div>
+          <datalist id="addons-suggestions">
+            {(addons ?? []).map((addon) => (
+              <option key={addon.id} value={addon.label} />
+            ))}
+          </datalist>
         </div>
+
+        {hiddenAddons.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {hiddenAddons.map((addon) => (
+              <button
+                key={addon.id}
+                type="button"
+                onClick={() => setSearchTerm(addon.label)}
+                className="text-[10px] px-2.5 py-1 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
+              >
+                {addon.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-3 mt-4">
           {isLoadingAddons ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
             </div>
-          ) : filteredAddons.length > 0 ? (
+          ) : displayedAddons.length > 0 ? (
             <>
-              {filteredAddons.map((addon) => renderAddon(addon))}
+              {displayedAddons.map((addon) => renderAddon(addon))}
               {!searchTerm && hasMoreAddons && (
                 <div
                   onClick={() => document.querySelector('input')?.focus()}
@@ -494,7 +577,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         {driverFee > 0 && (
           <div className="flex justify-between text-xs font-medium text-gray-500">
             <span>Chauffeur</span>
-            <span className="text-gray-900">{driverFee.toLocaleString()} Ar</span>
+            <span className="text-gray-900">+{driverFee.toLocaleString()} Ar</span>
           </div>
         )}
         {totalAddOns > 0 && (
@@ -505,7 +588,17 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         )}
         <div className="flex justify-between text-xs font-medium text-gray-500">
           <span>Frais de service & assurance</span>
-          <span className="text-gray-900">{serviceFee.toLocaleString()} Ar</span>
+          <span className="text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
+        </div>
+        {cautionAmount > 0 && (
+          <div className="flex justify-between text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+            <span>Caution remboursable</span>
+            <span className="font-bold">+{cautionAmount.toLocaleString()} Ar</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center rounded-xl bg-gray-900 px-3 py-2 text-sm font-bold text-white">
+          <span>Total à payer{cautionAmount > 0 ? ' (avec caution)' : ''}</span>
+          <span>{(cautionAmount > 0 ? totalWithCaution : finalTotal).toLocaleString()} Ar</span>
         </div>
       </div>
 

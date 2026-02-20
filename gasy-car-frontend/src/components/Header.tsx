@@ -143,6 +143,7 @@ const Header = () => {
   const location = useLocation();
   const { data: user } = useCurrentUserQuery();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
 
   const navItemStyles = "relative px-4 py-2 text-sm font-medium transition-all duration-300 ease-out group flex items-center gap-1";
 
@@ -315,7 +316,7 @@ const Header = () => {
                   )}
                 </div>
                 <div className="p-8 border-t border-slate-50 text-center">
-                  <p className="text-[11px] text-slate-400 font-medium">© 2025 MadagasyCar • Premium Service</p>
+                  <p className="text-[11px] text-slate-400 font-medium">© {currentYear} MadagasyCar • Premium Service</p>
                 </div>
               </SheetContent>
             </Sheet>

@@ -9,6 +9,8 @@ import type {
   ReservationGraphiqueDay,
   ReservationGraphiqueWeek,
   ReservationGraphiqueMonth,
+  ReservationPricingConfig,
+  UpdateReservationPricingConfigPayload,
 } from "@/types/reservationsType";
 import { Reservation } from "@/types/reservationsType";
 import {
@@ -54,6 +56,7 @@ export const useCreateReservationMutation = () => {
       reservationAPI.create_reservation(payload).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-of-Myvehicule-all"] });
     },
   });
 };
@@ -81,6 +84,18 @@ export const useDeleteReservationMutation = () => {
   return useMutation({
     mutationFn: (id: string) =>
       reservationAPI.delete_reservation(id).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+    },
+  });
+};
+
+
+export const useDeleteAllReservationsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (password: string) =>
+      reservationAPI.delete_all_reservations(password).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
     },
@@ -192,7 +207,34 @@ export const useAllReservationOfMyvehiculeQuery = (id?: string) => {
       const { data } = await reservationAPI.get_all_reservations_of_Myvehicule(id);
       return data; // data est un tableau
     },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
     retry: 1,
+  });
+};
+
+export const useReservationPricingConfigQuery = () => {
+  return useQuery<ReservationPricingConfig>({
+    queryKey: ["reservation-pricing-config"],
+    queryFn: async () => {
+      const { data } = await reservationAPI.get_reservation_pricing_config();
+      return data;
+    },
+    staleTime: ONE_HOUR_MS,
+    retry: 1,
+  });
+};
+
+export const useUpdateReservationPricingConfigMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateReservationPricingConfigPayload) =>
+      reservationAPI.update_reservation_pricing_config(payload).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservation-pricing-config"] });
+    },
   });
 };
 
