@@ -145,7 +145,7 @@ export default function TicketDetailsClient() {
       {/* ✅ HEADER DU TICKET (AJOUTÉ) */}
       <div className="p-4 border-b bg-white">
         <Link
-          to="/client/supports"
+          to="/client/supports/my-tickets"
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80"
         >
           <ArrowLeft className="w-4 h-4" />
