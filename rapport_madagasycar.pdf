@@ -1,0 +1,70 @@
+%PDF-1.4
+%
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 3160 >>
+stream
+BT /F1 12 Tf
+1 0 0 1 50 792 Tm (RAPPORT DE SYNTHSE ? MALAGASYCAR) Tj
+1 0 0 1 50 760 Tm (1\) PRSENTATION DU PROJET) Tj
+1 0 0 1 50 744 Tm (MalagasyCar est une plateforme web de location de vhicules qui connecte plusieurs profils) Tj
+1 0 0 1 50 728 Tm (mtier autour d?un mme parcours de rservation : administration, support, clients et) Tj
+1 0 0 1 50 712 Tm (prestataires. L?objectif principal est de centraliser la gestion des comptes, du parc) Tj
+1 0 0 1 50 696 Tm (automobile, des rservations, des paiements et de la relation utilisateur.) Tj
+1 0 0 1 50 664 Tm (2\) PARTIE BACKEND \(API\)) Tj
+1 0 0 1 50 648 Tm (Le backend repose sur Django, Django REST Framework et JWT pour l?authentification.) Tj
+1 0 0 1 50 632 Tm (L?architecture est organise en modules mtier \(utilisateurs, vhicules, rservations, support,) Tj
+1 0 0 1 50 616 Tm (avis, paiements, notifications, marketing, prestataires, conducteurs et SMS\), ce qui facilite) Tj
+1 0 0 1 50 600 Tm (la maintenance et l?volution de la plateforme.) Tj
+1 0 0 1 50 568 Tm (Points cls de la partie backend :) Tj
+1 0 0 1 50 552 Tm (? Gestion des rles : ADMIN, SUPPORT, CLIENT, PRESTATAIRE.) Tj
+1 0 0 1 50 536 Tm (? API centralise avec documentation Swagger/Redoc.) Tj
+1 0 0 1 50 520 Tm (? Gestion du cycle complet de rservation.) Tj
+1 0 0 1 50 504 Tm (? Gestion des tickets support et des notifications.) Tj
+1 0 0 1 50 488 Tm (? Intgration de services transverses : paiements, avis, messagerie et contenus marketing.) Tj
+1 0 0 1 50 456 Tm (3\) PARTIE FRONTEND \(INTERFACE WEB\)) Tj
+1 0 0 1 50 440 Tm (Le frontend est dvelopp avec React, TypeScript et Vite. L?interface est structure par) Tj
+1 0 0 1 50 424 Tm (routeurs de rles et des espaces ddis.) Tj
+1 0 0 1 50 392 Tm (Points cls de la partie frontend :) Tj
+1 0 0 1 50 376 Tm (? Espace Admin : pilotage global, utilisateurs, flotte, paramtres, rservations, analytics.) Tj
+1 0 0 1 50 360 Tm (? Espace Support : suivi des clients, tickets, rservations et flotte.) Tj
+1 0 0 1 50 344 Tm (? Espace Client : recherche de vhicules, rservations, favoris, paramtres et tickets.) Tj
+1 0 0 1 50 328 Tm (? Espace Prestataire : tableau de bord, flotte, disponibilits, rservations, finances,) Tj
+1 0 0 1 50 312 Tm (conducteurs et support.) Tj
+1 0 0 1 50 280 Tm (4\) ORGANISATION FONCTIONNELLE PAR RLE) Tj
+1 0 0 1 50 264 Tm (? **Admin** : supervision complte de la plateforme et gouvernance des donnes.) Tj
+1 0 0 1 50 248 Tm (? **Support** : assistance oprationnelle et traitement des demandes.) Tj
+1 0 0 1 50 232 Tm (? **Client** : consultation des offres et rservation des vhicules.) Tj
+1 0 0 1 50 216 Tm (? **Prestataire** : publication et gestion des vhicules, suivi d?activit et revenus.) Tj
+1 0 0 1 50 184 Tm (5\) CONCLUSION) Tj
+1 0 0 1 50 168 Tm (Le travail ralis met en place une base solide et cohrente pour une plateforme multi-acteurs) Tj
+1 0 0 1 50 152 Tm (de location automobile. La sparation claire entre backend mtier et frontend par rle permet) Tj
+1 0 0 1 50 136 Tm (une volution progressive, une meilleure lisibilit du projet et une exprience adapte ) Tj
+1 0 0 1 50 120 Tm (chaque type d?utilisateur.) Tj
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+4 0 obj
+<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000085 00000 n 
+0000003297 00000 n 
+0000003423 00000 n 
+0000003480 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+3529
+%%EOF
