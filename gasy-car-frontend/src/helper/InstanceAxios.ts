@@ -108,10 +108,6 @@ InstanceAxis.interceptors.response.use(
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
 
-    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-      window.location.href = "/login";
-    }
-
     return Promise.reject(error);
   }
 );
