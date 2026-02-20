@@ -130,6 +130,7 @@ const AllCars = () => {
 
   const queryErrorMessage =
     error instanceof Error ? error.message : "Impossible de récupérer les véhicules.";
+  const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -654,6 +655,37 @@ const AllCars = () => {
                   <XCircle className="w-4 h-4" />
                   Réinitialiser les filtres
                 </button>
+              </div>
+            )}
+
+            {/* ERREUR CHARGEMENT (ex: hors connexion) */}
+            {!isLoading && isError && (
+              <div className="bg-card border border-destructive/30 rounded-2xl p-12 text-center">
+                <div className="w-16 h-16 bg-destructive/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                  <XCircle className="w-8 h-8 text-destructive" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {isOffline ? "Vous êtes hors connexion" : "Impossible de charger les véhicules"}
+                </h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  {isOffline
+                    ? "Vérifiez votre connexion internet puis réessayez."
+                    : queryErrorMessage}
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={() => refetch()}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                  >
+                    Réessayer
+                  </button>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
+                  >
+                    Retour à l'accueil
+                  </button>
+                </div>
               </div>
             )}
 
