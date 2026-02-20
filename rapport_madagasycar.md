@@ -57,5 +57,3 @@ Technologies et UI :
 - Suivi des disponibilités, réservations et informations financières.
 - Gestion opérationnelle complémentaire (conducteurs, support, publication des données véhicule).
 
-## 5) Conclusion
-Le code mis en place montre une base technique solide, avec une séparation nette des responsabilités entre backend et frontend. La structuration modulaire côté API et l’organisation par routeurs/rôles côté interface permettent une maintenance plus simple, une meilleure lisibilité fonctionnelle et une évolution progressive de la plateforme MalagasyCar.
