@@ -31,7 +31,6 @@ const Index = () => {
       <CategorySelectModal />
 
       {/* HERO + SEARCH */}
-      {/* HERO + SEARCH */}
       <section className="relative bg-background text-foreground pb-0">
         {/* HERO */}
         <HeroCarousel />
@@ -54,10 +53,6 @@ const Index = () => {
 
       {/* CONTENU PRINCIPAL */}
       <ContentWrapper>
-        {/* 
-          Mobile: Juste un peu de margin-top pour espacer de la SearchBar qui est en 'relative' 
-          Desktop: On doit compenser le fait que la SearchBar est absolute et dépasse de la section Hero
-        */}
         <div className="mt-24 sm:mt-28 lg:mt-32">
           <div className="flex flex-col lg:flex-row">
             {/* MAIN COLUMN */}

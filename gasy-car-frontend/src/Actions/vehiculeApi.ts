@@ -36,11 +36,11 @@ export const vehiculeAPI = {
     filters?:
       | string
       | {
-          type_vehicule?: string;
-          est_sponsorise?: boolean;
-          est_disponible?: boolean;
-          est_coup_de_coeur?: boolean;
-        }
+        type_vehicule?: string;
+        est_sponsorise?: boolean;
+        est_disponible?: boolean;
+        est_coup_de_coeur?: boolean;
+      }
   ) => {
     const params = new URLSearchParams();
 
@@ -60,7 +60,10 @@ export const vehiculeAPI = {
 
   // GET /vehicule/vehicule/:id/
   get_one_vehicule: async (id: string) => {
-    return await InstanceAxis.get<Vehicule>(`/vehicule/vehicule/${id}/`);
+    return await InstanceAxis.get<Vehicule>(`/vehicule/vehicule/${id}/`, {
+      _skipAuth: true,
+      _skipRefresh: true,
+    });
   },
 
   // POST /vehicule/vehicule/

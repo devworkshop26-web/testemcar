@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import ClientSidebar from "./ClientSidebar";
 import { HeaderClient } from "./ClientHeader";
@@ -6,40 +6,25 @@ import { HeaderClient } from "./ClientHeader";
 export default function LayoutClient() {
   const location = useLocation();
 
-  // 👉 Toujours fermé par défaut (même comportement que prestataire sur mobile)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+  // ✅ Même logique que prestataire : ouvert par défaut
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // 👉 Fermer automatiquement la sidebar quand on change de page EN MOBILE
+  // Scroll top comme prestataire
   useEffect(() => {
-    if (window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location.pathname]);
 
-  // 👉 Gestion du resize (comme prestataire)
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setIsSidebarOpen(true);
-      } else {
-        setIsSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   return (
-    <div className="flex min-h-screen bg-gray-50">
-
-      {/* SIDEBAR */}
-      <ClientSidebar isOpen={isSidebarOpen} />
+    <div className="flex min-h-screen bg-slate-50 text-slate-900 font-poppins">
+      {/* SIDEBAR (avec setIsOpen pour pouvoir minifier) */}
+      <ClientSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
       {/* CONTENU */}
       <div
-        className={`flex flex-col flex-1 transition-all duration-300 
-          ${isSidebarOpen && window.innerWidth >= 1024 ? "ml-64" : "ml-0"}
+        className={`
+          flex min-h-screen flex-1 flex-col
+          transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? "lg:ml-64" : "lg:ml-20"}
         `}
       >
         <HeaderClient
@@ -47,8 +32,10 @@ export default function LayoutClient() {
           setIsSidebarOpen={setIsSidebarOpen}
         />
 
-        <main className="p-6 flex-1 w-full">
-          <Outlet />
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8" role="main">
+          <div className="mx-auto w-full max-w-7xl animate-in fade-in duration-500">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -81,7 +81,7 @@ export const FavoriteVehicles = () => {
               const rating = vehicle.note_moyenne ? Number(vehicle.note_moyenne) : 0;
 
               return (
-              <CarouselItem key={vehicle.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3">
+              <CarouselItem key={vehicle.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 2xl:basis-1/3 pb-4 pt-2">
                 <AnimatedItem delay={index * 100}>
                   <Link to={`/vehicule/${vehicle.id}`}>
                     <div className="relative">

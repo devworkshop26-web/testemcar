@@ -102,7 +102,7 @@ export const PopularVehicles = () => {
                 return (
                   <CarouselItem
                     key={vehicle.id}
-                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/2 2xl:basis-1/3"
+                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 2xl:basis-1/3 pb-4 pt-2"
                   >
                     <AnimatedItem delay={index * 80}>
                       <Link to={`/vehicule/${vehicle.id}`}>
