@@ -4,67 +4,107 @@
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 2 0 obj
-<< /Length 3160 >>
+<< /Length 3544 >>
 stream
-BT /F1 12 Tf
+BT /F1 11 Tf
 1 0 0 1 50 792 Tm (RAPPORT DE SYNTHSE ? MALAGASYCAR) Tj
-1 0 0 1 50 760 Tm (1\) PRSENTATION DU PROJET) Tj
-1 0 0 1 50 744 Tm (MalagasyCar est une plateforme web de location de vhicules qui connecte plusieurs profils) Tj
-1 0 0 1 50 728 Tm (mtier autour d?un mme parcours de rservation : administration, support, clients et) Tj
-1 0 0 1 50 712 Tm (prestataires. L?objectif principal est de centraliser la gestion des comptes, du parc) Tj
-1 0 0 1 50 696 Tm (automobile, des rservations, des paiements et de la relation utilisateur.) Tj
-1 0 0 1 50 664 Tm (2\) PARTIE BACKEND \(API\)) Tj
-1 0 0 1 50 648 Tm (Le backend repose sur Django, Django REST Framework et JWT pour l?authentification.) Tj
-1 0 0 1 50 632 Tm (L?architecture est organise en modules mtier \(utilisateurs, vhicules, rservations, support,) Tj
-1 0 0 1 50 616 Tm (avis, paiements, notifications, marketing, prestataires, conducteurs et SMS\), ce qui facilite) Tj
-1 0 0 1 50 600 Tm (la maintenance et l?volution de la plateforme.) Tj
-1 0 0 1 50 568 Tm (Points cls de la partie backend :) Tj
-1 0 0 1 50 552 Tm (? Gestion des rles : ADMIN, SUPPORT, CLIENT, PRESTATAIRE.) Tj
-1 0 0 1 50 536 Tm (? API centralise avec documentation Swagger/Redoc.) Tj
-1 0 0 1 50 520 Tm (? Gestion du cycle complet de rservation.) Tj
-1 0 0 1 50 504 Tm (? Gestion des tickets support et des notifications.) Tj
-1 0 0 1 50 488 Tm (? Intgration de services transverses : paiements, avis, messagerie et contenus marketing.) Tj
-1 0 0 1 50 456 Tm (3\) PARTIE FRONTEND \(INTERFACE WEB\)) Tj
-1 0 0 1 50 440 Tm (Le frontend est dvelopp avec React, TypeScript et Vite. L?interface est structure par) Tj
-1 0 0 1 50 424 Tm (routeurs de rles et des espaces ddis.) Tj
-1 0 0 1 50 392 Tm (Points cls de la partie frontend :) Tj
-1 0 0 1 50 376 Tm (? Espace Admin : pilotage global, utilisateurs, flotte, paramtres, rservations, analytics.) Tj
-1 0 0 1 50 360 Tm (? Espace Support : suivi des clients, tickets, rservations et flotte.) Tj
-1 0 0 1 50 344 Tm (? Espace Client : recherche de vhicules, rservations, favoris, paramtres et tickets.) Tj
-1 0 0 1 50 328 Tm (? Espace Prestataire : tableau de bord, flotte, disponibilits, rservations, finances,) Tj
-1 0 0 1 50 312 Tm (conducteurs et support.) Tj
-1 0 0 1 50 280 Tm (4\) ORGANISATION FONCTIONNELLE PAR RLE) Tj
-1 0 0 1 50 264 Tm (? **Admin** : supervision complte de la plateforme et gouvernance des donnes.) Tj
-1 0 0 1 50 248 Tm (? **Support** : assistance oprationnelle et traitement des demandes.) Tj
-1 0 0 1 50 232 Tm (? **Client** : consultation des offres et rservation des vhicules.) Tj
-1 0 0 1 50 216 Tm (? **Prestataire** : publication et gestion des vhicules, suivi d?activit et revenus.) Tj
-1 0 0 1 50 184 Tm (5\) CONCLUSION) Tj
-1 0 0 1 50 168 Tm (Le travail ralis met en place une base solide et cohrente pour une plateforme multi-acteurs) Tj
-1 0 0 1 50 152 Tm (de location automobile. La sparation claire entre backend mtier et frontend par rle permet) Tj
-1 0 0 1 50 136 Tm (une volution progressive, une meilleure lisibilit du projet et une exprience adapte ) Tj
-1 0 0 1 50 120 Tm (chaque type d?utilisateur.) Tj
+1 0 0 1 50 762 Tm (1\) PRSENTATION GNRALE DU PROJET) Tj
+1 0 0 1 50 747 Tm (MalagasyCar est une application web de location de vhicules organise en architecture) Tj
+1 0 0 1 50 732 Tm (frontend/backend. Le backend expose des API mtier, tandis que le frontend propose des) Tj
+1 0 0 1 50 717 Tm (interfaces spares selon les profils utilisateurs. Le fonctionnement global couvre la gestion) Tj
+1 0 0 1 50 702 Tm (des comptes, de la flotte, des rservations, du support et des oprations administratives.) Tj
+1 0 0 1 50 672 Tm (2\) DTAILS TECHNIQUES DU BACKEND) Tj
+1 0 0 1 50 657 Tm (Le backend est dvelopp avec Django et Django REST Framework, avec authentification JWT. La) Tj
+1 0 0 1 50 642 Tm (structure est modulaire, avec des applications ddies par domaine fonctionnel.) Tj
+1 0 0 1 50 612 Tm (Modules principaux observs :) Tj
+1 0 0 1 50 597 Tm (? **users** : gestion des comptes, profils, rles et vrifications \(email/tlphone/OTP\).) Tj
+1 0 0 1 50 582 Tm (? **vehicule** : informations vhicules, caractristiques, statuts et lments de flotte.) Tj
+1 0 0 1 50 567 Tm (? **reservations** : cration, suivi et logique de rservation \(incluant les lments de) Tj
+1 0 0 1 50 552 Tm (tarification\).) Tj
+1 0 0 1 50 537 Tm (? **support** : tickets, traitement des demandes et suivi oprationnel.) Tj
+1 0 0 1 50 522 Tm (? **notification** : diffusion des notifications lies aux actions mtier.) Tj
+1 0 0 1 50 507 Tm (? **reviews** : avis et retours utilisateurs.) Tj
+1 0 0 1 50 492 Tm (? **payments / modepayment** : gestion des paiements et des modes de paiement.) Tj
+1 0 0 1 50 477 Tm (? **prestataire / driver / marketing / blogs / smsapp / messaging** : modules complmentaires) Tj
+1 0 0 1 50 462 Tm (pour exploitation, communication et contenus.) Tj
+1 0 0 1 50 432 Tm (Aspects de structuration :) Tj
+1 0 0 1 50 417 Tm (? API centralise via le routeur principal Django, avec des routes segmentes par domaine.) Tj
+1 0 0 1 50 402 Tm (? Documentation API intgre \(Swagger/Redoc\) pour faciliter le test et l?intgration.) Tj
+1 0 0 1 50 387 Tm (? Configuration oriente API moderne : CORS, sessions, mdias/statiques, couche temps rel) Tj
+1 0 0 1 50 372 Tm (\(channels\).) Tj
+1 0 0 1 50 342 Tm (3\) DTAILS TECHNIQUES DU FRONTEND) Tj
+1 0 0 1 50 327 Tm (Le frontend est dvelopp en React + TypeScript avec Vite. L?application est organise par) Tj
+1 0 0 1 50 312 Tm (routeurs et pages mtier, avec sparation claire par rle.) Tj
+1 0 0 1 50 282 Tm (Organisation observe :) Tj
+1 0 0 1 50 267 Tm (? **Routeur principal** : agrge les routeurs de tous les espaces.) Tj
+1 0 0 1 50 252 Tm (? **Routeurs ddis** : AdminRouter, SupportRouter, ClientRouter, PrestataireRouter.) Tj
+1 0 0 1 50 237 Tm (? **Protection d?accs** : contrle des pages par rles via routes prives.) Tj
+1 0 0 1 50 222 Tm (? **Composants mtier** : tableaux de bord, formulaires, gestion flotte, rservation, support,) Tj
+1 0 0 1 50 207 Tm (analytics.) Tj
+1 0 0 1 50 177 Tm (Technologies et UI :) Tj
+1 0 0 1 50 162 Tm (? Utilisation d?un socle moderne React \(routing, formulaires, hooks, composants rutilisables\).) Tj
+1 0 0 1 50 147 Tm (? Interface structure en pages par domaine \(admin, client, support, prestataire\) et composants) Tj
+1 0 0 1 50 132 Tm (spcialiss.) Tj
+1 0 0 1 50 117 Tm (? Architecture propice  l?volution grce  la sparation entre composants UI, routes, pages) Tj
+1 0 0 1 50 102 Tm (et services.) Tj
+1 0 0 1 50 72 Tm (4\) FONCTIONNALITS PAR RLE) Tj
 ET
 endstream
 endobj
 3 0 obj
-<< /Type /Page /Parent 4 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+<< /Length 1765 >>
+stream
+BT /F1 11 Tf
+1 0 0 1 50 792 Tm (Admin) Tj
+1 0 0 1 50 777 Tm (? Supervision globale de la plateforme.) Tj
+1 0 0 1 50 762 Tm (? Gestion des utilisateurs \(clients, prestataires, support, conducteurs\).) Tj
+1 0 0 1 50 747 Tm (? Pilotage de la flotte, des rservations, des paiements et des paramtres.) Tj
+1 0 0 1 50 732 Tm (? Accs  des vues de suivi et d?analyse \(statistiques et contrle qualit\).) Tj
+1 0 0 1 50 702 Tm (Support) Tj
+1 0 0 1 50 687 Tm (? Suivi des rservations et des incidents.) Tj
+1 0 0 1 50 672 Tm (? Gestion des tickets et accompagnement utilisateur.) Tj
+1 0 0 1 50 657 Tm (? Consultation et mise  jour de dossiers clients et vhicules selon les besoins oprationnels.) Tj
+1 0 0 1 50 627 Tm (Client) Tj
+1 0 0 1 50 612 Tm (? Parcours de consultation des vhicules.) Tj
+1 0 0 1 50 597 Tm (? Cration et suivi des rservations.) Tj
+1 0 0 1 50 582 Tm (? Accs aux favoris, paramtres personnels et demandes de support.) Tj
+1 0 0 1 50 552 Tm (Prestataire) Tj
+1 0 0 1 50 537 Tm (? Gestion du parc de vhicules publi.) Tj
+1 0 0 1 50 522 Tm (? Suivi des disponibilits, rservations et informations financires.) Tj
+1 0 0 1 50 507 Tm (? Gestion oprationnelle complmentaire \(conducteurs, support, publication des donnes) Tj
+1 0 0 1 50 492 Tm (vhicule\).) Tj
+1 0 0 1 50 462 Tm (5\) CONCLUSION) Tj
+1 0 0 1 50 447 Tm (Le code mis en place montre une base technique solide, avec une sparation nette des) Tj
+1 0 0 1 50 432 Tm (responsabilits entre backend et frontend. La structuration modulaire ct API et) Tj
+1 0 0 1 50 417 Tm (l?organisation par routeurs/rles ct interface permettent une maintenance plus simple, une) Tj
+1 0 0 1 50 402 Tm (meilleure lisibilit fonctionnelle et une volution progressive de la plateforme MalagasyCar.) Tj
+ET
+endstream
 endobj
 4 0 obj
-<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
 endobj
 5 0 obj
-<< /Type /Catalog /Pages 4 0 R >>
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+6 0 obj
+<< /Type /Pages /Count 2 /Kids [4 0 R 5 0 R] >>
+endobj
+7 0 obj
+<< /Type /Catalog /Pages 6 0 R >>
 endobj
 xref
-0 6
+0 8
 0000000000 65535 f 
 0000000015 00000 n 
 0000000085 00000 n 
-0000003297 00000 n 
-0000003423 00000 n 
-0000003480 00000 n 
+0000003681 00000 n 
+0000005498 00000 n 
+0000005624 00000 n 
+0000005750 00000 n 
+0000005813 00000 n 
 trailer
-<< /Size 6 /Root 5 0 R >>
+<< /Size 8 /Root 7 0 R >>
 startxref
-3529
+5862
 %%EOF
