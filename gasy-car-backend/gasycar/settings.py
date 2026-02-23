@@ -182,23 +182,20 @@ CSRF_TRUSTED_ORIGINS = [
 AUTH_USER_MODEL = "users.User"
 
 # Email configuration
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.hostinger.com"
-EMAIL_PORT = 465
-EMAIL_HOST_USER = "contact@madagasycar.com"
-EMAIL_HOST_PASSWORD = "Cocolap1n?"
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
-DEFAULT_FROM_EMAIL = "contact@madagasycar.com"
+# Utiliser des variables d'environnement facilite la livraison en production
+# (Gmail est très strict sur SPF/DKIM/DMARC et la réputation SMTP).
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.hostinger.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "contact@madagasycar.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True").lower() == "true"
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
 
-# EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST="smtp-relay.brevo.com"
-# EMAIL_PORT=587
-# EMAIL_HOST_USER="9c6095001@smtp-brevo.com"
-# EMAIL_HOST_PASSWORD="xsmtpsib-b22943aa7454a84f8000a55cb1643e2894f90e8239db6a4cfd71ae814b25964c-5nU4CdACgDiPUfmL"
-# EMAIL_USE_TLS=True
-# EMAIL_USE_SSL=False
-# DEFAULT_FROM_EMAIL="workshop@widea.center"
+# Forcer un expéditeur cohérent avec le compte SMTP améliore la délivrabilité.
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "contact@madagasycar.com")
+SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
 
 # Configuration OTP
