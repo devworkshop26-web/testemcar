@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useMarketingHerosQuery } from "@/useQuery/marketingUseQuery";
 import { marketingHeroData } from "@/data/heroData";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, Sparkles } from "lucide-react"; // J'ai ajouté des icônes pour le style
+import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function HeroSection() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -20,7 +20,10 @@ export default function HeroSection() {
   }, [apiHero, isLoading]);
 
   const totalSlides = herodata.length;
-  const currentSlide = herodata[activeIndex]
+  const currentSlide = herodata[activeIndex];
+  const isActiveImageReady = Boolean(
+    imageLoaded[activeIndex] || imageError[activeIndex]
+  );
 
   useEffect(() => {
     herodata.forEach((slide, i) => {
@@ -63,7 +66,9 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-black/20 z-10" /> {/* Overlay global subtil */}
         <img
           src={imageError[activeIndex] ? fallbackImage : currentSlide.image}
-          className="w-full h-full object-cover animate-in fade-in zoom-in-105 [animation-duration:2000ms] ease-out fill-mode-forwards"
+          className={`w-full h-full object-cover animate-in fade-in zoom-in-105 [animation-duration:2000ms] ease-out fill-mode-forwards transition-opacity duration-500 ${
+            isActiveImageReady ? "opacity-100" : "opacity-0"
+          }`}
           style={{
             animationName: 'subtleZoom',
             animationDuration: '10s',
@@ -79,6 +84,17 @@ export default function HeroSection() {
             to { transform: scale(1.1); filter: brightness(1); }
           }
         `}</style>
+
+        {!isActiveImageReady && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/90">
+            <div className="w-full max-w-2xl px-6 space-y-4">
+              <Skeleton className="h-12 w-3/4 bg-slate-700/70" />
+              <Skeleton className="h-6 w-full bg-slate-700/70" />
+              <Skeleton className="h-6 w-5/6 bg-slate-700/70" />
+              <Skeleton className="h-12 w-48 rounded-full bg-slate-700/70" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ================= GRADIENT OVERLAYS ================= */}
