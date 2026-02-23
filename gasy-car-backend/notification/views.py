@@ -10,9 +10,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
-# methodes d'envoi de notification - utilisez la version autonome
-from gasycar.utils import create_and_send_email_otp_standalone
-
 # Models
 from users.models import User
 
@@ -23,21 +20,16 @@ from notification.serializers import TicketNotificationSerializer, NotificationS
 
 
 
-# post save signal to send OTP email on user creation
+# post save signal to avoid duplicate OTP email on user creation
 @receiver(post_save, sender=User)
 def notify_user_creation(sender, instance, created, **kwargs):
     """
-    Envoie un OTP email quand un nouvel utilisateur est créé
+    Hook conservé pour d'éventuels traitements de notification.
+    L'envoi OTP est géré uniquement dans les vues users
+    (inscription + renvoi OTP) pour éviter les doublons d'emails.
     """
     if not created:
         return
-    
-    
-    # Envoyer OTP email à la création d'un nouvel utilisateur
-    try:
-        create_and_send_email_otp_standalone(instance)  # Utilisez la version autonome
-    except Exception as e:
-        print(f"Erreur lors de l'envoi de l'OTP: {e}")
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
