@@ -56,6 +56,72 @@ export const InstanceAxis = axios.create({
   },
 });
 
+let refreshPromise: Promise<string | null> | null = null;
+
+const extractAccessToken = (payload: Record<string, unknown>): string | null => {
+  const access = payload.access;
+  const accessToken = payload.access_token;
+
+  if (typeof access === "string" && access.length > 0) return access;
+  if (typeof accessToken === "string" && accessToken.length > 0) return accessToken;
+  return null;
+};
+
+const extractRefreshToken = (payload: Record<string, unknown>): string | null => {
+  const refresh = payload.refresh;
+  const refreshToken = payload.refresh_token;
+
+  if (typeof refresh === "string" && refresh.length > 0) return refresh;
+  if (typeof refreshToken === "string" && refreshToken.length > 0) return refreshToken;
+  return null;
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const storedRefreshToken =
+      localStorage.getItem(refreshTokenKey) || localStorage.getItem("refresh");
+
+    if (!storedRefreshToken) {
+      return null;
+    }
+
+    const response = await InstanceAxis.post<Record<string, unknown>>(
+      "/users/token/refresh/",
+      { refresh: storedRefreshToken },
+      {
+        _skipAuth: true,
+        _skipRefresh: true,
+      }
+    );
+
+    const payload = response.data ?? {};
+    const newAccessToken = extractAccessToken(payload);
+    const newRefreshToken = extractRefreshToken(payload);
+
+    if (!newAccessToken) {
+      return null;
+    }
+
+    localStorage.setItem(accessTokenKey, newAccessToken);
+    localStorage.setItem("access", newAccessToken);
+
+    if (newRefreshToken) {
+      localStorage.setItem(refreshTokenKey, newRefreshToken);
+      localStorage.setItem("refresh", newRefreshToken);
+    }
+
+    return newAccessToken;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+};
+
 /**
  * Helper : détecter si une URL est un endpoint d’auth (login / refresh)
  */
@@ -83,7 +149,7 @@ InstanceAxis.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Intercepteur : gère les erreurs d'auth sans refresh automatique
+// Intercepteur : gère les erreurs d'auth avec refresh automatique
 InstanceAxis.interceptors.response.use(
   (response) => response,
 
@@ -97,16 +163,50 @@ InstanceAxis.interceptors.response.use(
 
     const status = error.response.status;
 
-    // Sur 401 (hors endpoints d'auth), on force la déconnexion locale.
+    // Sur 401 (hors endpoints d'auth), on tente d'abord un refresh puis on rejoue la requête.
     const isUnauthorized = status === 401;
-    if (!isUnauthorized || isAuthEndpoint(originalRequest.url) || originalRequest._skipRefresh) {
+    if (
+      !isUnauthorized ||
+      isAuthEndpoint(originalRequest.url) ||
+      originalRequest._skipRefresh
+    ) {
       return Promise.reject(error);
     }
 
-    localStorage.removeItem(accessTokenKey);
-    localStorage.removeItem(refreshTokenKey);
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    if (originalRequest._retry) {
+      localStorage.removeItem(accessTokenKey);
+      localStorage.removeItem(refreshTokenKey);
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      const newAccessToken = await refreshAccessToken();
+
+      if (!newAccessToken) {
+        localStorage.removeItem(accessTokenKey);
+        localStorage.removeItem(refreshTokenKey);
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        return Promise.reject(error);
+      }
+
+      if (!originalRequest.headers) {
+        originalRequest.headers = {} as AxiosRequestHeaders;
+      }
+      originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+
+      return InstanceAxis(originalRequest);
+    } catch (refreshError) {
+      localStorage.removeItem(accessTokenKey);
+      localStorage.removeItem(refreshTokenKey);
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+      return Promise.reject(refreshError);
+    }
 
     return Promise.reject(error);
   }
