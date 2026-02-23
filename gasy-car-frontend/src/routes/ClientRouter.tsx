@@ -27,6 +27,7 @@ export const ClientRoutes = () => {
           <Route path="booking/:id" element={<BookingClientDetail />} />
           <Route path="browse" element={<BrowseCarsClientView />} />
           <Route path="rentals" element={<BookingsClientsView />} />
+          <Route path="rentals/:id" element={<BookingClientDetail />} />
           <Route path="condition-report" element={<VehicleConditionReportPage />} />
           <Route path="favorites" element={<FavoritesClientView />} />
           <Route path="settings" element={<SettingsClientView />} />

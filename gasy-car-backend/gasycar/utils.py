@@ -1,10 +1,9 @@
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMessage
 from django.utils import timezone
 from datetime import timedelta
 import random
 from users.models import User, OTPCode
 from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 
 
 import logging
@@ -20,37 +19,22 @@ from django.core.files.storage import default_storage
 class Util:
     @staticmethod
     def send_email(data):
-        recipient = (data.get("to_email") or "").strip()
-        if not recipient:
-            raise ValueError("Destination email vide")
-
-        subject = data["email_subject"]
-        html_body = data["email_body"]
-        from_email = data.get("from_email") or settings.DEFAULT_FROM_EMAIL
-
-        # Version texte + HTML pour améliorer la compatibilité des clients mails (dont Gmail).
-        text_body = data.get("text_body") or strip_tags(html_body)
-        message = EmailMultiAlternatives(
-            subject=subject,
-            body=text_body,
-            from_email=from_email,
-            to=[recipient],
-            reply_to=[from_email],
+        email = EmailMessage(
+            subject=data["email_subject"],
+            body=data["email_body"],
+            to=[data["to_email"]],
         )
-        if data.get("is_html", True):
-            message.attach_alternative(html_body, "text/html")
+        email.content_subtype = "html"
+        email.send()
+        
 
-        message.send(fail_silently=False)
-
-
-
+        
 def send_email_notification(email_content, email, titre, is_html=True):
     content = {
         "email_body": email_content,
         "to_email": email,
         "email_subject": titre,
-        "is_html": is_html,
-        "from_email": settings.DEFAULT_FROM_EMAIL,
+        "is_html": is_html  # Spécifier que c'est du HTML
     }
     Util.send_email(content)
     
