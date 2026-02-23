@@ -57,8 +57,16 @@ class OTPService:
     @staticmethod
     def send_otp_email(user, otp_code, purpose):
         if purpose == 'email_verification':
-            from gasycar.utils import create_and_send_email_otp_standalone
-            create_and_send_email_otp_standalone(user)
+            subject = 'Vérification de votre adresse email - GasyCar'
+            html_message = render_to_string(
+                "otp.html",
+                {
+                    "OTP_CODE": otp_code,
+                    "FIRST_NAME": user.first_name,
+                    "YEAR": timezone.now().year,
+                },
+            )
+            send_email_notification(html_message, user.email, subject, is_html=True)
         else:  # password_reset
             subject = 'Réinitialisation de votre mot de passe - GasyCar'
             html_message = render_to_string(
