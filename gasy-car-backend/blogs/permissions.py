@@ -13,4 +13,13 @@ class IsAdminOrReadOnly(permissions.BasePermission):
             return True
 
         # Autorise POST, PUT, PATCH, DELETE seulement aux staff/admin
-        return bool(request.user and request.user.is_staff)
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_staff
+                or user.is_superuser
+                or getattr(user, "role", None) == "ADMIN"
+            )
+        )
