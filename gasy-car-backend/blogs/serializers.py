@@ -23,7 +23,7 @@ class BlogSectionSerializer(serializers.ModelSerializer):
 
 
 class BlogPostSerializer(serializers.ModelSerializer):
-    sections = BlogSectionSerializer(many=True)
+    sections = BlogSectionSerializer(many=True, required=False)
     cover_image = serializers.ImageField(required=False)
 
     class Meta:
