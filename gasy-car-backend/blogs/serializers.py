@@ -5,6 +5,7 @@ from .models import BlogPost, BlogSection
 
 class BlogSectionSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
+    cta_url = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = BlogSection
@@ -21,9 +22,18 @@ class BlogSectionSerializer(serializers.ModelSerializer):
             "highlight_label",
         ]
 
+    def validate_cta_url(self, value):
+        if not value:
+            return value
+        if value.startswith("/"):
+            return value
+        if value.startswith("http://") or value.startswith("https://"):
+            return value
+        raise serializers.ValidationError("CTA URL doit être une URL absolue (http/https) ou un chemin relatif commençant par /.")
+
 
 class BlogPostSerializer(serializers.ModelSerializer):
-    sections = BlogSectionSerializer(many=True)
+    sections = BlogSectionSerializer(many=True, required=False)
     cover_image = serializers.ImageField(required=False)
 
     class Meta:

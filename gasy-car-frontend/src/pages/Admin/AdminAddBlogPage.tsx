@@ -116,9 +116,20 @@ export default function AdminAddBlogPage() {
       await createMutation.mutateAsync(formData);
       toast.success("Article créé avec succès");
       navigate("/admin/blogs");
-    } catch (error) {
-      console.error(error);
-      toast.error("Une erreur est survenue");
+    } catch (error: any) {
+      const backendError = error?.response?.data;
+      console.error("Erreur création article:", backendError || error);
+
+      let errorMessage = "Une erreur est survenue";
+      if (typeof backendError === "string") {
+        errorMessage = backendError;
+      } else if (backendError?.detail) {
+        errorMessage = backendError.detail;
+      } else if (backendError?.sections?.[0]?.cta_url?.[0]) {
+        errorMessage = backendError.sections[0].cta_url[0];
+      }
+
+      toast.error(errorMessage);
     }
   };
 
