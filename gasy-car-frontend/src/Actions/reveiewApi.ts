@@ -45,6 +45,12 @@ export const reviewAPI = {
     return response.data;
   },
 
+  // Récupérer les avis liés à un véhicule
+  getByVehicle: async (vehicleId: string): Promise<Review[]> => {
+    const response = await InstanceAxis.get<Review[]>(`/reviews/reviews/vehicle/${vehicleId}/`);
+    return response.data;
+  },
+
   // Récupérer les avis écrits PAR un utilisateur
   getWrittenByUser: async (userId: string): Promise<Review[]> => {
     const response = await InstanceAxis.get<Review[]>(`/reviews/reviews/user/${userId}/written/`);

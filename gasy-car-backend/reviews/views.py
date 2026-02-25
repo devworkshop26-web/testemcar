@@ -49,6 +49,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path=r"vehicle/(?P<vehicle_id>[0-9a-f-]+)")
+    def by_vehicle(self, request, vehicle_id):
+        reviews = Review.objects.filter(reservation__vehicle_id=vehicle_id)
+        serializer = self.get_serializer(reviews, many=True)
+        return Response(serializer.data)
+
     # ============================================================
     # 🔥 2) Reviews écrits PAR un user
     # GET /reviews/user/<user_id>/written/
@@ -85,7 +91,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         reservations = Reservation.objects.filter(
             client=request.user,
             vehicle_id=vehicle_id,
-            status=Reservation.Status.COMPLETED
+            status__in=[Reservation.Status.CONFIRMED, Reservation.Status.COMPLETED]
         ).exclude(
             reviews__author=request.user
         ).order_by("-end_datetime")
