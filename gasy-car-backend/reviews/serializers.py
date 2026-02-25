@@ -36,9 +36,10 @@ class ReviewSerializer(serializers.ModelSerializer):
                 {"reservation": "Un avis doit obligatoirement être lié à une réservation réelle."}
             )
 
-        if reservation.status != Reservation.Status.COMPLETED:
+        allowed_statuses = {Reservation.Status.CONFIRMED, Reservation.Status.COMPLETED}
+        if reservation.status not in allowed_statuses:
             raise serializers.ValidationError(
-                {"reservation": "Vous ne pouvez laisser un avis qu'après une réservation terminée."}
+                {"reservation": "Vous pouvez laisser un avis uniquement pour une réservation confirmée ou terminée."}
             )
 
         if not user or not user.is_authenticated:
