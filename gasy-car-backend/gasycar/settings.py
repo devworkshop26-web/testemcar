@@ -183,12 +183,12 @@ AUTH_USER_MODEL = "users.User"
 
 # Email configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.hostinger.com"
-EMAIL_PORT = 465
-EMAIL_HOST_USER = "contact@madagasycar.com"
-EMAIL_HOST_PASSWORD = "Cocolap1n?"
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
+EMAIL_HOST = "smtp-relay.brevo.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER = "a20331001@smtp-brevo.com"
+EMAIL_HOST_PASSWORD = "xsmtpsib-408e49fff239e343d686e448c32f7dd12e3a4ec1d4e5284708cc057f3006b88a-QqScMPn6CZkvAAwt"
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = "contact@madagasycar.com"
 
 # EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
