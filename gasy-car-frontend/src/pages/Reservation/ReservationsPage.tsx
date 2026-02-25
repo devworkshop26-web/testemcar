@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import BookingSidebar from './components/BookingSidebar';
 import { Calendar } from "@/components/ui/calendar";
@@ -34,6 +34,9 @@ import { useCurrentUserQuery } from '@/useQuery/useCurrentUserQuery';
 const ReservationsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = requestedTab === 'reviews' || requestedTab === 'info' ? requestedTab : 'availability';
 
   const { data: vehicleData, isLoading } = useVehiculeQuery(id);
 
@@ -533,7 +536,7 @@ const ReservationsPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-8 xl:gap-12 mt-12">
           {/* Main Content */}
           <div className="lg:w-2/3 space-y-8">
-            <Tabs defaultValue="availability" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-8 p-1 bg-gray-100 rounded-2xl h-14">
                 <TabsTrigger value="availability" className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all">
                   <CalendarIcon className="w-4 h-4 mr-2" />

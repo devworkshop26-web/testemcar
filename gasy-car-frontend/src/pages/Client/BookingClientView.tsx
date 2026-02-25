@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
-import {  Filter, Eye } from "lucide-react";
+import {  Filter, Eye, MessageSquarePlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
@@ -186,6 +186,20 @@ const BookingsClientsView = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
+                          {(item.status === "CONFIRMED" || item.status === "COMPLETED") && item.vehicle_data?.id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/reservation/${item.vehicle_data.id}?tab=reviews`);
+                              }}
+                            >
+                              <MessageSquarePlus className="w-4 h-4 mr-1" />
+                              Avis
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
