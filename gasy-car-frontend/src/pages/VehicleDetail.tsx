@@ -122,13 +122,22 @@ const VehicleDetail = () => {
       ? pendingReservations[0]
       : null;
 
+    if (!user?.id || !vehicle?.proprietaire_data?.id || !mostRecentReservation?.id) {
+      toast({
+        variant: "destructive",
+        title: "Action impossible",
+        description: "Vous pouvez noter uniquement après une réservation terminée pour ce véhicule.",
+      });
+      return;
+    }
+
     const reviewData: CreateReviewPayload = {
-      author: user?.id,
-      target: vehicle?.proprietaire_data?.id,
+      author: user.id,
+      target: vehicle.proprietaire_data.id,
       review_type: "CLIENT_TO_OWNER" as const,
       rating,
       comment,
-      ...(mostRecentReservation?.id && { reservation: mostRecentReservation.id }),
+      reservation: mostRecentReservation.id,
     };
 
     submitReview(reviewData, {
@@ -484,14 +493,22 @@ const VehicleDetail = () => {
                       </div>
                     ) : (
                       <div>
-                        {pendingReservations && pendingReservations.length > 0 && (
+                        {pendingReservations && pendingReservations.length > 0 ? (
                           <div className="mb-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                             <p className="text-xs text-green-700 dark:text-green-400">
                               ✓ Vous avez loué ce véhicule - Votre avis sera marqué comme vérifié
                             </p>
                           </div>
+                        ) : (
+                          <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              La notation est réservée aux utilisateurs ayant terminé une réservation réelle pour ce véhicule.
+                            </p>
+                          </div>
                         )}
-                        <ReviewForm onSubmit={handleReviewSubmit} />
+                        {pendingReservations && pendingReservations.length > 0 && (
+                          <ReviewForm onSubmit={handleReviewSubmit} />
+                        )}
                       </div>
                     )}
                   </CardContent>
