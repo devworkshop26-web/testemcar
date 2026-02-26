@@ -275,7 +275,7 @@ const BookingsView = () => {
 
               {!useGuest && (
                 <div className="grid gap-2">
-                  <Label htmlFor="client">Client</Label>
+                  <Label htmlFor="client">Client *</Label>
                   <select
                     id="client"
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -295,7 +295,7 @@ const BookingsView = () => {
               {useGuest && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="guestFirstName">Prénom</Label>
+                    <Label htmlFor="guestFirstName">Prénom *</Label>
                     <Input
                       id="guestFirstName"
                       value={guestFirstName}
@@ -303,7 +303,7 @@ const BookingsView = () => {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="guestLastName">Nom</Label>
+                    <Label htmlFor="guestLastName">Nom *</Label>
                     <Input
                       id="guestLastName"
                       value={guestLastName}
@@ -311,7 +311,7 @@ const BookingsView = () => {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="guestEmail">Email</Label>
+                    <Label htmlFor="guestEmail">Email *</Label>
                     <Input
                       id="guestEmail"
                       type="email"
@@ -320,7 +320,7 @@ const BookingsView = () => {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="guestPhone">Téléphone</Label>
+                    <Label htmlFor="guestPhone">Téléphone *</Label>
                     <Input
                       id="guestPhone"
                       value={guestPhone}
@@ -331,7 +331,7 @@ const BookingsView = () => {
               )}
 
               <div className="grid gap-2">
-                <Label htmlFor="vehicle">Véhicule</Label>
+                <Label htmlFor="vehicle">Véhicule *</Label>
                 <select
                   id="vehicle"
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -362,7 +362,7 @@ const BookingsView = () => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="startDatetime">Début</Label>
+                  <Label htmlFor="startDatetime">Début *</Label>
                   <Input
                     id="startDatetime"
                     type="datetime-local"
@@ -371,7 +371,7 @@ const BookingsView = () => {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="endDatetime">Fin</Label>
+                  <Label htmlFor="endDatetime">Fin *</Label>
                   <Input
                     id="endDatetime"
                     type="datetime-local"
@@ -426,7 +426,7 @@ const BookingsView = () => {
                   <p className="text-xs text-gray-500">Calculé automatiquement.</p>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="cautionAmount">Caution</Label>
+                  <Label htmlFor="cautionAmount">Caution *</Label>
                   <Input
                     id="cautionAmount"
                     type="number"
@@ -450,7 +450,7 @@ const BookingsView = () => {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="pickupLocation">Lieu de prise en charge</Label>
+                <Label htmlFor="pickupLocation">Lieu de prise en charge *</Label>
                 <Textarea
                   id="pickupLocation"
                   value={pickupLocation}
