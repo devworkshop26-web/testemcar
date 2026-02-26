@@ -570,9 +570,16 @@ class RequestResetPasswordView(APIView):
         if user:
             token = PasswordResetTokenGenerator().make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            reset_link = request.build_absolute_uri(
-                reverse('reset_password', kwargs={'uidb64': uidb64, 'token': token})
-            )
+            reset_path = reverse('reset_password', kwargs={'uidb64': uidb64, 'token': token})
+
+            configured_base_url = getattr(settings, "PASSWORD_RESET_BASE_URL", "").rstrip("/")
+            if configured_base_url:
+                reset_link = f"{configured_base_url}{reset_path}"
+            else:
+                reset_link = request.build_absolute_uri(reset_path)
+                if settings.DEBUG is False and reset_link.startswith("http://"):
+                    reset_link = reset_link.replace("http://", "https://", 1)
+
             # send email
             subject = "Réinitialisation de mot de passe"
             html_message = render_to_string(
@@ -600,15 +607,53 @@ def reset_password(request, uidb64, token):
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
+
+    is_token_valid = user is not None and PasswordResetTokenGenerator().check_token(user, token)
+
+    if request.method == "GET":
+        if not is_token_valid:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Le lien de réinitialisation est invalide ou expiré."},
+            )
+
+        return render(request, "reset_password.html")
+
     if request.method == "POST":
         password = request.POST.get("password")
         password2 = request.POST.get("password2")
+
+        if not is_token_valid:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Le lien de réinitialisation est invalide ou expiré."},
+            )
+
+        if not password or not password2:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Veuillez remplir les deux champs mot de passe."},
+            )
+
         if password != password2:
-            return render(request, "reset_password.html", {"error": "Les mots de passe ne correspondent pas."})
-        if user is not None and PasswordResetTokenGenerator().check_token(user, token):
-            user.set_password(password)
-            user.save()
-            return render(request, "password_reset_success.html")
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Les mots de passe ne correspondent pas."},
+            )
+
+        user.set_password(password)
+        user.save()
+        return render(request, "password_reset_success.html")
+
+    return render(
+        request,
+        "reset_password.html",
+        {"error": "Méthode non autorisée pour cette opération."},
+    )
 
 
 
