@@ -570,9 +570,16 @@ class RequestResetPasswordView(APIView):
         if user:
             token = PasswordResetTokenGenerator().make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            reset_link = request.build_absolute_uri(
-                reverse('reset_password', kwargs={'uidb64': uidb64, 'token': token})
-            )
+            reset_path = reverse('reset_password', kwargs={'uidb64': uidb64, 'token': token})
+
+            configured_base_url = getattr(settings, "PASSWORD_RESET_BASE_URL", "").rstrip("/")
+            if configured_base_url:
+                reset_link = f"{configured_base_url}{reset_path}"
+            else:
+                reset_link = request.build_absolute_uri(reset_path)
+                if settings.DEBUG is False and reset_link.startswith("http://"):
+                    reset_link = reset_link.replace("http://", "https://", 1)
+
             # send email
             subject = "Réinitialisation de mot de passe"
             html_message = render_to_string(

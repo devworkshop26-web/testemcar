@@ -208,6 +208,10 @@ OTP_LENGTH = 6
 # Configuration email (déjà dans votre settings)
 APPEND_SLASH = False
 
+# Public base URL used in password-reset emails.
+# Example: https://madagasycar.com
+PASSWORD_RESET_BASE_URL = os.environ.get("PASSWORD_RESET_BASE_URL", "https://madagasycar.com")
+
 # infor user
 
 DEFAULT_ADMIN_EMAIL = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@gasysystem.com")
