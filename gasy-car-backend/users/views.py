@@ -600,15 +600,53 @@ def reset_password(request, uidb64, token):
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
+
+    is_token_valid = user is not None and PasswordResetTokenGenerator().check_token(user, token)
+
+    if request.method == "GET":
+        if not is_token_valid:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Le lien de réinitialisation est invalide ou expiré."},
+            )
+
+        return render(request, "reset_password.html")
+
     if request.method == "POST":
         password = request.POST.get("password")
         password2 = request.POST.get("password2")
+
+        if not is_token_valid:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Le lien de réinitialisation est invalide ou expiré."},
+            )
+
+        if not password or not password2:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Veuillez remplir les deux champs mot de passe."},
+            )
+
         if password != password2:
-            return render(request, "reset_password.html", {"error": "Les mots de passe ne correspondent pas."})
-        if user is not None and PasswordResetTokenGenerator().check_token(user, token):
-            user.set_password(password)
-            user.save()
-            return render(request, "password_reset_success.html")
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Les mots de passe ne correspondent pas."},
+            )
+
+        user.set_password(password)
+        user.save()
+        return render(request, "password_reset_success.html")
+
+    return render(
+        request,
+        "reset_password.html",
+        {"error": "Méthode non autorisée pour cette opération."},
+    )
 
 
 
