@@ -20,6 +20,12 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+
+const articleRoutes: Record<string, string> = {
+  "Messagerie avec votre hôte": "/faq/messagerie-avec-votre-hote",
+  "Annuler un voyage avec votre hôte": "/faq/annuler-voyage-avec-votre-hote",
+};
 
 type ArticleSection = {
   title: string;
@@ -383,13 +389,13 @@ const FAQ = () => {
 
           <div className="grid gap-x-8 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredFeatured.map((article) => (
-              <a
+              <Link
                 key={article}
-                href="#"
+                to={articleRoutes[article] ?? "#"}
                 className="border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
               >
                 {article}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
