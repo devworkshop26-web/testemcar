@@ -74,6 +74,7 @@ const navigationLinks = [
   { label: "Nos Véhicules", path: "/allcars" },
   { label: "Comment ça marche ?", path: "/comment-ca-marche" },
   { label: "Blog", path: "/blog" },
+  { label: "Faq", path: "/faq" },
 ];
 
 // --- COMPOSANT DE RENDU DES ITEMS DE MENU ---
