@@ -6,6 +6,7 @@ import BecomeOwner from "@/pages/BecomeOwner";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import FAQ from "@/pages/FAQ";
+import MessagingHostArticlePage from "@/pages/help-center/MessagingHostArticlePage";
 import HowItWorksPage from "@/pages/HowItWorks";
 import Index from "@/pages/Index";
 import VehicleDetail from "@/pages/VehicleDetail";
@@ -36,6 +37,10 @@ export const AllRoutes = () => {
         <Route path="/comment-ca-marche" element={<HowItWorksPage />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route
+          path="/faq/messagerie-avec-votre-hote"
+          element={<MessagingHostArticlePage />}
+        />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/reservations/:carId" element={<ReservationPage />} />
         <Route path="/reservation/:id" element={<ReservationsPage />} />
