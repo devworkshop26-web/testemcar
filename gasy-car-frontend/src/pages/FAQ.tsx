@@ -21,7 +21,9 @@ import {
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
+import
+
+ {
   buildHelpArticleRoute,
   buildHelpCategoryRoute,
 } from "@/components/help-center/helpRoutes";
