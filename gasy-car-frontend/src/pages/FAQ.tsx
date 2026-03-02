@@ -24,6 +24,7 @@ import { Link } from "react-router-dom";
 
 const articleRoutes: Record<string, string> = {
   "Messagerie avec votre hôte": "/faq/messagerie-avec-votre-hote",
+  "Annuler un voyage avec votre hôte": "/faq/annuler-voyage-avec-votre-hote",
 };
 
 type ArticleSection = {

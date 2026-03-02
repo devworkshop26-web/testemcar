@@ -25,12 +25,12 @@ const articleAnchors: HelpArticleAnchor[] = [
   { id: "indemnisation", label: "Indemnisation par les utilisateurs" },
 ];
 
-export default function MessagingHostArticlePage() {
+export default function CancelTripHostArticlePage() {
   return (
     <HelpArticleLayout
-      breadcrumbs={["Centre d'aide", "Voyageurs", "Planifier votre trajet"]}
-      title="Messagerie avec votre hôte"
-      intro="Contenu conforme aux Conditions d’utilisation Mcar (mise à jour du 26 Février 2026)."
+      breadcrumbs={["Centre d'aide", "Voyageurs", "Changer ou annuler un voyage"]}
+      title="Annuler un voyage avec votre hôte"
+      intro="Article d’aide affiché au format long (style référence) avec les Conditions d’utilisation Mcar."
       anchors={articleAnchors}
     >
       <TermsOfUseContent />
