@@ -74,7 +74,7 @@ const navigationLinks = [
   { label: "Nos Véhicules", path: "/allcars" },
   { label: "Comment ça marche ?", path: "/comment-ca-marche" },
   { label: "Blog", path: "/blog" },
-  { label: "Centre d'aide", path: "/faq" },
+  { label: "FAQ", path: "/faq" },
 ];
 
 // --- COMPOSANT DE RENDU DES ITEMS DE MENU ---
@@ -145,7 +145,7 @@ const Header = () => {
   const { data: user } = useCurrentUserQuery();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navItemStyles = "relative px-4 py-2 text-sm font-medium transition-all duration-300 ease-out group flex items-center gap-1";
+  const navItemStyles = "relative px-3 py-2 text-sm font-medium transition-all duration-300 ease-out group flex items-center gap-1";
 
   const getLinkStateClasses = (path: string) =>
     location.pathname === path ? "text-primary" : "text-slate-600 hover:text-primary hover:-translate-y-0.5";
