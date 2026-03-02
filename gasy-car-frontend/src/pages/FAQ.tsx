@@ -20,6 +20,11 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  buildHelpArticleRoute,
+  buildHelpCategoryRoute,
+} from "@/components/help-center/helpRoutes";
 
 type ArticleSection = {
   title: string;
@@ -383,13 +388,13 @@ const FAQ = () => {
 
           <div className="grid gap-x-8 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredFeatured.map((article) => (
-              <a
+              <Link
                 key={article}
-                href="#"
+                to={buildHelpArticleRoute(article)}
                 className="border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
               >
                 {article}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -407,18 +412,21 @@ const FAQ = () => {
             <ul className="space-y-3">
               {section.links.map((link) => (
                 <li key={link}>
-                  <a
-                    href="#"
+                  <Link
+                    to={buildHelpArticleRoute(link)}
                     className="block border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
                   >
                     {link}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
-            <a href="#" className="text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+            <Link
+              to={buildHelpCategoryRoute(section.moreLabel)}
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+            >
               {section.moreLabel}
-            </a>
+            </Link>
           </article>
         ))}
       </section>
