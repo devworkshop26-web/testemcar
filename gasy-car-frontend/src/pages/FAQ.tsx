@@ -20,12 +20,18 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  buildHelpArticleRoute,
+  buildHelpCategoryRoute,
+} from "@/components/help-center/helpRoutes";
 
 type ArticleSection = {
   title: string;
   icon: ReactNode;
   links: string[];
   moreLabel: string;
+  allLinks?: string[];
 };
 
 type HelpCenterContent = {
@@ -61,18 +67,45 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Sélectionner la prise en charge",
           "Ajouter un conducteur",
         ],
+        allLinks: [
+          "Vérification avant départ",
+          "Sélectionner la prise en charge",
+          "Ajouter un conducteur",
+          "Messagerie avec votre hôte",
+          "Retour anticipé et check-out",
+          "Retard de prise en charge",
+          "Conduite hors zone autorisée",
+        ],
         moreLabel: "Voir les 17 articles",
       },
       {
         title: "Paiement de votre location",
         icon: <CircleDollarSign className="h-6 w-6" />,
         links: ["Paiement de votre trajet", "Remboursements", "Factures impayées"],
+        allLinks: [
+          "Paiement de votre trajet",
+          "Remboursements",
+          "Factures impayées",
+          "Moyens de paiement acceptés",
+          "Demander un remboursement à l’hôte",
+          "Crédits voyage",
+          "Frais et taxes applicables",
+        ],
         moreLabel: "Voir les 28 articles",
       },
       {
         title: "Changer ou annuler un voyage",
         icon: <FileText className="h-6 w-6" />,
         links: ["Annulation hôte", "Étendre une location", "Voyages annulés"],
+        allLinks: [
+          "Annulation hôte",
+          "Étendre une location",
+          "Voyages annulés",
+          "Modifier lieu de prise en charge",
+          "Raccourcir un voyage",
+          "Reporter un voyage",
+          "Annuler un voyage avec votre hôte",
+        ],
         moreLabel: "Voir les 11 articles",
       },
       {
@@ -300,6 +333,7 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
 const FAQ = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"guests" | "hosts">("guests");
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const activeContent = helpCenterByTab[activeTab];
 
@@ -314,12 +348,17 @@ const FAQ = () => {
   const filteredSections = useMemo(
     () =>
       activeContent.sections
-        .map((section) => ({
-          ...section,
-          links: section.links.filter((link) =>
+        .map((section) => {
+          const sourceLinks = section.allLinks ?? section.links;
+          const filteredLinks = sourceLinks.filter((link) =>
             link.toLowerCase().includes(searchTerm.toLowerCase()),
-          ),
-        }))
+          );
+
+          return {
+            ...section,
+            links: filteredLinks,
+          };
+        })
         .filter((section) => section.links.length > 0 || searchTerm.length === 0),
     [activeContent.sections, searchTerm],
   );
@@ -350,7 +389,7 @@ const FAQ = () => {
           <div className="mt-10 flex gap-8 border-b border-gray-200 text-sm font-semibold uppercase tracking-wider text-gray-500">
             <button
               type="button"
-              onClick={() => setActiveTab("guests")}
+              onClick={() => { setActiveTab("guests"); setExpandedSection(null); }}
               className={`border-b-2 pb-3 transition ${
                 activeTab === "guests"
                   ? "border-indigo-500 text-indigo-600"
@@ -361,7 +400,7 @@ const FAQ = () => {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("hosts")}
+              onClick={() => { setActiveTab("hosts"); setExpandedSection(null); }}
               className={`border-b-2 pb-3 transition ${
                 activeTab === "hosts"
                   ? "border-indigo-500 text-indigo-600"
@@ -383,13 +422,13 @@ const FAQ = () => {
 
           <div className="grid gap-x-8 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredFeatured.map((article) => (
-              <a
+              <Link
                 key={article}
-                href="#"
+                to={buildHelpArticleRoute(article)}
                 className="border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
               >
                 {article}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -404,21 +443,49 @@ const FAQ = () => {
                 {section.title}
               </h3>
             </div>
-            <ul className="space-y-3">
-              {section.links.map((link) => (
-                <li key={link}>
-                  <a
-                    href="#"
-                    className="block border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
-                  >
-                    {link}
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <a href="#" className="text-sm font-semibold text-indigo-600 hover:text-indigo-500">
-              {section.moreLabel}
-            </a>
+            {(() => {
+              const shouldShowToggle = section.links.length > 3;
+              const isExpanded = expandedSection === section.title;
+              const visibleLinks = isExpanded ? section.links : section.links.slice(0, 3);
+
+              return (
+                <>
+                  <ul className="space-y-3">
+                    {visibleLinks.map((link) => (
+                      <li key={link}>
+                        <Link
+                          to={buildHelpArticleRoute(link)}
+                          className="block border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
+                        >
+                          {link}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {shouldShowToggle ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedSection((current) =>
+                          current === section.title ? null : section.title,
+                        )
+                      }
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+                    >
+                      {isExpanded ? "Show Less" : section.moreLabel}
+                    </button>
+                  ) : (
+                    <Link
+                      to={buildHelpCategoryRoute(section.moreLabel)}
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+                    >
+                      {section.moreLabel}
+                    </Link>
+                  )}
+                </>
+              );
+            })()}
           </article>
         ))}
       </section>
