@@ -8,6 +8,8 @@ import BlogPost from "@/pages/BlogPost";
 import FAQ from "@/pages/FAQ";
 import MessagingHostArticlePage from "@/pages/help-center/MessagingHostArticlePage";
 import CancelTripHostArticlePage from "@/pages/help-center/CancelTripHostArticlePage";
+import HelpPlaceholderArticlePage from "@/pages/help-center/HelpPlaceholderArticlePage";
+import HelpPlaceholderCategoryPage from "@/pages/help-center/HelpPlaceholderCategoryPage";
 import HowItWorksPage from "@/pages/HowItWorks";
 import Index from "@/pages/Index";
 import VehicleDetail from "@/pages/VehicleDetail";
@@ -46,6 +48,8 @@ export const AllRoutes = () => {
           path="/faq/annuler-voyage-avec-votre-hote"
           element={<CancelTripHostArticlePage />}
         />
+        <Route path="/faq/article/:slug" element={<HelpPlaceholderArticlePage />} />
+        <Route path="/faq/categorie/:slug" element={<HelpPlaceholderCategoryPage />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/reservations/:carId" element={<ReservationPage />} />
         <Route path="/reservation/:id" element={<ReservationsPage />} />
