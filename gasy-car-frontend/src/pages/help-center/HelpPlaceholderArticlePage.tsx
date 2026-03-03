@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import PaymentMethodsAcceptedArticlePage from "./PaymentMethodsAcceptedArticlePage";
 import RefundsArticlePage from "./RefundsArticlePage";
 
 type RouteParams = {
@@ -35,8 +36,15 @@ export default function HelpPlaceholderArticlePage() {
   ]);
   const isRefundsArticle = refundsArticleSlugs.has(slug);
 
+  const paymentMethodsSlugs = new Set(["methodes-de-paiement-acceptees"]);
+  const isPaymentMethodsArticle = paymentMethodsSlugs.has(slug);
+
   if (isRefundsArticle) {
     return <RefundsArticlePage title={title} />;
+  }
+
+  if (isPaymentMethodsArticle) {
+    return <PaymentMethodsAcceptedArticlePage title={title} />;
   }
 
   return (
