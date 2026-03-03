@@ -43,6 +43,9 @@ export default function HelpPlaceholderArticlePage() {
   const assistancePolicySlugs = new Set(["numeros-d-assistance-routiere"]);
   const isAssistancePolicyArticle = assistancePolicySlugs.has(normalizedSlug);
 
+  const assistancePolicySlugs = new Set(["numeros-d-assistance-routiere"]);
+  const isAssistancePolicyArticle = assistancePolicySlugs.has(slug);
+
   const paymentMethodsSlugs = new Set(["methodes-de-paiement-acceptees"]);
   const isPaymentMethodsArticle = paymentMethodsSlugs.has(normalizedSlug);
 
