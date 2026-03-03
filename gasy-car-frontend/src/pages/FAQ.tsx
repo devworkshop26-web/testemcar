@@ -57,6 +57,15 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
         title: "Premiers pas",
         icon: <BusFront className="h-6 w-6" />,
         links: ["Réserver une voiture", "Découvrir Mcar", "Location mensuelle"],
+        allLinks: [
+          "Réserver une voiture",
+          "Découvrir Mcar",
+          "Location mensuelle",
+          "Conditions d'âge minimum",
+          "Créer un compte voyageur",
+          "Vérifier votre identité",
+          "Choisir un véhicule adapté",
+        ],
         moreLabel: "Voir les 16 articles",
       },
       {
@@ -116,6 +125,15 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Politique de chargeback",
           "Dommages pneus",
         ],
+        allLinks: [
+          "Révision d'un voyage",
+          "Politique de chargeback",
+          "Dommages pneus",
+          "Respect des règles du véhicule",
+          "Que faire en cas de contravention",
+          "Utilisation autorisée du véhicule",
+          "Objets perdus après un voyage",
+        ],
         moreLabel: "Voir les 13 articles",
       },
       {
@@ -125,6 +143,14 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Signaler un véhicule",
           "Assistance routière",
           "Urgence en voyage",
+        ],
+        allLinks: [
+          "Signaler un véhicule",
+          "Assistance routière",
+          "Urgence en voyage",
+          "Accident pendant une location",
+          "Véhicule en panne",
+          "Contacter l'assistance 24/7",
         ],
         moreLabel: "Voir les 10 articles",
       },
@@ -136,6 +162,14 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Modifier votre nom",
           "Mettre à jour votre permis",
         ],
+        allLinks: [
+          "Connexion impossible",
+          "Modifier votre nom",
+          "Mettre à jour votre permis",
+          "Mettre à jour votre e-mail",
+          "Supprimer votre compte",
+          "Gérer les préférences de notification",
+        ],
         moreLabel: "Voir les 9 articles",
       },
       {
@@ -146,6 +180,15 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Assurance personnelle",
           "Couverture carte bancaire",
         ],
+        allLinks: [
+          "Contacter les sinistres",
+          "Assurance personnelle",
+          "Couverture carte bancaire",
+          "Comparer les plans de protection",
+          "Franchise et responsabilité",
+          "Ce que couvre la protection",
+          "Réclamation après incident",
+        ],
         moreLabel: "Voir les 14 articles",
       },
       {
@@ -155,6 +198,14 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Politique carburant",
           "Politique nettoyage",
           "Politique non-fumeur",
+        ],
+        allLinks: [
+          "Politique carburant",
+          "Politique nettoyage",
+          "Politique non-fumeur",
+          "Frais pour retard de retour",
+          "Frais de kilométrage supplémentaire",
+          "Politique animaux de compagnie",
         ],
         moreLabel: "Voir les 10 articles",
       },
@@ -333,7 +384,7 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
 const FAQ = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"guests" | "hosts">("guests");
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
   const activeContent = helpCenterByTab[activeTab];
 
@@ -389,7 +440,7 @@ const FAQ = () => {
           <div className="mt-10 flex gap-8 border-b border-gray-200 text-sm font-semibold uppercase tracking-wider text-gray-500">
             <button
               type="button"
-              onClick={() => { setActiveTab("guests"); setExpandedSection(null); }}
+              onClick={() => { setActiveTab("guests"); setExpandedSections([]); }}
               className={`border-b-2 pb-3 transition ${
                 activeTab === "guests"
                   ? "border-indigo-500 text-indigo-600"
@@ -400,7 +451,7 @@ const FAQ = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setActiveTab("hosts"); setExpandedSection(null); }}
+              onClick={() => { setActiveTab("hosts"); setExpandedSections([]); }}
               className={`border-b-2 pb-3 transition ${
                 activeTab === "hosts"
                   ? "border-indigo-500 text-indigo-600"
@@ -445,7 +496,7 @@ const FAQ = () => {
             </div>
             {(() => {
               const shouldShowToggle = section.links.length > 3;
-              const isExpanded = expandedSection === section.title;
+              const isExpanded = expandedSections.includes(section.title);
               const visibleLinks = isExpanded ? section.links : section.links.slice(0, 3);
 
               return (
@@ -467,8 +518,10 @@ const FAQ = () => {
                     <button
                       type="button"
                       onClick={() =>
-                        setExpandedSection((current) =>
-                          current === section.title ? null : section.title,
+                        setExpandedSections((current) =>
+                          current.includes(section.title)
+                            ? current.filter((title) => title !== section.title)
+                            : [...current, section.title],
                         )
                       }
                       className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
