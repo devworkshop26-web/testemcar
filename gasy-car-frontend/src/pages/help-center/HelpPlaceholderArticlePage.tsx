@@ -28,10 +28,15 @@ export default function HelpPlaceholderArticlePage() {
       : formatFallbackTitle(slug);
   }, [searchParams, slug]);
 
-  const isRefundsArticle = slug === "remboursements";
+  const refundsArticleSlugs = new Set([
+    "remboursements",
+    "prise-en-charge-et-retour",
+    "prise-en-charge-et-retour-a-l-aeroport-invites",
+  ]);
+  const isRefundsArticle = refundsArticleSlugs.has(slug);
 
   if (isRefundsArticle) {
-    return <RefundsArticlePage />;
+    return <RefundsArticlePage title={title} />;
   }
 
   return (

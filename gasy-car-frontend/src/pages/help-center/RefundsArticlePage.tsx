@@ -17,11 +17,17 @@ const refundsAnchors = [
   },
 ];
 
-export default function RefundsArticlePage() {
+type RefundsArticlePageProps = {
+  title?: string;
+};
+
+export default function RefundsArticlePage({
+  title = "Remboursements",
+}: RefundsArticlePageProps) {
   return (
     <HelpArticleLayout
       breadcrumbs={["Centre d'aide", "Article"]}
-      title="Remboursements"
+      title={title}
       intro="Politique d’annulation, de modification et d’absence (no-show), ainsi que les règles de responsabilité, d’assurance et d’assistance applicables sur Mcar."
       anchors={refundsAnchors}
     >
