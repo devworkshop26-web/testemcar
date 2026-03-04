@@ -3,8 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import DriverEligibilityArticlePage from "./DriverEligibilityArticlePage";
 import PaymentMethodsAcceptedArticlePage from "./PaymentMethodsAcceptedArticlePage";
+import PickupReturnArticlePage from "./PickupReturnArticlePage";
 import RefundsArticlePage from "./RefundsArticlePage";
+import RoadsideAssistanceArticlePage from "./RoadsideAssistanceArticlePage";
+import TripCostArticlePage from "./TripCostArticlePage";
+import TripExtensionArticlePage from "./TripExtensionArticlePage";
 
 type RouteParams = {
   slug?: string;
@@ -29,22 +34,25 @@ export default function HelpPlaceholderArticlePage() {
       : formatFallbackTitle(slug);
   }, [searchParams, slug]);
 
-  const refundsArticleSlugs = new Set([
-    "remboursements",
-    "prise-en-charge-et-retour",
-    "prise-en-charge-et-retour-a-l-aeroport-invites",
-  ]);
-  const isRefundsArticle = refundsArticleSlugs.has(slug);
+  const contentBySlug: Record<string, JSX.Element> = {
+    remboursements: <RefundsArticlePage title={title} />,
+    "prise-en-charge-et-retour": <PickupReturnArticlePage title={title} />,
+    "prise-en-charge-et-retour-a-l-aeroport-invites": (
+      <PickupReturnArticlePage title={title} />
+    ),
+    "methodes-de-paiement-acceptees": (
+      <PaymentMethodsAcceptedArticlePage title={title} />
+    ),
+    "admissibilite-du-conducteur": <DriverEligibilityArticlePage title={title} />,
+    "cout-d-un-voyage": <TripCostArticlePage title={title} />,
+    "prolonger-un-voyage": <TripExtensionArticlePage title={title} />,
+    "numeros-d-assistance-routiere": (
+      <RoadsideAssistanceArticlePage title={title} />
+    ),
+  };
 
-  const paymentMethodsSlugs = new Set(["methodes-de-paiement-acceptees"]);
-  const isPaymentMethodsArticle = paymentMethodsSlugs.has(slug);
-
-  if (isRefundsArticle) {
-    return <RefundsArticlePage title={title} />;
-  }
-
-  if (isPaymentMethodsArticle) {
-    return <PaymentMethodsAcceptedArticlePage title={title} />;
+  if (contentBySlug[slug]) {
+    return contentBySlug[slug];
   }
 
   return (
