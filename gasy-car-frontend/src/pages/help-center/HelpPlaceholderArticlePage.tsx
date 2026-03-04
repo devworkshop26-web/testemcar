@@ -3,12 +3,29 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import PaymentMethodsAcceptedArticlePage from "./PaymentMethodsAcceptedArticlePage";
-import RefundsArticlePage from "./RefundsArticlePage";
 
 type RouteParams = {
   slug?: string;
 };
+
+type ArticleComponent = {
+  default: React.ComponentType<{ title?: string }>;
+};
+
+const articleModules = import.meta.glob("./articles/*.tsx", {
+  eager: true,
+}) as Record<string, ArticleComponent>;
+
+const articleBySlug = Object.entries(articleModules).reduce<Record<string, React.ComponentType<{ title?: string }>>>(
+  (acc, [path, module]) => {
+    const fileName = path.split("/").pop()?.replace(".tsx", "");
+    if (fileName) {
+      acc[fileName] = module.default;
+    }
+    return acc;
+  },
+  {},
+);
 
 function formatFallbackTitle(slug: string): string {
   return slug
@@ -29,29 +46,16 @@ export default function HelpPlaceholderArticlePage() {
       : formatFallbackTitle(slug);
   }, [searchParams, slug]);
 
-  const refundsArticleSlugs = new Set([
-    "remboursements",
-    "prise-en-charge-et-retour",
-    "prise-en-charge-et-retour-a-l-aeroport-invites",
-  ]);
-  const isRefundsArticle = refundsArticleSlugs.has(slug);
-
-  const paymentMethodsSlugs = new Set(["methodes-de-paiement-acceptees"]);
-  const isPaymentMethodsArticle = paymentMethodsSlugs.has(slug);
-
-  if (isRefundsArticle) {
-    return <RefundsArticlePage title={title} />;
-  }
-
-  if (isPaymentMethodsArticle) {
-    return <PaymentMethodsAcceptedArticlePage title={title} />;
+  const ArticlePage = articleBySlug[slug];
+  if (ArticlePage) {
+    return <ArticlePage title={title} />;
   }
 
   return (
     <HelpArticleLayout
       breadcrumbs={["Centre d'aide", "Article"]}
       title={title}
-      intro="Cette page est prête et réutilisable avec shadcn. Le contenu détaillé sera ajouté prochainement."
+      intro="Cet article n'est pas encore publié dans le centre d'aide Madagasycar."
       anchors={[{ id: "statut-article", label: "Statut de l’article" }]}
     >
       <section id="statut-article">
@@ -60,14 +64,11 @@ export default function HelpPlaceholderArticlePage() {
             <Badge className="w-fit" variant="secondary">
               En préparation
             </Badge>
-            <CardTitle className="mt-3">
-              Contenu en cours de finalisation
-            </CardTitle>
+            <CardTitle className="mt-3">Publication prochaine</CardTitle>
           </CardHeader>
           <CardContent>
-            Cet article a bien sa route dédiée. Vous pouvez maintenant relier
-            tous les liens du centre d’aide vers une page cohérente et
-            réutilisable.
+            Le lien est bien configuré. Le contenu détaillé sera publié dans son
+            fichier d’article dédié.
           </CardContent>
         </Card>
       </section>

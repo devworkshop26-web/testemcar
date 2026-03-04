@@ -1,11 +1,11 @@
-import RefundsArticlePage from "./RefundsArticlePage";
+import MethodesDePaiementAccepteesArticle from "./articles/methodes-de-paiement-acceptees";
 
 type PaymentMethodsAcceptedArticlePageProps = {
   title?: string;
 };
 
 export default function PaymentMethodsAcceptedArticlePage({
-  title = "Méthodes de paiement acceptées",
+  title,
 }: PaymentMethodsAcceptedArticlePageProps) {
-  return <RefundsArticlePage title={title} />;
+  return <MethodesDePaiementAccepteesArticle title={title} />;
 }
