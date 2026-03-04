@@ -1,0 +1,19 @@
+import { HelpArticlePageTemplate } from "@/components/help-center/HelpArticlePageTemplate";
+
+type ArticleProps = {
+  title?: string;
+};
+
+export default function PriseEnChargeAeroportAntananarivoArticle({ title = "Prise en charge aéroport Antananarivo" }: ArticleProps) {
+  return (
+    <HelpArticlePageTemplate
+      title={title}
+      intro="Contenu basé exclusivement sur les Conditions d’utilisation Madagasycar (mise à jour du 26 Février 2026)."
+      sections={[
+        { id: "regles-principales", title: "Règles principales", paragraphs: ["Cet article s’applique uniquement aux locations organisées sur la plateforme Madagasycar.", "Les utilisateurs doivent respecter les CGU, les lois malgaches en vigueur et les obligations contractuelles définies sur la plateforme."], },
+        { id: "points-cles", title: "Points clés", bullets: ["La remise et la restitution doivent être confirmées à l’avance via la messagerie Mcar.", "Les horaires, points de rencontre et documents doivent être validés entre Hôte et Voyageur sur la plateforme.", "Aucun paiement ni accord contractuel hors plateforme n’est autorisé."], },
+        { id: "responsabilites", title: "Responsabilités et limites", paragraphs: ["La responsabilité de Mcar est limitée conformément aux CGU et à la législation malgache applicable.", "Les responsabilités opérationnelles liées au véhicule, à la conduite et aux dommages incombent à l’Hôte et/ou au Voyageur selon le mode de location."], },
+      ]}
+    />
+  );
+}

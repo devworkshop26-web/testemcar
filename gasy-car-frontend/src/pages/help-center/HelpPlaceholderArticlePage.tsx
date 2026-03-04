@@ -3,17 +3,29 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import DriverEligibilityArticlePage from "./DriverEligibilityArticlePage";
-import PaymentMethodsAcceptedArticlePage from "./PaymentMethodsAcceptedArticlePage";
-import PickupReturnArticlePage from "./PickupReturnArticlePage";
-import RefundsArticlePage from "./RefundsArticlePage";
-import RoadsideAssistanceArticlePage from "./RoadsideAssistanceArticlePage";
-import TripCostArticlePage from "./TripCostArticlePage";
-import TripExtensionArticlePage from "./TripExtensionArticlePage";
 
 type RouteParams = {
   slug?: string;
 };
+
+type ArticleComponent = {
+  default: React.ComponentType<{ title?: string }>;
+};
+
+const articleModules = import.meta.glob("./articles/*.tsx", {
+  eager: true,
+}) as Record<string, ArticleComponent>;
+
+const articleBySlug = Object.entries(articleModules).reduce<Record<string, React.ComponentType<{ title?: string }>>>(
+  (acc, [path, module]) => {
+    const fileName = path.split("/").pop()?.replace(".tsx", "");
+    if (fileName) {
+      acc[fileName] = module.default;
+    }
+    return acc;
+  },
+  {},
+);
 
 function formatFallbackTitle(slug: string): string {
   return slug
@@ -34,32 +46,16 @@ export default function HelpPlaceholderArticlePage() {
       : formatFallbackTitle(slug);
   }, [searchParams, slug]);
 
-  const contentBySlug: Record<string, JSX.Element> = {
-    remboursements: <RefundsArticlePage title={title} />,
-    "prise-en-charge-et-retour": <PickupReturnArticlePage title={title} />,
-    "prise-en-charge-et-retour-a-l-aeroport-invites": (
-      <PickupReturnArticlePage title={title} />
-    ),
-    "methodes-de-paiement-acceptees": (
-      <PaymentMethodsAcceptedArticlePage title={title} />
-    ),
-    "admissibilite-du-conducteur": <DriverEligibilityArticlePage title={title} />,
-    "cout-d-un-voyage": <TripCostArticlePage title={title} />,
-    "prolonger-un-voyage": <TripExtensionArticlePage title={title} />,
-    "numeros-d-assistance-routiere": (
-      <RoadsideAssistanceArticlePage title={title} />
-    ),
-  };
-
-  if (contentBySlug[slug]) {
-    return contentBySlug[slug];
+  const ArticlePage = articleBySlug[slug];
+  if (ArticlePage) {
+    return <ArticlePage title={title} />;
   }
 
   return (
     <HelpArticleLayout
       breadcrumbs={["Centre d'aide", "Article"]}
       title={title}
-      intro="Cette page est prête et réutilisable avec shadcn. Le contenu détaillé sera ajouté prochainement."
+      intro="Cet article n'est pas encore publié dans le centre d'aide Madagasycar."
       anchors={[{ id: "statut-article", label: "Statut de l’article" }]}
     >
       <section id="statut-article">
@@ -68,14 +64,11 @@ export default function HelpPlaceholderArticlePage() {
             <Badge className="w-fit" variant="secondary">
               En préparation
             </Badge>
-            <CardTitle className="mt-3">
-              Contenu en cours de finalisation
-            </CardTitle>
+            <CardTitle className="mt-3">Publication prochaine</CardTitle>
           </CardHeader>
           <CardContent>
-            Cet article a bien sa route dédiée. Vous pouvez maintenant relier
-            tous les liens du centre d’aide vers une page cohérente et
-            réutilisable.
+            Le lien est bien configuré. Le contenu détaillé sera publié dans son
+            fichier d’article dédié.
           </CardContent>
         </Card>
       </section>
