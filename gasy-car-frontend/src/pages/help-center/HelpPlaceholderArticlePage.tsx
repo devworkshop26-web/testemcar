@@ -3,8 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { slugifyHelpLabel } from "@/components/help-center/helpRoutes";
-import CancellationPolicyArticlePage from "./CancellationPolicyArticlePage";
 import PaymentMethodsAcceptedArticlePage from "./PaymentMethodsAcceptedArticlePage";
 import RefundsArticlePage from "./RefundsArticlePage";
 
@@ -24,8 +22,6 @@ export default function HelpPlaceholderArticlePage() {
   const { slug = "article" } = useParams<RouteParams>();
   const [searchParams] = useSearchParams();
 
-  const normalizedSlug = useMemo(() => slugifyHelpLabel(slug), [slug]);
-
   const title = useMemo(() => {
     const queryTitle = searchParams.get("title");
     return queryTitle && queryTitle.trim().length > 0
@@ -38,23 +34,13 @@ export default function HelpPlaceholderArticlePage() {
     "prise-en-charge-et-retour",
     "prise-en-charge-et-retour-a-l-aeroport-invites",
   ]);
-  const isRefundsArticle = refundsArticleSlugs.has(normalizedSlug);
-
-  const assistancePolicySlugs = new Set(["numeros-d-assistance-routiere"]);
-  const isAssistancePolicyArticle = assistancePolicySlugs.has(normalizedSlug);
-
-  const assistancePolicySlugs = new Set(["numeros-d-assistance-routiere"]);
-  const isAssistancePolicyArticle = assistancePolicySlugs.has(slug);
+  const isRefundsArticle = refundsArticleSlugs.has(slug);
 
   const paymentMethodsSlugs = new Set(["methodes-de-paiement-acceptees"]);
-  const isPaymentMethodsArticle = paymentMethodsSlugs.has(normalizedSlug);
+  const isPaymentMethodsArticle = paymentMethodsSlugs.has(slug);
 
   if (isRefundsArticle) {
     return <RefundsArticlePage title={title} />;
-  }
-
-  if (isAssistancePolicyArticle) {
-    return <CancellationPolicyArticlePage title={title} />;
   }
 
   if (isPaymentMethodsArticle) {

@@ -298,7 +298,7 @@ const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
           "Politique de contestation de paiement | Invité",
           "Dommages pneu | Invités",
           "Paiement du carburant ou de la recharge EV",
-          "Lever les restrictions de compte après un chargeback",
+          "Lever les restrictions de compte après un chargebaci k",
           "Péages",
           "Contraventions",
           "Guide des photos de trajet | Invités",
@@ -1045,7 +1045,7 @@ const FAQ = () => {
       <section className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-12 pt-16 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl">
-            Centre d'aide
+            Centre d'aide ici
           </h1>
           <p className="mt-3 text-lg text-gray-600">
             Que pouvons-nous faire pour vous ?
