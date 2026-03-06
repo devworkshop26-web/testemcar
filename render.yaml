@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: lucrabe-front
+    env: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: GEMINI_API_KEY
+        sync: false

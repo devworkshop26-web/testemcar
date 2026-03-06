@@ -1,0 +1,73 @@
+{
+  "services": [
+    {
+      "name": "Workshop Idea Center",
+      "tagline": "Innovation Lab",
+      "description": "Innovation lab transforming business ideas into validated, scalable ventures.",
+      "story": "The birthplace of structured ventures; converts concepts into execution-ready companies.",
+      "links": [
+        { "name": "Website", "url": "#", "icon": "ExternalLink" },
+        { "name": "LinkedIn", "url": "#", "icon": "Linkedin" },
+        { "name": "Facebook", "url": "#", "icon": "Facebook" },
+        { "name": "Instagram", "url": "#", "icon": "Instagram" }
+      ]
+    },
+    {
+      "name": "Serendipity",
+      "tagline": "Strategic clarity through unexpected insight",
+      "description": "Brand strategy, positioning, and strategic advisory.",
+      "story": "Helps founders and executives refine identity, narrative, and competitive positioning.",
+      "links": [
+        { "name": "Website", "url": "#", "icon": "ExternalLink" },
+        { "name": "LinkedIn", "url": "#", "icon": "Linkedin" },
+        { "name": "Instagram", "url": "#", "icon": "Instagram" }
+      ]
+    },
+    {
+      "name": "Kinva.tech",
+      "tagline": "Automations & AI Systems",
+      "description": "AI agents, workflow automation, and digital infrastructure.",
+      "story": "Modernizing Malagasy businesses through intelligent systems.",
+      "links": [
+        { "name": "Website", "url": "kinva.tech", "icon": "ExternalLink" },
+        { "name": "LinkedIn", "url": "#", "icon": "Linkedin" },
+        { "name": "Facebook", "url": "#", "icon": "Facebook" },
+        { "name": "Instagram", "url": "#", "icon": "Instagram" }
+      ]
+    },
+    {
+      "name": "Madagasycar.com",
+      "tagline": "Mobility & Automotive Platform",
+      "description": "Automotive marketplace, listings, rentals, and mobility platform.",
+      "story": "Structuring and digitizing the automotive sector in Madagascar.",
+      "links": [
+        { "name": "Website", "url": "madagasycar.com", "icon": "ExternalLink" },
+        { "name": "Facebook", "url": "#", "icon": "Facebook" },
+        { "name": "Instagram", "url": "#", "icon": "Instagram" },
+        { "name": "LinkedIn", "url": "#", "icon": "Linkedin" }
+      ]
+    },
+    {
+      "name": "Rosewood Guesthouse",
+      "tagline": "Where comfort meets curated simplicity",
+      "description": "Boutique guesthouse for travelers and professionals.",
+      "story": "Hospitality experience designed for comfort and operational excellence.",
+      "links": [
+        { "name": "Facebook", "url": "#", "icon": "Facebook" },
+        { "name": "Instagram", "url": "#", "icon": "Instagram" },
+        { "name": "Google Maps", "url": "#", "icon": "MapPin" },
+        { "name": "Booking Page", "url": "#", "icon": "ExternalLink" }
+      ]
+    }
+  ],
+  "capabilities": [
+    "Venture building",
+    "AI automation",
+    "Digital transformation",
+    "Business systems design",
+    "Mobility platforms",
+    "Hospitality optimization",
+    "Brand strategy",
+    "Training & education"
+  ]
+}
