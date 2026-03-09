@@ -1,7 +1,24 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://madagasycar.com/api";
+const RAW_API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? "").trim();
+const IS_LOCAL_BACKEND_URL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/api)?\/?$/i.test(
+  RAW_API_BASE_URL
+);
+
+const isLocalFrontendHost = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1";
+};
+
+const shouldUseProxyBase =
+  (import.meta.env.DEV && (RAW_API_BASE_URL.length === 0 || IS_LOCAL_BACKEND_URL)) ||
+  (isLocalFrontendHost() && IS_LOCAL_BACKEND_URL);
+
+const API_BASE_URL = shouldUseProxyBase
+  ? "/api"
+  : RAW_API_BASE_URL || "https://madagasycar.com/api";
 
 /**
  * WS basé DIRECTEMENT sur l’API
@@ -14,8 +31,9 @@ export const WS_BASE_URL = API_BASE_URL
 
 export const resolveWsBaseUrl = (base: string) => {
   const fromEnv = String(base ?? "").trim();
+  const isRelativePath = fromEnv.startsWith("/");
 
-  if (fromEnv) {
+  if (fromEnv && !isRelativePath) {
     const normalized = fromEnv.replace(/\/api\/?$/, "");
     if (typeof window !== "undefined" && window.location.protocol === "https:") {
       return normalized.replace(/^ws:\/\//, "wss://").replace(/^http:\/\//, "wss://");

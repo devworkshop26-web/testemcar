@@ -66,13 +66,26 @@ class UserRegistrationView(APIView):
 
             # Générer et envoyer OTP pour vérification email
             otp = OTPService.create_otp(user, "email_verification")
-            OTPService.send_otp_email(user, otp.code, "email_verification")
+            otp_sent = True
+            warning = None
+
+            try:
+                OTPService.send_otp_email(user, otp.code, "email_verification")
+            except Exception as exc:
+                # En local/dev, l'envoi mail peut échouer (SMTP non configuré).
+                # On ne doit pas casser l'inscription côté UX :
+                # l'utilisateur doit tout de même être redirigé vers la page OTP.
+                otp_sent = False
+                warning = "Impossible d'envoyer l'OTP pour le moment."
+                print(f"[WARN] OTP email send failed for {user.email}: {exc}")
 
             return Response(
                 {
                     "message": "Compte créé avec succès. Un code de vérification a été envoyé à votre email.",
                     "id": str(user.id),
                     "email": str(user.email),
+                    "otp_sent": otp_sent,
+                    "warning": warning,
                 },
                 status=status.HTTP_201_CREATED,
             )
