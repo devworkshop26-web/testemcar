@@ -71,3 +71,17 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Local environment (.env)
+
+Create a local env file in the frontend directory before starting Vite:
+
+```sh
+cp .env.example .env.local
+```
+
+Values for a local Django backend running on `127.0.0.1:8000`:
+
+- `VITE_API_BASE_URL=http://127.0.0.1:8000/api`
+- `VITE_MEDIA_BASE_URL=http://127.0.0.1:8000`
+
