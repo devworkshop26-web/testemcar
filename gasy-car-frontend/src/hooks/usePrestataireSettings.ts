@@ -281,28 +281,33 @@ export const usePrestataireSettings = () => {
   // -------------------------------------------------------------
   // Remplissage automatique du formulaire
   // -------------------------------------------------------------
+  const getMediaUrl = (value?: string | null) => {
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:")) {
+      return value;
+    }
+    const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
+    const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
+    return `${BASE_URL}${value}`;
+  };
+
   useEffect(() => {
     if (!user) return;
 
     // SI le backend renvoie une nouvelle image → affichage instantané !
     if (user.image) {
-      const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-      const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
-      setPreviewPhoto(`${BASE_URL}${user.image}`);
+      setPreviewPhoto(getMediaUrl(user.image));
     }
 
     // ✅ charger CIN recto/verso si le backend les renvoie
-    const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-    const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
-
     if ((user as any).cin_photo_recto) {
-      setPreviewCinRecto(`${BASE_URL}${(user as any).cin_photo_recto}`);
+      setPreviewCinRecto(getMediaUrl((user as any).cin_photo_recto));
     } else {
       setPreviewCinRecto("");
     }
 
     if ((user as any).cin_photo_verso) {
-      setPreviewCinVerso(`${BASE_URL}${(user as any).cin_photo_verso}`);
+      setPreviewCinVerso(getMediaUrl((user as any).cin_photo_verso));
     } else {
       setPreviewCinVerso("");
     }
@@ -324,7 +329,7 @@ export const usePrestataireSettings = () => {
     if (prestataireData) {
       // Logo preview
       if (prestataireData.logo) {
-        setPreviewLogo(`${BASE_URL}${prestataireData.logo}`);
+        setPreviewLogo(getMediaUrl(prestataireData.logo));
       }
 
       prestValues = {

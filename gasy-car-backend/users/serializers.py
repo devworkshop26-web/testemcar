@@ -119,6 +119,18 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'first_name',
+            'last_name',
+            'email',
+            'role',
+            'is_active',
+        )
+
+
 class OTPRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
     purpose = serializers.ChoiceField(

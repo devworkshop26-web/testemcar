@@ -45,6 +45,7 @@ from .serializers import (
     UserLoginSerializer,
     UserProfileSerializer,
     UserUpdateSerializer,
+    AdminUserUpdateSerializer,
     OTPRequestSerializer,
     OTPVerifySerializer,
     PasswordResetSerializer,
@@ -344,6 +345,42 @@ class UserListView(APIView):
         return Response(serializer.data)
 
 
+class DeleteNonAdminUsersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        current_user = request.user
+
+        if current_user.role != "ADMIN" and not current_user.is_superuser:
+            return Response(
+                {"detail": "Accès réservé aux administrateurs."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        password = request.data.get("password")
+        if not password:
+            return Response(
+                {"detail": "Le mot de passe administrateur est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not current_user.check_password(password):
+            return Response(
+                {"detail": "Mot de passe administrateur invalide."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        deleted_count, _ = User.objects.exclude(role="ADMIN").delete()
+
+        return Response(
+            {
+                "message": "Suppression en masse terminée.",
+                "deleted_count": deleted_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 # signup User endpoint for testing
 @api_view(["POST"])
 def signup(request):
@@ -446,8 +483,16 @@ class UserProfileView(APIView):
     def put(self, request, user_id=None):
         user = self.get_user(request, user_id)
 
-        # Sécurité : un utilisateur ne peut modifier QUE son propre profil,
-        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        current_user = request.user
+        is_admin_edit = (
+            user_id is not None
+            and (current_user.role == "ADMIN" or current_user.is_superuser)
+            and str(current_user.id) != str(user.id)
+        )
+
+        serializer_class = AdminUserUpdateSerializer if is_admin_edit else UserUpdateSerializer
+        serializer = serializer_class(user, data=request.data, partial=True)
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -464,6 +509,28 @@ class UserProfileView(APIView):
     )
     def delete(self, request, user_id=None):
         user = self.get_user(request, user_id)
+
+        if user_id is not None:
+            current_user = request.user
+
+            if current_user.role != "ADMIN" and not current_user.is_superuser:
+                return Response(
+                    {"detail": "Accès réservé aux administrateurs."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            password = request.data.get("password")
+            if not password:
+                return Response(
+                    {"detail": "Le mot de passe administrateur est requis."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not current_user.check_password(password):
+                return Response(
+                    {"detail": "Mot de passe administrateur invalide."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
         user.delete()
         return Response(
@@ -503,9 +570,16 @@ class RequestResetPasswordView(APIView):
         if user:
             token = PasswordResetTokenGenerator().make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            reset_link = request.build_absolute_uri(
-                reverse('reset_password', kwargs={'uidb64': uidb64, 'token': token})
-            )
+            reset_path = reverse('reset_password', kwargs={'uidb64': uidb64, 'token': token})
+
+            configured_base_url = getattr(settings, "PASSWORD_RESET_BASE_URL", "").rstrip("/")
+            if configured_base_url:
+                reset_link = f"{configured_base_url}{reset_path}"
+            else:
+                reset_link = request.build_absolute_uri(reset_path)
+                if settings.DEBUG is False and reset_link.startswith("http://"):
+                    reset_link = reset_link.replace("http://", "https://", 1)
+
             # send email
             subject = "Réinitialisation de mot de passe"
             html_message = render_to_string(
@@ -533,15 +607,53 @@ def reset_password(request, uidb64, token):
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
+
+    is_token_valid = user is not None and PasswordResetTokenGenerator().check_token(user, token)
+
+    if request.method == "GET":
+        if not is_token_valid:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Le lien de réinitialisation est invalide ou expiré."},
+            )
+
+        return render(request, "reset_password.html")
+
     if request.method == "POST":
         password = request.POST.get("password")
         password2 = request.POST.get("password2")
+
+        if not is_token_valid:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Le lien de réinitialisation est invalide ou expiré."},
+            )
+
+        if not password or not password2:
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Veuillez remplir les deux champs mot de passe."},
+            )
+
         if password != password2:
-            return render(request, "reset_password.html", {"error": "Les mots de passe ne correspondent pas."})
-        if user is not None and PasswordResetTokenGenerator().check_token(user, token):
-            user.set_password(password)
-            user.save()
-            return render(request, "password_reset_success.html")
+            return render(
+                request,
+                "reset_password.html",
+                {"error": "Les mots de passe ne correspondent pas."},
+            )
+
+        user.set_password(password)
+        user.save()
+        return render(request, "password_reset_success.html")
+
+    return render(
+        request,
+        "reset_password.html",
+        {"error": "Méthode non autorisée pour cette opération."},
+    )
 
 
 

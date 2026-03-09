@@ -75,17 +75,20 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [showRates, setShowRates] = useState(false);
 
-  // Check which zones are available based on pricing_grid
+  // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
     const pricingGrid = vehicle.pricing_grid || [];
-    const hasUrbain = pricingGrid.some(p => p.zone_type === 'URBAIN');
-    const hasProvince = pricingGrid.some(p => p.zone_type === 'PROVINCE');
+    const normalizeZoneType = (zoneType: unknown) => String(zoneType ?? '').toUpperCase();
+    const hasUrbain = pricingGrid.some(p => normalizeZoneType(p.zone_type) === 'URBAIN');
+    const hasProvince = pricingGrid.some(p => normalizeZoneType(p.zone_type) === 'PROVINCE');
+    const baseDayPrice = Number(vehicle.pricePerDay ?? vehicle.prix_jour ?? 0);
+    const provinceDayPrice = Number(vehicle.province_prix_jour ?? 0);
 
     return {
-      urbain: hasUrbain,
-      province: hasProvince
+      urbain: hasUrbain || baseDayPrice > 0,
+      province: hasProvince || provinceDayPrice > 0
     };
-  }, [vehicle.pricing_grid]);
+  }, [vehicle.pricing_grid, vehicle.pricePerDay, vehicle.prix_jour, vehicle.province_prix_jour]);
 
   // Auto-select available zone if current selection is not available
   React.useEffect(() => {

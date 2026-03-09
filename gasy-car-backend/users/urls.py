@@ -33,6 +33,9 @@ urlpatterns = [
     path("reset-password/<str:uidb64>/<str:token>", views.reset_password, name="reset_password"),
     # users routs
     path("users-all/", views.UserListView.as_view(), name="user_list"),
+    path("delete-non-admin/", views.DeleteNonAdminUsersView.as_view(), name="delete_non_admin_users"),
+    # Backward compatible alias for older clients still calling /users/delete-non-admin/
+    path("users/delete-non-admin/", views.DeleteNonAdminUsersView.as_view(), name="delete_non_admin_users_legacy"),
     path(
         "users-prestataire/", views.get_prestataire_users, name="get_prestataire_users"
     ),

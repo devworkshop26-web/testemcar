@@ -50,10 +50,11 @@ from .serializers import (
     ReservationServiceSerializer,
     ReservationStatisticsSerializer,
     ReservationPaymentSerializer,
+    ReservationPricingConfigSerializer,
 )
 
 # import models
-from .models import Reservation, ReservationService, ReservationPayment
+from .models import Reservation, ReservationService, ReservationPayment, ReservationPricingConfig
 from .forms import ReservationPaymentForm
 from driver.models import Driver
 
@@ -91,10 +92,13 @@ class IsOwnerOrStaff(permissions.BasePermission):
         # obj est une instance de ReservationPayment
         if request.user and request.user.is_staff:
             return True
-        # vérifier propriétaire de la reservation
-        return getattr(obj.reservation, "client_id", None) == getattr(
-            request.user, "id", None
-        )
+        reservation = getattr(obj, "reservation", None)
+        user_id = getattr(request.user, "id", None)
+        if not reservation or not user_id:
+            return False
+        if getattr(reservation, "client_id", None) == user_id:
+            return True
+        return getattr(reservation.vehicle, "proprietaire_id", None) == user_id
 
     def has_permission(self, request, view):
         # pour list/create on laisse passer et on filtrera dans get_queryset / perform_create
@@ -165,6 +169,42 @@ class ReservationPaymentViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
 
+class ReservationPricingConfigAPIView(APIView):
+    """Expose et met à jour la configuration globale de tarification réservation."""
+
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        config = ReservationPricingConfig.get_solo()
+        serializer = ReservationPricingConfigSerializer(config)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, format=None):
+        user = request.user
+        if getattr(user, "role", None) != "ADMIN" and not user.is_superuser:
+            return Response(
+                {"detail": "Seul un administrateur peut modifier cette configuration."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        config = ReservationPricingConfig.get_solo()
+        serializer = ReservationPricingConfigSerializer(config, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def user_can_pay_reservation(user, reservation):
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_staff:
+        return True
+    if reservation.client_id == user.id:
+        return True
+    return reservation.vehicle.proprietaire_id == user.id
+
+
 # reservation APIView
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.with_relations()
@@ -194,11 +234,62 @@ class ReservationViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=False, methods=["post"], url_path="delete-all")
+    def delete_all(self, request):
+        current_user = request.user
+
+        if not getattr(current_user, "is_authenticated", False):
+            return Response(
+                {"detail": "Authentification requise."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if getattr(current_user, "role", None) != "ADMIN" and not current_user.is_superuser:
+            return Response(
+                {"detail": "Accès réservé aux administrateurs."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        password = request.data.get("password")
+        if not password:
+            return Response(
+                {"detail": "Le mot de passe administrateur est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not current_user.check_password(password):
+            return Response(
+                {"detail": "Mot de passe administrateur invalide."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        reservations_qs = Reservation.objects.all()
+        reservation_count = reservations_qs.count()
+
+        if reservation_count == 0:
+            return Response(
+                {"message": "Aucune réservation à supprimer.", "deleted_count": 0},
+                status=status.HTTP_200_OK,
+            )
+
+        with transaction.atomic():
+            reservations_qs.delete()
+
+        return Response(
+            {
+                "message": "Toutes les réservations et preuves de paiement liées ont été supprimées.",
+                "deleted_count": reservation_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def assign_driver(self, request, pk=None):
         """
         Permet à l'admin d'assigner un chauffeur (du pool admin ou autre) à une réservation.
         """
+        from .pricing_service import PricingService
+
         reservation = self.get_object()
         driver_id = request.data.get('driver_id')
         
@@ -215,21 +306,36 @@ class ReservationViewSet(viewsets.ModelViewSet):
         reservation.driver_source = Reservation.DriverSource.ADMIN_POOL # Force Source to Admin Pool if assigned by Admin manually
         reservation.with_chauffeur = True
         reservation.driving_mode = Reservation.DrivingMode.WITH_DRIVER
-        
-        # TODO: Recalculate price if needed? 
-        # If we assign a driver later, we might need to add the driver fees.
-        # Let's assume the price was already calculated/estimated or needs update.
-        # For simplicity, we just update the driver for now. 
-        # Ideally calls PricingService again.
-        
+
+        pricing_result = PricingService.calculate_amounts(
+            vehicle=reservation.vehicle,
+            start_datetime=reservation.start_datetime,
+            end_datetime=reservation.end_datetime,
+            pricing_zone=reservation.pricing_zone,
+            driving_mode=reservation.driving_mode,
+            driver_source=reservation.driver_source,
+        )
+
+        reservation.total_days = pricing_result['days']
+        reservation.base_amount = pricing_result['base_amount']
+        reservation.options_amount = pricing_result['driver_amount']
+        reservation.total_amount = pricing_result['total_amount']
+
         reservation.save()
-        
-        # Create Service line if not exists
-        # Check if service exists
-        if not ReservationService.objects.filter(reservation=reservation, service_type=ReservationService.ServiceType.CHAUFFEUR).exists():
-             # Basic Fee calculation or default
-             # Re-use Pricing Service logic if possible, or just add default fee
-             pass 
+
+        chauffeur_service, _ = ReservationService.objects.get_or_create(
+            reservation=reservation,
+            service_type=ReservationService.ServiceType.CHAUFFEUR,
+            defaults={
+                "service_name": "Chauffeur Pro",
+                "price": pricing_result['driver_amount'] / pricing_result['days'],
+                "quantity": pricing_result['days'],
+            },
+        )
+        chauffeur_service.service_name = "Chauffeur Pro"
+        chauffeur_service.price = pricing_result['driver_amount'] / pricing_result['days']
+        chauffeur_service.quantity = pricing_result['days']
+        chauffeur_service.save()
 
         return Response(ReservationSerializer(reservation).data)
 
@@ -688,8 +794,8 @@ def reservation_payment_page(request, reservation_id, payment_id):
     reservation = get_object_or_404(Reservation, id=reservation_id)
     payment_mode = get_object_or_404(ModePayment, id=payment_id)
 
-    # Sécurité : seul le client ou staff peut voir la page
-    if not user.is_staff and reservation.client_id != user.id:
+    # Sécurité : seul le client, le prestataire propriétaire ou staff peut voir la page
+    if not user_can_pay_reservation(user, reservation):
         return render(request, "403.html", status=403)
 
     # Récupérer les paramètres de l’URL
@@ -745,7 +851,7 @@ def submit_reservation_payment(request):
     )
 
     # 3. 🔐 Sécurité utilisateur
-    if reservation.client_id != user.id:
+    if not user_can_pay_reservation(user, reservation):
         return render(request, "payment_error.html", {"message": "Accès non autorisé"}, status=403)
 
     # 4. Validation
@@ -793,7 +899,7 @@ def send_link_payment(request):
     methode_payment = get_object_or_404(ModePayment, id=methode_id)
     reservation = get_object_or_404(Reservation, id=reservation_id)
 
-    if reservation.client_id != request.user.id:
+    if not user_can_pay_reservation(request.user, reservation):
         return Response({"detail": "Non autorisé"}, status=403)
 
     # Token JWT utilisé dans le lien

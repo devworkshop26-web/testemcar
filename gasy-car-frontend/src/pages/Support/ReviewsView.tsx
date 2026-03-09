@@ -84,18 +84,6 @@ function getVehicleTitle(vehicle: any): string {
   return [marque, modele].filter(Boolean).join(" ") || titre || "";
 }
 
-function getOwnerName(vehicle: any): string {
-  const owner = vehicle?.proprietaire_data;
-  if (!owner) return "—";
-  return [owner.first_name, owner.last_name].filter(Boolean).join(" ") || owner.email || "—";
-}
-
-function getOwnerContact(vehicle: any): string {
-  const owner = vehicle?.proprietaire_data;
-  if (!owner) return "";
-  return owner.phone || owner.email || "";
-}
-
 function Stars({ value }: { value: number }) {
   const v = Math.max(0, Math.min(5, Math.round(value)));
   return (
@@ -289,8 +277,6 @@ export default function ReviewsView() {
               const matricule = getVehicleMatricule(vehicle);
               const title = getVehicleTitle(vehicle);
               const vehicleId = vehicle?.id ? String(vehicle.id) : null;
-              const ownerName = getOwnerName(vehicle);
-              const ownerContact = getOwnerContact(vehicle);
 
               return (
                 <div
@@ -312,29 +298,34 @@ export default function ReviewsView() {
 
                   {/* Contenu */}
                   <div className="flex-1">
-                    <div className="flex flex-wrap items-start gap-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-bold text-slate-900">
-                          {r.author_details?.first_name ?? "Utilisateur"}{" "}
-                          {r.author_details?.last_name ?? ""}
-                        </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold text-slate-900">
+                        {r.author_details?.first_name ?? "Utilisateur"}{" "}
+                        {r.author_details?.last_name ?? ""}
+                      </p>
 
-                        <Stars value={r.rating} />
+                      <Stars value={r.rating} />
 
-                        {r.is_verified && (
-                          <Badge className="rounded-full bg-emerald-600 hover:bg-emerald-600 flex items-center gap-1">
-                            <ShieldCheck className="w-4 h-4" />
-                            Vérifié
-                          </Badge>
-                        )}
+                      {r.is_verified && (
+                        <Badge className="rounded-full bg-emerald-600 hover:bg-emerald-600 flex items-center gap-1">
+                          <ShieldCheck className="w-4 h-4" />
+                          Vérifié
+                        </Badge>
+                      )}
 
-                        <span className="text-xs text-slate-400">
-                          {formatDateFR(r.created_at)}
-                        </span>
-                      </div>
+                      <span className="text-xs text-slate-400">
+                        {formatDateFR(r.created_at)}
+                      </span>
+                    </div>
 
+                    <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                      {r.comment}
+                    </p>
+
+                    {/* ✅ Véhicule lié (via reservation) */}
+                    <div className="mt-3">
                       {r.reservation && vehicle ? (
-                        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 w-fit">
                           <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center">
                             {photo ? (
                               <img
@@ -349,21 +340,13 @@ export default function ReviewsView() {
 
                           <div className="leading-tight">
                             <p className="text-xs font-semibold text-slate-700">
-                              Véhicule commenté
+                              Véhicule concerné
                             </p>
                             <p className="text-sm font-black text-slate-900">
                               {matricule}
                             </p>
                             {title ? (
                               <p className="text-xs text-slate-500">{title}</p>
-                            ) : null}
-                          </div>
-
-                          <div className="text-xs text-slate-500">
-                            <p className="font-semibold text-slate-700">Propriétaire</p>
-                            <p className="text-slate-600">{ownerName}</p>
-                            {ownerContact ? (
-                              <p className="text-slate-500">{ownerContact}</p>
                             ) : null}
                           </div>
 
@@ -376,20 +359,15 @@ export default function ReviewsView() {
                             </Link>
                           ) : null}
                         </div>
-                      ) : null}
-                    </div>
-
-                    <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                      {r.comment}
-                    </p>
-
-                    {/* ✅ Véhicule lié (via reservation) */}
-                    <div className="mt-3">
-                      {r.reservation && !vehicle ? (
+                      ) : r.reservation && !vehicle ? (
                         <p className="text-xs text-slate-500 font-medium">
                           Véhicule introuvable (réservation non trouvée dans /bookings/reservations/)
                         </p>
-                      ) : null}
+                      ) : (
+                        <p>
+                          
+                        </p>
+                      )}
                     </div>
                   </div>
 

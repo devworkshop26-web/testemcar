@@ -56,7 +56,7 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=15),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
@@ -183,12 +183,13 @@ AUTH_USER_MODEL = "users.User"
 
 # Email configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST = "smtp-relay.brevo.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "workshop@widea.center"
-EMAIL_HOST_PASSWORD = "jifa ogik bulp jtry"
+EMAIL_HOST_USER = "9c6095001@smtp-brevo.com"
+EMAIL_HOST_PASSWORD = "xsmtpsib-b22943aa7454a84f8000a55cb1643e2894f90e8239db6a4cfd71ae814b25964c-MFPJ4jngvMtiH7tA"
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
+DEFAULT_FROM_EMAIL = "contact@madagasycar.com"
 
 # EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
 # EMAIL_HOST="smtp-relay.brevo.com"
@@ -206,6 +207,10 @@ OTP_LENGTH = 6
 
 # Configuration email (déjà dans votre settings)
 APPEND_SLASH = False
+
+# Public base URL used in password-reset emails.
+# Example: https://madagasycar.com
+PASSWORD_RESET_BASE_URL = os.environ.get("PASSWORD_RESET_BASE_URL", "https://madagasycar.com")
 
 # infor user
 

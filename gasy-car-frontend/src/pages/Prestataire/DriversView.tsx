@@ -9,9 +9,11 @@ import { Driver } from "@/Actions/driverApi";
 import { toast } from "sonner";
 import DriverList from "@/components/driver/DriverList";
 import DriverForm from "@/components/driver/DriverForm";
+import { useCurentuser } from "@/useQuery/authUseQuery";
 
 const DriversView = () => {
     const { data: drivers, isLoading, isError } = useDriversQuery();
+    const { user } = useCurentuser();
     const navigate = useNavigate();
     const createMutation = useCreateDriverMutation();
     const updateMutation = useUpdateDriverMutation();
@@ -54,7 +56,10 @@ const DriversView = () => {
     };
 
     // Filtering
-    const filteredDrivers = drivers?.filter(driver =>
+    const ownedDrivers = drivers?.filter((driver) =>
+        user?.id ? driver.owner === user.id : true
+    );
+    const filteredDrivers = ownedDrivers?.filter(driver =>
         driver.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         driver.last_name.toLowerCase().includes(searchTerm.toLowerCase())
     );

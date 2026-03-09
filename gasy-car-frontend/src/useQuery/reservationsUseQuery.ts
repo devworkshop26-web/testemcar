@@ -54,6 +54,7 @@ export const useCreateReservationMutation = () => {
       reservationAPI.create_reservation(payload).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-of-Myvehicule-all"] });
     },
   });
 };
@@ -192,6 +193,9 @@ export const useAllReservationOfMyvehiculeQuery = (id?: string) => {
       const { data } = await reservationAPI.get_all_reservations_of_Myvehicule(id);
       return data; // data est un tableau
     },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
     retry: 1,
   });
 };

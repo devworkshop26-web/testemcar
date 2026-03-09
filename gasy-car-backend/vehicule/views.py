@@ -23,12 +23,12 @@ from rest_framework import serializers
 
 # seralisers.py
 from .serializers import FastCategorySerializer,MarqueSerializer, CategorySerializer, TransmissionSerializer,VehiclePhotoSerializer,VehiculeSearchSerializer, VehiculeListSerializer
-from .serializers import FuelTypeSerializer, StatusSerializer,ModeleVehiculeSerializer,VehiculeSerializer,VehicleEquipmentsSerializer, VehicleAvailabilitySerializer, VehicleDocumentsSerializer, VehiculeCardSerializer
+from .serializers import FuelTypeSerializer, StatusSerializer,ModeleVehiculeSerializer,VehiculeSerializer,VehicleEquipmentsSerializer, VehicleAvailabilitySerializer, VehicleDocumentsSerializer, VehiculeCardSerializer, VehicleConditionReportSerializer
 from users.serializers import UserProfileSerializer
 
 # models
 from .models import Marque, Category, Transmission,VehiclePhoto
-from .models import FuelType, StatusVehicule,ModeleVehicule,Vehicule,VehicleEquipments, VehicleAvailability, VehicleDocuments, VehiclePricing
+from .models import FuelType, StatusVehicule,ModeleVehicule,Vehicule,VehicleEquipments, VehicleAvailability, VehicleDocuments, VehiclePricing, VehicleConditionReport
 from users.models import User
 from driver.models import Driver
 
@@ -358,7 +358,7 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         - LIST : Charge minimale via .only() et Prefetch ciblés.
         - DETAIL : Fetch complet pour l'édition/affichage.
         """
-        base_qs = Vehicule.objects.all().order_by("-created_at")
+        base_qs = Vehicule.objects.all().annotate(_reservation_count=Count("reservations", distinct=True)).order_by("-created_at")
 
         if self.action == "retrieve" or self.action == "update" or self.action == "partial_update":
             return base_qs.select_related(
@@ -374,12 +374,20 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             models.Prefetch("pricing_grid", queryset=VehiclePricing.objects.only("id", "vehicle", "zone_type", "prix_jour"))
         ).only(
             "id", "titre", "marque", "modele", "annee", "nombre_places",
-            "note_moyenne", "nombre_locations", "est_certifie", "est_disponible",
+            "note_moyenne", "nombre_locations", "est_certifie", "est_disponible", "est_sponsorise", "est_coup_de_coeur",
             "ville", "created_at"
         )
 
     # ✅🔥 OBLIGATOIRE POUR FORMData + IMAGES
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    @staticmethod
+    def _attach_reservation_count(items):
+        for item in items:
+            computed = getattr(item, "_reservation_count", None)
+            if computed is not None:
+                item.nombre_locations = int(computed)
+        return items
 
     @swagger_auto_schema(
         operation_description="Récupère la liste des véhicules. Filtres: ?type_vehicule=UTILITAIRE ou TOURISME",
@@ -390,12 +398,26 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         type_vehicule = request.query_params.get("type_vehicule")
         if type_vehicule:
              queryset = queryset.filter(type_vehicule=type_vehicule)
-        
+
+        est_sponsorise = request.query_params.get("est_sponsorise")
+        if est_sponsorise is not None:
+            queryset = queryset.filter(est_sponsorise=str(est_sponsorise).lower() in ["1", "true", "yes"])
+
+        est_disponible = request.query_params.get("est_disponible")
+        if est_disponible is not None:
+            queryset = queryset.filter(est_disponible=str(est_disponible).lower() in ["1", "true", "yes"])
+
+        est_coup_de_coeur = request.query_params.get("est_coup_de_coeur")
+        if est_coup_de_coeur is not None:
+            queryset = queryset.filter(est_coup_de_coeur=str(est_coup_de_coeur).lower() in ["1", "true", "yes"])
+
         page = self.paginate_queryset(queryset)
         if page is not None:
+             page = self._attach_reservation_count(page)
              serializer = self.get_serializer(page, many=True)
              return self.get_paginated_response(serializer.data)
 
+        queryset = self._attach_reservation_count(queryset)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -488,6 +510,44 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             
             return Response({"message": "Chauffeur retiré avec succès"})
         return Response({"message": "Aucun chauffeur assigné à ce véhicule"})
+
+    @action(detail=True, methods=["get", "put", "patch"], url_path="condition-report", permission_classes=[permissions.IsAuthenticated])
+    def condition_report(self, request, pk=None):
+        vehicle = self.get_object()
+        user = request.user
+        user_role = getattr(user, "role", None)
+
+        is_owner_or_staff = vehicle.proprietaire_id == user.id or user_role in ["ADMIN", "SUPPORT"] or user.is_staff
+        has_client_reservation = False
+
+        if user_role == "CLIENT":
+            has_client_reservation = Reservation.objects.filter(vehicle=vehicle, client=user).exists()
+
+        if request.method == "GET":
+            if not is_owner_or_staff and not has_client_reservation:
+                return Response({"detail": "Vous n'avez pas la permission de consulter ce rapport."}, status=status.HTTP_403_FORBIDDEN)
+        elif not is_owner_or_staff:
+            return Response({"detail": "Vous n'avez pas la permission de modifier ce rapport."}, status=status.HTTP_403_FORBIDDEN)
+
+        report, _ = VehicleConditionReport.objects.get_or_create(
+            vehicle=vehicle,
+            defaults={"created_by": user},
+        )
+
+        if request.method == "GET":
+            serializer = VehicleConditionReportSerializer(report, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = VehicleConditionReportSerializer(
+            report,
+            data=request.data,
+            partial=(request.method == "PATCH"),
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(created_by=report.created_by or user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
   
 
 # api view for VehicleEquipment
@@ -561,6 +621,30 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
     # ------------------------------------------------------------------
     # 1) Voitures les plus populaires (par favoris + note)
     # ------------------------------------------------------------------
+    @action(detail=False, methods=["get"], url_path="sponsored")
+    def sponsored(self, request):
+        sponsored_qs = (
+            self.get_queryset()
+            .filter(est_sponsorise=True)
+            .order_by("-nombre_favoris", "-note_moyenne", "-nombre_locations")
+        )
+
+        qs = sponsored_qs
+        if not sponsored_qs.exists():
+            qs = (
+                self.get_queryset()
+                .filter(est_disponible=True)
+                .order_by("-nombre_favoris", "-note_moyenne", "-nombre_locations")
+            )
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["get"], url_path="popular")
     def popular(self, request):
         qs = (
@@ -586,16 +670,24 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
         min_note = float(request.query_params.get("min_note", 4))
         min_favoris = int(request.query_params.get("min_favoris", 5))
 
-        qs = (
+        coups_de_coeur_qs = (
             self.get_queryset()
-            .filter(
-                est_certifie=True,
-                est_disponible=True,
-                note_moyenne__gte=min_note,
-                nombre_favoris__gte=min_favoris,
-            )
+            .filter(est_coup_de_coeur=True, est_disponible=True)
             .order_by("-note_moyenne", "-nombre_favoris", "-nombre_locations")
         )
+
+        qs = coups_de_coeur_qs
+        if not coups_de_coeur_qs.exists():
+            qs = (
+                self.get_queryset()
+                .filter(
+                    est_certifie=True,
+                    est_disponible=True,
+                    note_moyenne__gte=min_note,
+                    nombre_favoris__gte=min_favoris,
+                )
+                .order_by("-note_moyenne", "-nombre_favoris", "-nombre_locations")
+            )
 
         page = self.paginate_queryset(qs)
         if page is not None:
@@ -741,7 +833,7 @@ def getAllMyVehicles(request, user_id):
     
     user = get_object_or_404(User, id=user_id)
     vehicule_data = (
-        Vehicule.objects.filter(proprietaire=user)
+        Vehicule.objects.filter(proprietaire=user).annotate(_reservation_count=Count("reservations", distinct=True))
         .select_related("marque", "modele", "transmission", "type_carburant")
         .prefetch_related(
             models.Prefetch("photos", queryset=VehiclePhoto.objects.only("id", "vehicle", "image", "is_primary")),
@@ -760,6 +852,11 @@ def getAllMyVehicles(request, user_id):
         )
         .order_by("-created_at")
     )
+    for vehicle in vehicule_data:
+        computed = getattr(vehicle, "_reservation_count", None)
+        if computed is not None:
+            vehicle.nombre_locations = int(computed)
+
     serializer = VehiculeCardSerializer(vehicule_data, many=True, context={"request": request})
     return Response(serializer.data)
 

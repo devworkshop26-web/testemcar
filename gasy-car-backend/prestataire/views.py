@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions
+from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.decorators import action
@@ -15,6 +16,7 @@ class PrestataireViewSet(viewsets.ModelViewSet):
     queryset = Prestataire.objects.select_related("user", "validated_by")
     serializer_class = PrestataireSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     # ===========================
     # LIST
