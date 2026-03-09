@@ -6,10 +6,19 @@ const IS_LOCAL_BACKEND_URL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/api)
   RAW_API_BASE_URL
 );
 
-const API_BASE_URL =
-  import.meta.env.DEV && (RAW_API_BASE_URL.length === 0 || IS_LOCAL_BACKEND_URL)
-    ? "/api"
-    : RAW_API_BASE_URL || "https://madagasycar.com/api";
+const isLocalFrontendHost = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1";
+};
+
+const shouldUseProxyBase =
+  (import.meta.env.DEV && (RAW_API_BASE_URL.length === 0 || IS_LOCAL_BACKEND_URL)) ||
+  (isLocalFrontendHost() && IS_LOCAL_BACKEND_URL);
+
+const API_BASE_URL = shouldUseProxyBase
+  ? "/api"
+  : RAW_API_BASE_URL || "https://madagasycar.com/api";
 
 /**
  * WS basé DIRECTEMENT sur l’API
