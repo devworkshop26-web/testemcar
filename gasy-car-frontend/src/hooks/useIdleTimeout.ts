@@ -1,66 +1,75 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { accessTokenKey, refreshTokenKey } from '@/helper/InstanceAxios';
 
-export const useIdleTimeout = (timeoutMs: number = 300000) => { // 5 minutes default
-  const [isIdle, setIsIdle] = useState(false);
+export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
   const { logout, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const startTimer = useCallback(() => {
+  const clearTokens = useCallback(() => {
+    localStorage.removeItem(accessTokenKey);
+    localStorage.removeItem(refreshTokenKey);
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+  }, []);
+
+  const clearIdleTimer = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-    timeoutRef.current = setTimeout(() => {
-      setIsIdle(true);
-    }, timeoutMs);
-  }, [timeoutMs]);
+  }, []);
 
-  const handleActivity = useCallback(() => {
-    if (!isIdle) {
-      startTimer();
+  const performLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch {
+      // La déconnexion côté API peut échouer si le token est déjà expiré.
+    } finally {
+      clearTokens();
+      navigate('/login', { replace: true });
     }
-  }, [isIdle, startTimer]);
+  }, [clearTokens, logout, navigate]);
+
+  const startIdleTimer = useCallback(() => {
+    clearIdleTimer();
+    timeoutRef.current = setTimeout(() => {
+      void performLogout();
+    }, timeoutMs);
+  }, [clearIdleTimer, performLogout, timeoutMs]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      clearIdleTimer();
+      return;
+    }
 
-    // Initial timer
-    startTimer();
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click',
+    ];
 
-    // Event listeners
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('scroll', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
+    const onUserActivity = () => {
+      startIdleTimer();
+    };
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, onUserActivity, { passive: true });
+    });
+
+    startIdleTimer();
 
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, onUserActivity);
+      });
+      clearIdleTimer();
     };
-  }, [isAuthenticated, handleActivity, startTimer]);
-
-  const handleContinue = () => {
-    setIsIdle(false);
-    startTimer();
-  };
-
-  const handleLogout = async () => {
-    setIsIdle(false);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    await logout();
-    navigate('/login');
-  };
-
-  return { isIdle, handleContinue, handleLogout };
+  }, [clearIdleTimer, isAuthenticated, startIdleTimer]);
 };

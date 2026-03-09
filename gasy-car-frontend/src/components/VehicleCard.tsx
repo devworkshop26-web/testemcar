@@ -13,9 +13,9 @@ interface VehicleCardProps {
   trips: number;
   price: number;
   oldPrice?: number;
-  seats?: number;
-  transmission?: string;
-  fuel?: string;
+  seats?: number | null;
+  transmission?: string | null;
+  fuel?: string | null;
   distance?: number;
   certified?: boolean;
   superHost?: boolean;
@@ -35,9 +35,9 @@ const VehicleCard = ({
   trips,
   price,
   oldPrice,
-  seats = 5,
-  transmission = "Auto",
-  fuel = "Essence",
+  seats,
+  transmission,
+  fuel,
   distance,
   certified = false,
   superHost = false,
@@ -64,7 +64,7 @@ const VehicleCard = ({
         {image ? (
           <img
             src={image}
-            alt={`${year} ${brand} ${model}`}
+            alt={`${year ?? "—"} ${brand} ${model}`}
             onLoad={() => setIsImageLoading(false)}
             onError={(e) => {
               setIsImageLoading(false);
@@ -138,24 +138,24 @@ const VehicleCard = ({
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 border border-gray-100">
             <Calendar className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs font-medium text-gray-700">{year}</span>
+            <span className="text-xs font-medium text-gray-700">{year ?? "—"}</span>
           </div>
           <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 border border-gray-100">
             <Settings className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-xs font-medium text-gray-700 truncate">
-              {transmission}
+              {transmission?.trim() || "Non renseignée"}
             </span>
           </div>
           <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 border border-gray-100">
             <Fuel className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-xs font-medium text-gray-700 truncate">
-              {fuel}
+              {fuel?.trim() || "Non renseigné"}
             </span>
           </div>
           <div className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 border border-gray-100">
             <Users className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-xs font-medium text-gray-700">
-              {seats} places
+              {typeof seats === "number" && seats > 0 ? `${seats} places` : "Non renseigné"}
             </span>
           </div>
         </div>

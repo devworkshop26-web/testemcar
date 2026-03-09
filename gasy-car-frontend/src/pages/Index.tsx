@@ -31,7 +31,6 @@ const Index = () => {
       <CategorySelectModal />
 
       {/* HERO + SEARCH */}
-      {/* HERO + SEARCH */}
       <section className="relative bg-background text-foreground pb-0">
         {/* HERO */}
         <HeroCarousel />
@@ -39,21 +38,11 @@ const Index = () => {
         {/* SEARCHBARall */}
         <div
           className="
-          
             z-30 
             w-full 
             px-4 sm:px-6 md:px-10
             flex justify-center
-
-           /* mobile: en relative pour être dans le flux et pas chevaucher l’image */
-            relative
-            -mt-16 sm:-mt-20 md:-mt-24 lg:-mt-0
-            lg:absolute lg:bottom-[-80px] lg:left-1/2 lg:-translate-x-1/2
-
-            /* web: en relative pour être dans le flux et pas chevaucher l’image */
-
-            sm:absolute  sm:left-1/2 sm:-translate-x-1/2 
-            -bottom-6 sm:-bottom-8 md:-bottom-10 lg:-bottom-[-5vh] 
+            absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2
           "
         >
           <div className="w-full max-w-5xl">
@@ -64,11 +53,7 @@ const Index = () => {
 
       {/* CONTENU PRINCIPAL */}
       <ContentWrapper>
-        {/* 
-          Mobile: Juste un peu de margin-top pour espacer de la SearchBar qui est en 'relative' 
-          Desktop: On doit compenser le fait que la SearchBar est absolute et dépasse de la section Hero
-        */}
-        <div className="mt-8 lg:mt-32 sm:-mt-14 md:-mt-16 lg:-mt-20">
+        <div className="mt-24 sm:mt-28 lg:mt-32">
           <div className="flex flex-col lg:flex-row">
             {/* MAIN COLUMN */}
             <div className="w-full lg:w-3/4 lg:pr-1">

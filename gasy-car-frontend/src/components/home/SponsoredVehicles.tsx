@@ -72,7 +72,7 @@ export const SponsoredVehicles = () => {
               Array.from({ length: skeletonCount }).map((_, index) => (
                 <CarouselItem
                   key={index}
-                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                  className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 2xl:basis-1/3 pb-4 pt-2"
                 >
                   <VehicleCardSkeleton />
                 </CarouselItem>
@@ -96,11 +96,13 @@ export const SponsoredVehicles = () => {
                 const transmission =
                   vehicle.transmission?.label ??
                   vehicle.transmission?.nom ??
+                  vehicle.transmission_nom ??
                   "Transmission inconnue";
 
                 const fuel =
                   vehicle.type_carburant?.label ??
                   vehicle.type_carburant?.nom ??
+                  vehicle.type_carburant_nom ??
                   "Carburant inconnu";
 
                 const price = Number(vehicle.prix_jour) || 0;
@@ -112,7 +114,7 @@ export const SponsoredVehicles = () => {
                 return (
                   <CarouselItem
                     key={vehicle.id}
-                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 2xl:basis-1/3 pb-4 pt-2"
                   >
                     <AnimatedItem delay={index * 80}>
                       <Link to={`/vehicule/${vehicle.id}`}>

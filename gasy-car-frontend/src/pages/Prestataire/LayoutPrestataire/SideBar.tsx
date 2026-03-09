@@ -12,6 +12,7 @@ import {
   ChevronRight,
   X,
   Headset,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCurentuser } from "@/useQuery/authUseQuery";
@@ -36,6 +37,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     { id: "bookings", icon: CalendarRange, label: "Réservations", path: "/prestataire/booking" },
     { id: "customers", icon: Users, label: "Clients", path: "/prestataire/customer" },
     { id: "supports", icon: Headset, label: "Supports", path: "/prestataire/supports/my-tickets" },
+    { id: "condition-report", icon: ClipboardCheck, label: "État des lieux", path: "/prestataire/condition-report" },
     { id: "settings", icon: Settings, label: "Paramètres", path: "/prestataire/parameters" },
   ];
 
@@ -161,34 +163,56 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
 
         {/* Footer / Profile Section */}
         <div className="p-4 mt-auto">
-          <div className={`
-            flex items-center gap-3 rounded-2xl p-2
-            bg-slate-50/50 border border-slate-100
-            ${!isOpen ? "justify-center px-0" : ""}
-          `}>
-            <div className="shrink-0 shadow-sm rounded-lg overflow-hidden border border-white">
-              <AvatarPrestataire user={user} size={32} />
-            </div>
+          <div
+            className={`
+      relative overflow-hidden rounded-2xl border border-slate-200/70
+      bg-gradient-to-br from-white via-slate-50 to-slate-100/60
+      shadow-[0_10px_30px_-20px_rgba(2,6,23,0.35)]
+      ${!isOpen ? "p-2" : "p-3"}
+    `}
+          >
+            {/* Glow décor */}
+            <div className="pointer-events-none absolute -top-10 -right-10 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-24 w-24 rounded-full bg-sky-500/10 blur-2xl" />
 
-            {isOpen && (
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-bold text-slate-800 truncate leading-none">
-                  {user?.first_name}
-                </span>
-                <span className="text-[10px] text-slate-400 truncate mt-1">
-                  Connecté
-                </span>
+            <div className={`flex items-center ${!isOpen ? "justify-center" : "gap-3"}`}>
+              {/* Avatar + ring premium */}
+              <div className="relative shrink-0">
+                <div className="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-primary/30 via-sky-400/20 to-transparent" />
+                <div className="relative rounded-xl bg-white p-0.5 shadow-sm">
+                  <div className="rounded-[10px] overflow-hidden">
+                    <AvatarPrestataire user={user} size={36} />
+                  </div>
+                </div>
+
+                {/* Online dot */}
+                <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
               </div>
-            )}
-            
-            {isOpen && (
-               <button 
-                onClick={handleLogout}
-                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-               >
-                 <LogOut size={16} />
-               </button>
-            )}
+
+              {isOpen && (
+                <div className="min-w-0 flex-1">
+                  {/* Nom */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate text-sm font-semibold text-slate-900">
+                      {user?.first_name} {user?.last_name}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      Prestataire
+                    </span>
+                  </div>
+
+                  {/* Email */}
+                  <div className="mt-0.5 truncate text-xs text-slate-500">
+                    {user?.email}
+                  </div>
+
+                  {/* Mini “status bar” */}
+                  {/* <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200/70 overflow-hidden">
+                    <div className="h-full w-[55%] rounded-full bg-primary/60" />
+                  </div> */}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </aside>

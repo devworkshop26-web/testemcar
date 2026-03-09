@@ -131,6 +131,7 @@ const VehicleCard = ({ car, navigate }: { car: any; navigate: any }) => {
   const driverName = car.driver_name || null;
   const driverPhoto = car.driver_photo || car.driver_image || null; // Supporte plusieurs clés API possibles
   const price = car.prix_jour ? Number(car.prix_jour).toLocaleString() : "0";
+  const reservationCount = Number(car.nombre_locations ?? 0);
 
   return (
     <Card
@@ -175,6 +176,10 @@ const VehicleCard = ({ car, navigate }: { car: any; navigate: any }) => {
         <div className="flex items-center gap-1 text-sm text-slate-500 mb-5">
           <MapPin className="w-4 h-4 text-primary" />
           <span className="font-medium">{car.ville || "Madagascar"}</span>
+        </div>
+
+        <div className="mb-5 inline-flex items-center rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 border border-blue-100">
+          {reservationCount} réservation{reservationCount > 1 ? "s" : ""}
         </div>
 
         <div className="grid grid-cols-4 gap-2 mb-6">

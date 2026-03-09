@@ -11,6 +11,7 @@ import { TicketHeader } from "@/pages/Support/TicketHeader";
 import { ConversationBox } from "@/components/support/ConversationBox";
 import { MessageInput } from "@/components/support/MessageInput";
 import { useTicketSocket } from "@/hooks/support/useTicketSocket";
+import { useSendMessage } from "@/useQuery/support/useSendMessage";
 import type { User } from "@/types/userType";
 
 function getUserIdFromAccessToken(): string {
@@ -60,6 +61,7 @@ export default function TicketDetailsSupport() {
 
   // ✅ support toujours autorisé
   const { sendMessage } = useTicketSocket(ticketId, true);
+  const { mutate: sendMessageFallback, isPending: sendingFallback } = useSendMessage();
 
   useEffect(() => {
     scrollToBottom();
@@ -84,8 +86,17 @@ export default function TicketDetailsSupport() {
   const onSend = (text: string) => {
     const msg = text.trim();
     if (!msg) return;
-    sendMessage(msg);
-    setTimeout(scrollToBottom, 50);
+
+    const sentBySocket = sendMessage(msg);
+    if (sentBySocket) {
+      setTimeout(scrollToBottom, 50);
+      return;
+    }
+
+    sendMessageFallback(
+      { ticket: ticketId, message: msg },
+      { onSuccess: () => setTimeout(scrollToBottom, 50) }
+    );
   };
 
   return (
@@ -103,7 +114,7 @@ export default function TicketDetailsSupport() {
       </div>
 
       <div className="border-t p-3 bg-white">
-        <MessageInput disabled={false} onSend={onSend} />
+        <MessageInput disabled={sendingFallback} onSend={onSend} />
       </div>
     </div>
   );

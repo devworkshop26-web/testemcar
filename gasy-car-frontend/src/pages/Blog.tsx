@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useBlogPosts } from "@/useQuery/useBlogQueries";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +19,7 @@ const Blog = () => {
 
   // --- MODIFICATION : Fonction pour formater la date (ex: 03 oct. 2025) ---
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Brouillon";
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("fr-FR", {
       day: "2-digit",
       month: "short",
@@ -84,32 +84,14 @@ const Blog = () => {
                           <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                             {post.excerpt}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-4 border-t">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {/* --- MODIFICATION ICI : Utilisation de formatDate --- */}
-                              <span className="capitalize">
-                                {formatDate(post.published_at)}
-                              </span>
+                          {post.published_at && (
+                            <div className="flex items-center text-xs text-muted-foreground mt-auto pt-4 border-t">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span className="capitalize">{formatDate(post.published_at)}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>
-                                {Math.max(
-                                  3,
-                                  Math.round(
-                                    ((post.excerpt?.length || 0) +
-                                      post.sections.reduce(
-                                        (acc, s) => acc + (s.body?.length || 0),
-                                        0
-                                      )) /
-                                      800
-                                  )
-                                )}{" "}
-                                min
-                              </span>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

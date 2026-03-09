@@ -21,7 +21,21 @@ export function UpdateVehicleEquipmentDialog({ open, onOpenChange, equipment, on
     if (!equipment?.id) return;
     setIsSubmitting(true);
     try {
-      await updateEquipment({ id: equipment.id, payload: values });
+      const normalizedPrice =
+        values.price === "" || values.price === undefined || values.price === null
+          ? undefined
+          : Number(values.price);
+
+      if (normalizedPrice !== undefined && (!Number.isFinite(normalizedPrice) || normalizedPrice < 0)) {
+        throw new Error("Le prix doit être un nombre positif.");
+      }
+
+      const normalizedPayload: UpdateVehicleEquipmentPayload = {
+        ...values,
+        price: normalizedPrice,
+      };
+
+      await updateEquipment({ id: equipment.id, payload: normalizedPayload });
       toast({
         title: "Équipement mis à jour",
         description: `L'équipement "${values.label}" a été mis à jour avec succès.`,
@@ -66,6 +80,12 @@ export function UpdateVehicleEquipmentDialog({ open, onOpenChange, equipment, on
               label: "Description",
               type: "textarea",
               placeholder: "Description optionnelle...",
+            },
+            {
+              name: "price",
+              label: "Prix / jour (Ar)",
+              type: "number",
+              placeholder: "Ex : 5000",
             },
           ]}
           submitLabel="Mettre à jour"

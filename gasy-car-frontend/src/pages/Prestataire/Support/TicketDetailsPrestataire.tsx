@@ -8,6 +8,8 @@ import { useTicketMessages } from "@/useQuery/support/useTicketMessages"
 import { useSendMessage } from "@/useQuery/support/useSendMessage"
 import { useAllUsers } from "@/useQuery/useAllUsers"
 import type { User } from "@/types/userType"
+import { useChatProfiles } from "@/useQuery/support/useChatProfiles"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Loader2 } from "lucide-react"
 import { TicketHeader } from "@/pages/Support/TicketHeader"
@@ -17,7 +19,10 @@ import { useTicketSocket } from "@/hooks/support/useTicketSocket"
 
 export default function TicketDetailsPrestataire() {
   const { id } = useParams()
-  const ticketId = id
+  const ticketId = String(id ?? "").trim()
+  const queryClient = useQueryClient()
+  const currentUser = queryClient.getQueryData<User>(["currentUser"])
+  const currentUserId = String(currentUser?.id ?? "").trim()
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -27,7 +32,29 @@ export default function TicketDetailsPrestataire() {
   const { data: users } = useAllUsers()
   const { mutate: sendMessage, isPending: sending } = useSendMessage()
 
-  const loading = loadingTicket || loadingMessages
+  const senderIds = useMemo(() => {
+    const ids: string[] = []
+    for (const msg of (messages ?? []) as any[]) {
+      const raw =
+        msg?.sender_id ??
+        msg?.sender?.id ??
+        msg?.user_id ??
+        msg?.user?.id ??
+        msg?.sender ??
+        msg?.user ??
+        ""
+      if (raw) ids.push(String(raw))
+    }
+    if (currentUserId) ids.push(currentUserId)
+    return ids
+  }, [messages, currentUserId])
+
+  const { byId, byEmail, isLoading: loadingProfiles } = useChatProfiles(
+    senderIds,
+    (users ?? []) as User[]
+  )
+
+  const loading = loadingTicket || loadingMessages || loadingProfiles
 
   useEffect(() => scrollToBottom(), [messages])
 
@@ -80,7 +107,12 @@ export default function TicketDetailsPrestataire() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-background/50 to-muted/5 space-y-4">
-        <ConversationBox messages={messages ?? []} currentUserId={ticket.user} />
+        <ConversationBox
+          messages={messages ?? []}
+          currentUserId={currentUserId || String(ticket.user ?? "")}
+          profilesById={byId}
+          profilesByEmail={byEmail}
+        />
         <div ref={messagesEndRef} />
       </div>
 

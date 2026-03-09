@@ -48,7 +48,7 @@ const SettingsClientView = () => {
   if (isUserLoading || !user) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <span className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></span>
+        <span className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -69,68 +69,84 @@ const SettingsClientView = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
-      <h2 className="text-3xl font-bold font-poppins">Paramètres du compte</h2>
+      {/* TITRE PRINCIPAL (style prestataire) */}
+      <div className="space-y-2">
+        <h2 className="text-3xl font-bold font-poppins tracking-tight">
+          Paramètres du compte
+        </h2>
+        <p className="text-muted-foreground">
+          Gérez vos informations personnelles et la sécurité de votre compte
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* SIDEBAR */}
-        <Card className="rounded-2xl shadow-md h-fit">
+        {/* SIDEBAR GAUCHE (style prestataire) */}
+        <Card className="rounded-2xl shadow-lg border-border/50 h-fit sticky top-24 transition-all duration-300 hover:shadow-xl">
           <CardContent className="p-6 space-y-6">
-            <SidebarSettings section={section} setSection={(s: string) => setSection(s as "profile" | "security")} />
+            <SidebarSettings
+              section={section}
+              setSection={(s: string) => setSection(s as "profile" | "security")}
+            />
 
-            {/* ------------------ BOUTON DECONNEXION ------------------ */}
+            {/* ------------------ BOUTON DECONNEXION (premium) ------------------ */}
             <button
               onClick={handleLogout}
               disabled={logoutLoading}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 
-                border border-red-200 rounded-xl hover:bg-red-50"
+              className="
+                w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                border border-red-200 text-red-600
+                bg-white/60 hover:bg-red-50
+                transition-all duration-200
+                hover:shadow-sm active:scale-[0.99]
+                disabled:opacity-60 disabled:cursor-not-allowed
+              "
             >
               {logoutLoading ? (
-                <span className="animate-spin h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full"></span>
+                <span className="animate-spin h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full" />
               ) : (
                 <LogOut className="w-5 h-5" />
               )}
 
-              {logoutLoading ? "Déconnexion..." : "Déconnexion"}
+              <span className="font-semibold text-sm">
+                {logoutLoading ? "Déconnexion..." : "Déconnexion"}
+              </span>
             </button>
           </CardContent>
         </Card>
 
-        {/* FORMULAIRE PRINCIPAL */}
-        <Card className="rounded-2xl shadow-md md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">
+        {/* FORMULAIRE PRINCIPAL (style prestataire) */}
+        <Card className="rounded-2xl shadow-lg border-border/50 md:col-span-2 transition-all duration-300 hover:shadow-xl">
+          <CardHeader className="space-y-3 pb-6">
+            <CardTitle className="text-2xl font-semibold tracking-tight">
               {section === "profile" && "Informations personnelles"}
               {section === "security" && "Sécurité du compte"}
             </CardTitle>
 
-            <CardDescription>
+            <CardDescription className="text-base leading-relaxed">
               {section === "profile" &&
-                "Modifiez vos informations personnelles et votre photo."}
+                "Modifiez vos informations personnelles, votre photo et vos documents."}
               {section === "security" &&
-                "Changez votre mot de passe pour protéger votre compte."}
+                "Changez votre mot de passe afin de sécuriser votre compte."}
             </CardDescription>
           </CardHeader>
 
-          <CardContent>
-            <form onSubmit={onSubmit} className="space-y-4">
+          <CardContent className="space-y-6">
+            <form onSubmit={onSubmit} className="space-y-6">
               {section === "profile" && (
                 <ProfileForm
                   previewPhoto={previewPhoto}
                   register={register}
                   handlePhotoUpload={handlePhotoUpload}
                   handleDeletePhoto={handleDeletePhoto}
-
                   // ✅ CIN
                   previewCinRecto={previewCinRecto}
                   previewCinVerso={previewCinVerso}
                   handleCinRectoUpload={handleCinRectoUpload}
                   handleCinVersoUpload={handleCinVersoUpload}
-
                   // ✅ suppression backend (1 photo à la fois)
                   deleteProfilePhoto={deleteProfilePhoto}
                   deleteCinRecto={deleteCinRecto}
                   deleteCinVerso={deleteCinVerso}
-
                   errors={errors}
                   user={user}
                 />
@@ -138,17 +154,23 @@ const SettingsClientView = () => {
 
               {section === "security" && <SecurityForm register={register} />}
 
-              {/* SUBMIT BUTTON */}
-              <div className="flex justify-end pt-4">
-                <Button
-                  className="bg-blue-600 text-white rounded-xl flex items-center gap-2"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting && (
-                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                  )}
-                  {isSubmitting ? "Enregistrement..." : "Sauvegarder"}
-                </Button>
+              {/* BOUTONS (style prestataire) */}
+              <div className="flex flex-col gap-4 pt-6 border-t border-border/50">
+                <div className="flex justify-end items-center gap-3">
+                  <Button
+                    className="
+                      bg-primary text-white rounded-xl flex items-center gap-2
+                      transition-all duration-200 hover:scale-105 hover:shadow-md
+                      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+                    "
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && (
+                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    )}
+                    {isSubmitting ? "Enregistrement..." : "Sauvegarder"}
+                  </Button>
+                </div>
               </div>
             </form>
           </CardContent>

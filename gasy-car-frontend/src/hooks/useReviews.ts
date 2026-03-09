@@ -28,3 +28,11 @@ export const useReviewEligibility = (vehicleId: string | undefined) => {
         enabled: !!vehicleId,
     });
 };
+
+export const useVehicleReviews = (vehicleId: string | undefined) => {
+    return useQuery({
+        queryKey: ['reviews', 'vehicle', vehicleId],
+        queryFn: () => reviewAPI.getByVehicle(vehicleId!),
+        enabled: !!vehicleId,
+    });
+};

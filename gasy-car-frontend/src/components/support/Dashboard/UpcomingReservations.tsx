@@ -68,7 +68,7 @@ export default function UpcomingReservations() {
           <Card
             key={reservation.id}
             className="border-none shadow-sm hover:shadow-md transition-shadow rounded-xl cursor-pointer"
-            onClick={() => navigate("/support/reservations")}
+            onClick={() => navigate("/support/reservations?pickup=UPCOMING_24H")}
           >
             <CardContent className="p-4 flex justify-between items-center">
               <div className="flex gap-4 items-center">
@@ -101,7 +101,7 @@ export default function UpcomingReservations() {
       <Button
         variant="outline"
         className="w-full rounded-xl"
-        onClick={() => navigate("/support/reservations")}
+        onClick={() => navigate("/support/reservations?pickup=UPCOMING_24H")}
       >
         Voir toutes les réservations
       </Button>

@@ -41,9 +41,15 @@ export const usersUseQuery = () => {
   const updateUser = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<User> }) =>
       usersAPI.updateUser(id, data),
-    onSuccess: (res) => {
-      // met à jour le currentUser immédiatement
-      queryClient.setQueryData(['currentUser'], res.data);
+    onSuccess: (res, variables) => {
+      // Met à jour currentUser uniquement si l'utilisateur modifié est l'utilisateur connecté.
+      const currentUser = queryClient.getQueryData<User>(['currentUser']);
+      const editedUserId = String(variables.id);
+      const currentUserId = currentUser?.id ? String(currentUser.id) : null;
+
+      if (currentUserId && currentUserId === editedUserId) {
+        queryClient.setQueryData(['currentUser'], res.data);
+      }
 
       // rafraîchit les listes
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -80,7 +86,8 @@ const uploadProfilePhoto = useMutation({
   // DELETE — user complet
   // -------------------------------------------------------
   const deleteUser = useMutation({
-    mutationFn: (id: string) => usersAPI.deleteUser(id),
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      usersAPI.deleteUser(id, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
