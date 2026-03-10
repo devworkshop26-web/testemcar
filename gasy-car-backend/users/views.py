@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.files.storage import default_storage
-from django.db import transaction
+from django.db import OperationalError, ProgrammingError, transaction
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -69,6 +69,20 @@ class UserRegistrationView(APIView):
             return Response(
                 {"email": [str(e)]},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        except (ProgrammingError, OperationalError):
+            logger.exception(
+                "Inscription OTP impossible: tables DB manquantes ou indisponibles."
+            )
+            return Response(
+                {
+                    "detail": (
+                        "Service d'inscription temporairement indisponible. "
+                        "Exécutez les migrations backend (python manage.py migrate)."
+                    ),
+                    "error_code": "db_schema_not_ready",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
             logger.exception(
@@ -183,6 +197,18 @@ class OTPRequestView(APIView):
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        except (ProgrammingError, OperationalError):
+            logger.exception("Envoi OTP impossible: tables DB manquantes ou indisponibles.")
+            return Response(
+                {
+                    "detail": (
+                        "Service OTP temporairement indisponible. "
+                        "Exécutez les migrations backend (python manage.py migrate)."
+                    ),
+                    "error_code": "db_schema_not_ready",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
             logger.exception("Erreur lors de l'envoi OTP pour email=%s", email)
