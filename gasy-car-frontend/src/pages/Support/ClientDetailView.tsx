@@ -28,14 +28,22 @@ import {
   Maximize2,
   Building2,
   Clock,
-  MoreHorizontal
+  MoreHorizontal,
+  Car,
+  CircleDollarSign,
+  ArrowUpRight,
 } from "lucide-react";
 import { useClientDetail } from "@/useQuery/support/useClientDetail";
 import { InstanceAxis } from "@/helper/InstanceAxios";
+import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
 
 export default function ClientDetailView() {
   const { id } = useParams();
   const { data: client, isLoading } = useClientDetail(id!);
+  const {
+    data: reservationHistory = [],
+    isLoading: isReservationHistoryLoading,
+  } = useReservationClientQuery(id);
 
   // --- Helpers ---
   const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
@@ -60,6 +68,21 @@ export default function ClientDetailView() {
     if (!value) return "—";
     const d = new Date(value);
     return isNaN(d.getTime()) ? "—" : new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  };
+
+  const reservationStatusConfig: Record<string, { label: string; className: string }> = {
+    PENDING: { label: "En attente", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+    CONFIRMED: { label: "Confirmée", className: "bg-blue-100 text-blue-800 border-blue-200" },
+    IN_PROGRESS: { label: "En cours", className: "bg-purple-100 text-purple-800 border-purple-200" },
+    COMPLETED: { label: "Terminée", className: "bg-green-100 text-green-800 border-green-200" },
+    CANCELLED: { label: "Annulée", className: "bg-red-100 text-red-800 border-red-200" },
+  };
+
+  const paymentStatusLabel = (status?: string | null) => {
+    if (!status) return "Non payé";
+    if (status === "VALIDATED") return "Payé";
+    if (status === "REJECTED") return "Refusé";
+    return "En attente";
   };
 
   // --- Composants UI Internes ---
@@ -262,6 +285,82 @@ export default function ClientDetailView() {
                     } 
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Historique des réservations client */}
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Car className="w-5 h-5 text-blue-600" />
+                Historique des réservations
+              </CardTitle>
+              <CardDescription>
+                Toutes les réservations effectuées par ce client.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-3">
+              {isReservationHistoryLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, idx) => (
+                    <Skeleton key={idx} className="h-20 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : reservationHistory.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                  <p className="text-sm font-medium text-slate-600">Aucune réservation trouvée pour ce client.</p>
+                </div>
+              ) : (
+                reservationHistory
+                  .slice()
+                  .sort((a, b) => {
+                    const firstDate = new Date(b.created_at || b.start_datetime || 0).getTime();
+                    const secondDate = new Date(a.created_at || a.start_datetime || 0).getTime();
+                    return firstDate - secondDate;
+                  })
+                  .map((reservation: any) => {
+                    const status = reservationStatusConfig[reservation.status] || {
+                      label: reservation.status || "Inconnu",
+                      className: "bg-slate-100 text-slate-700 border-slate-200",
+                    };
+
+                    return (
+                      <Link
+                        key={reservation.id}
+                        to={`/support/reservations/${reservation.id}`}
+                        className="group block rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                              {reservation.reference || `Réservation ${reservation.id}`}
+                              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Créée le {formatDate(reservation.created_at || reservation.start_datetime)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Du {formatDate(reservation.start_datetime)} au {formatDate(reservation.end_datetime)}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <Badge variant="outline" className={status.className}>
+                              {status.label}
+                            </Badge>
+                            <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 flex items-center gap-1">
+                              <CircleDollarSign className="w-3 h-3" />
+                              {paymentStatusLabel(reservation.payment?.status)}
+                            </Badge>
+                            <Badge variant="secondary" className="font-medium">
+                              {(Number(reservation.total_amount) || 0).toLocaleString("fr-MG")} Ar
+                            </Badge>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })
+              )}
             </CardContent>
           </Card>
 

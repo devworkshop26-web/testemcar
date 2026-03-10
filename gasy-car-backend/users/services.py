@@ -1,101 +1,252 @@
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.conf import settings
-from django.utils import timezone
-from datetime import timedelta
-import random
+from datetime import timedelta, datetime
+import secrets
 import string
-from .models import OTPCode, User, RefreshToken
-from gasycar.utils import send_email_notification
+
+from django.conf import settings
+from django.contrib.auth.hashers import make_password
+from django.core.mail import send_mail
+from django.db import transaction
+from django.utils import timezone
+from rest_framework_simplejwt.tokens import RefreshToken as JWTRefreshToken
+
+from .models import OTPCode, PendingRegistration, RefreshToken as RefreshTokenModel, User
+
 
 class OTPService:
     @staticmethod
-    def generate_otp_code(length=6):
-        return ''.join(random.choices(string.digits, k=length))
-    
+    def generate_code():
+        length = int(getattr(settings, "OTP_LENGTH", 6))
+        return "".join(secrets.choice(string.digits) for _ in range(length))
+
     @staticmethod
-    def create_otp(user, purpose):
-        # CORRECTION : Invalider tous les anciens OTP
-        OTPCode.objects.filter(
-            user=user, 
-            purpose=purpose, 
-        ).delete()
-        
-        code = OTPService.generate_otp_code()
-        expires_at = timezone.now() + timedelta(minutes=10)
-        
-        otp = OTPCode.objects.create(
-            user=user,
-            code=code,
-            purpose=purpose,
-            expires_at=expires_at
+    def get_expiry_time():
+        return timezone.now() + timedelta(
+            minutes=int(getattr(settings, "OTP_VALIDITY_MINUTES", 10))
         )
-        return otp
-    
+
+    @classmethod
+    def upsert_pending_registration(cls, validated_data):
+        email = validated_data["email"].strip().lower()
+
+        if User.objects.filter(email=email, email_verified=True).exists():
+            raise ValueError("Un compte avec cet email existe déjà.")
+
+        pending, _ = PendingRegistration.objects.update_or_create(
+            email=email,
+            defaults={
+                "password_hash": make_password(validated_data["password"]),
+                "first_name": validated_data["first_name"].strip(),
+                "last_name": validated_data["last_name"].strip(),
+                "phone": validated_data.get("phone"),
+                "role": validated_data.get("role", "CLIENT"),
+                "otp_code": cls.generate_code(),
+                "otp_expires_at": cls.get_expiry_time(),
+            },
+        )
+        return pending
+
+    @classmethod
+    def resend_pending_registration_otp(cls, email: str):
+        email = email.strip().lower()
+
+        if User.objects.filter(email=email, email_verified=True).exists():
+            raise ValueError("Ce compte est déjà vérifié.")
+
+        pending = PendingRegistration.objects.filter(email=email).first()
+        if not pending:
+            raise ValueError("Aucune inscription en attente pour cet email.")
+
+        pending.otp_code = cls.generate_code()
+        pending.otp_expires_at = cls.get_expiry_time()
+        pending.save(update_fields=["otp_code", "otp_expires_at", "updated_at"])
+        return pending
+
     @staticmethod
-    def verify_otp(email, code, purpose):
+    def send_registration_otp_email(pending: PendingRegistration):
+        subject = "Code de vérification de votre compte"
+        message = (
+            f"Bonjour {pending.first_name},\n\n"
+            f"Votre code de vérification est : {pending.otp_code}\n\n"
+            f"Ce code expire dans {getattr(settings, 'OTP_VALIDITY_MINUTES', 10)} minutes.\n\n"
+            f"Madagasycar"
+        )
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[pending.email],
+            fail_silently=False,
+        )
+
+    @staticmethod
+    def verify_registration_otp(email: str, code: str):
+        email = email.strip().lower()
+        code = str(code).strip()
+
+        pending = PendingRegistration.objects.filter(email=email).first()
+        if not pending:
+            raise ValueError("Aucune inscription en attente pour cet email.")
+
+        if timezone.now() >= pending.otp_expires_at:
+            raise ValueError("Code OTP expiré.")
+
+        if pending.otp_code != code:
+            raise ValueError("Code OTP invalide.")
+
+        with transaction.atomic():
+            existing_user = User.objects.filter(email=email).first()
+
+            if existing_user and existing_user.email_verified:
+                pending.delete()
+                raise ValueError("Ce compte est déjà vérifié.")
+
+            if existing_user and not existing_user.email_verified:
+                user = existing_user
+                user.first_name = pending.first_name
+                user.last_name = pending.last_name
+                user.phone = pending.phone
+                user.role = pending.role
+                user.password = pending.password_hash
+                user.is_active = True
+                user.email_verified = True
+                user.is_staff = False if user.role in ["CLIENT", "PRESTATAIRE"] else user.is_staff
+                user.save()
+            else:
+                user = User.objects.create(
+                    email=pending.email,
+                    first_name=pending.first_name,
+                    last_name=pending.last_name,
+                    phone=pending.phone,
+                    role=pending.role,
+                    password=pending.password_hash,
+                    is_active=True,
+                    email_verified=True,
+                    is_staff=False if pending.role in ["CLIENT", "PRESTATAIRE"] else True,
+                )
+
+            pending.delete()
+            return user
+
+    @classmethod
+    def create_otp(cls, user: User, purpose: str) -> OTPCode:
+        OTPCode.objects.filter(
+            user=user,
+            purpose=purpose,
+            is_used=False,
+        ).update(is_used=True)
+
+        return OTPCode.objects.create(
+            user=user,
+            code=cls.generate_code(),
+            purpose=purpose,
+            expires_at=cls.get_expiry_time(),
+            is_used=False,
+        )
+
+    @staticmethod
+    def send_otp_email(user: User, code: str, purpose: str):
+        if purpose == "email_verification":
+            subject = "Code de vérification de votre compte"
+            message = (
+                f"Bonjour {user.first_name or ''},\n\n"
+                f"Votre code de vérification est : {code}\n\n"
+                f"Ce code expire dans {getattr(settings, 'OTP_VALIDITY_MINUTES', 10)} minutes.\n\n"
+                f"Madagasycar"
+            )
+        elif purpose == "password_reset":
+            subject = "Code de réinitialisation de mot de passe"
+            message = (
+                f"Bonjour {user.first_name or ''},\n\n"
+                f"Votre code de réinitialisation est : {code}\n\n"
+                f"Ce code expire dans {getattr(settings, 'OTP_VALIDITY_MINUTES', 10)} minutes.\n\n"
+                f"Madagasycar"
+            )
+        else:
+            raise ValueError("Purpose OTP invalide.")
+
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+
+    @staticmethod
+    def verify_otp(email: str, code: str, purpose: str):
+        email = email.strip().lower()
+        code = str(code).strip()
+        purpose = purpose.strip()
+
         try:
             user = User.objects.get(email=email)
-            # CORRECTION : Chercher sans filtre de date
-            otp = OTPCode.objects.filter(
-                user=user,
-                # code=code,
-                # purpose=purpose,
-                is_used=False
-            ).first()
-                        
-            # CORRECTION : Utiliser la méthode is_valid()
-            if otp and otp.is_valid():
-                otp.is_used = True
-                otp.save()
-                return user
-            else:
-                return None
         except User.DoesNotExist:
-            return None
-    
-    @staticmethod
-    def send_otp_email(user, otp_code, purpose):
-        if purpose == 'email_verification':
-            from gasycar.utils import create_and_send_email_otp_standalone
-            create_and_send_email_otp_standalone(user)
-        else:  # password_reset
-            subject = 'Réinitialisation de votre mot de passe - GasyCar'
-            html_message = render_to_string(
-                "password_reset_otp.html",
-                { 
-                    "OTP_CODE": otp_code,
-                    "FIRST_NAME": user.first_name,
-                    "YEAR": timezone.now().year
-                },
+            raise ValueError("Utilisateur introuvable.")
+
+        otp = (
+            OTPCode.objects.filter(
+                user=user,
+                purpose=purpose,
+                code=code,
+                is_used=False,
             )
-            send_email_notification(html_message, user.email, subject, is_html=True)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not otp:
+            raise ValueError("Code OTP invalide.")
+
+        if timezone.now() >= otp.expires_at:
+            otp.is_used = True
+            otp.save(update_fields=["is_used"])
+            raise ValueError("Code OTP expiré.")
+
+        otp.is_used = True
+        otp.save(update_fields=["is_used"])
+
+        if purpose == "email_verification":
+            user.email_verified = True
+            user.is_active = True
+            user.save(update_fields=["email_verified", "is_active"])
+
+        return user
+
 
 class TokenService:
     @staticmethod
-    def create_refresh_token(user, token):
-        expires_at = timezone.now() + timedelta(days=7)
-        refresh_token = RefreshToken.objects.create(
+    def create_refresh_token(user: User, token: str):
+        try:
+            jwt_token = JWTRefreshToken(token)
+            exp_timestamp = jwt_token["exp"]
+            expires_at = datetime.fromtimestamp(
+                exp_timestamp,
+                tz=timezone.get_current_timezone(),
+            )
+        except Exception:
+            expires_at = timezone.now() + timedelta(minutes=15)
+
+        return RefreshTokenModel.objects.create(
             user=user,
             token=token,
-            expires_at=expires_at
+            expires_at=expires_at,
+            is_blacklisted=False,
         )
-        return refresh_token
-    
+
     @staticmethod
-    def blacklist_refresh_token(token):
+    def blacklist_refresh_token(token: str):
+        RefreshTokenModel.objects.filter(token=token).update(is_blacklisted=True)
+
+    @staticmethod
+    def is_refresh_token_valid(token: str) -> bool:
         try:
-            refresh_token = RefreshToken.objects.get(token=token)
-            refresh_token.is_blacklisted = True
-            refresh_token.save()
+            JWTRefreshToken(token)
+        except Exception:
+            return False
+
+        stored = RefreshTokenModel.objects.filter(token=token).first()
+        if stored is None:
             return True
-        except RefreshToken.DoesNotExist:
-            return False
-    
-    @staticmethod
-    def is_refresh_token_valid(token):
-        try:
-            refresh_token = RefreshToken.objects.get(token=token)
-            return refresh_token.is_valid()
-        except RefreshToken.DoesNotExist:
-            return False
+
+        return stored.is_valid()

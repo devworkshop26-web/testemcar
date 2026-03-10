@@ -1,333 +1,527 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Ajout de CardHeader/Title
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-// import ChatBubble from "@/components/ChatBubble";
-import { Search, Phone, Mail, MessageCircle, Car, Shield, FileText, CreditCard, ChevronRight } from "lucide-react"; // Ajout de ChevronRight
-import { useState } from "react";
+import {
+  Banknote,
+  Bookmark,
+  BusFront,
+  CalendarCheck,
+  CircleDollarSign,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  Handshake,
+  Plane,
+  Receipt,
+  Search,
+  Settings,
+  Shield,
+  Siren,
+  TriangleAlert,
+  User,
+  Wrench,
+} from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  buildHelpArticleRoute,
+  buildHelpCategoryRoute,
+} from "@/components/help-center/helpRoutes";
 
-// (Les données faqs, contactMethods restent inchangées)
-// ... (faqs data) ...
+type ArticleSection = {
+  title: string;
+  icon: ReactNode;
+  links: string[];
+  moreLabel: string;
+  allLinks?: string[];
+};
 
-// ** Définition des données pour la lisibilité **
-const faqs = [
-    // ... (Vos données faqs) ...
-    {
-        category: "Réservation & Location",
-        icon: <Car className="w-6 h-6" />,
-        questions: [
-            {
-                q: "Comment réserver une voiture sur Madagasycar ?",
-                a: "Recherchez le véhicule qui vous convient selon vos dates et préférences, sélectionnez vos options, puis cliquez sur 'Réserver maintenant'. Suivez les étapes simples pour finaliser votre réservation en quelques minutes."
-            },
-            {
-                q: "Puis-je modifier ou annuler ma réservation ?",
-                a: "Oui, vous pouvez modifier ou annuler votre réservation jusqu'à 24h avant la prise en charge sans frais. Passé ce délai, des frais d'annulation peuvent s'appliquer selon la politique du propriétaire."
-            },
-            {
-                q: "Quelle est la durée minimale de location ?",
-                a: "La durée minimale est de 24 heures. Nous proposons des tarifs dégressifs pour les locations longue durée (7+ jours)."
-            },
-            {
-                q: "Puis-je prolonger ma location ?",
-                a: "Oui, contactez le propriétaire et notre service client au moins 24h avant la fin de votre location pour une prolongation."
-            }
-        ]
-    },
-    {
-        category: "Assurance & Sécurité",
-        icon: <Shield className="w-6 h-6" />,
-        questions: [
-            {
-                q: "Quelle assurance est incluse dans la location ?",
-                a: "Tous nos véhicules bénéficient d'une assurance tous risques complète incluant la responsabilité civile, le vol et les dommages collision. Une franchise standard s'applique selon le véhicule."
-            },
-            {
-                q: "Que faire en cas d'accident ou de panne ?",
-                a: "1. Sécurisez les personnes 2. Appelez les secours si nécessaire 3. Contactez immédiatement notre assistance 24h/24 au +261 34 00 000 00 4. Prenez des photos des dégâts"
-            },
-            {
-                q: "La caution est-elle obligatoire ?",
-                a: "Oui, une caution de garantie est requise pour chaque location. Elle est bloquée sur votre carte et libérée dans les 7 jours après restitution du véhicule sans dommage."
-            }
-        ]
-    },
-    {
-        category: "Documents Requis",
-        icon: <FileText className="w-6 h-6" />,
-        questions: [
-            {
-                q: "Quels documents dois-je présenter ?",
-                a: "• Carte d'identité nationale valide ou passeport\n• Permis de conduire en cours de validité (minimum 2 ans)\n• Carte de crédit au nom du conducteur principal\n• Justificatif de domicile récent"
-            },
-            {
-                q: "Puis-je louer avec un permis de conduire étranger ?",
-                a: "Oui, les permis internationaux sont acceptés. Un permis européen ou un permis avec traduction officielle est requis pour les conducteurs non-malgaches."
-            },
-            {
-                q: "Y a-t-il une limite d'âge pour louer ?",
-                a: "L'âge minimum est de 21 ans. Les conducteurs de 21 à 24 ans peuvent être soumis à un supplément jeune conducteur."
-            }
-        ]
-    },
-    {
-        category: "Paiement & Tarifs",
-        icon: <CreditCard className="w-6 h-6" />,
-        questions: [
-            {
-                q: "Quels moyens de paiement sont acceptés ?",
-                a: "• Cartes bancaires (Visa, Mastercard)\n• Mobile Money (MVola, Orange Money, Airtel Money)\n• Virement bancaire\n• Espèces (uniquement pour la caution dans certains cas)"
-            },
-            {
-                q: "Que comprend le prix de la location ?",
-                a: "Le prix inclut : l'assurance tous risques, l'assistance routière 24h/24, les kilomètres illimités, et la TVA. Le carburant et les péages sont à votre charge."
-            },
-            {
-                q: "Y a-t-il des frais supplémentaires ?",
-                a: "Des suppléments peuvent s'appliquer pour : conducteur supplémentaire, siège bébé, GPS, retour dans une autre agence, ou nettoyage spécial si nécessaire."
-            }
-        ]
-    },
-    {
-        category: "Livraison & Retour",
-        icon: <Car className="w-6 h-6" />,
-        questions: [
-            {
-                q: "Puis-je me faire livrer le véhicule ?",
-                a: "Oui, nous proposons la livraison à domicile ou à votre hôtel dans Antananarivo, Tamatave et Diego. Des frais de livraison peuvent s'appliquer selon la distance."
-            },
-            {
-                q: "Quelles sont les heures de prise et retour ?",
-                a: "Flexibles ! Prise de véhicule à partir de 14h et retour avant 11h. Des arrangements sont possibles selon disponibilité."
-            },
-            {
-                q: "Que se passe-t-il si je rends le véhicule en retard ?",
-                a: "Des frais de retard équivalents à une journée supplémentaire sont appliqués. Contactez-nous à l'avance pour toute modification."
-            }
-        ]
-    }
-];
+type HelpCenterContent = {
+  featuredArticles: string[];
+  sections: ArticleSection[];
+};
 
-const contactMethods = [
-    {
-        icon: <Phone className="w-6 h-6" />,
-        title: "Appelez-nous",
-        description: "Lun - Dim, 6h - 22h",
-        contact: "+261 34 00 000 00",
-        action: "tel:+261340000000"
-    },
-    {
-        icon: <Mail className="w-6 h-6" />,
-        title: "Envoyez un email",
-        description: "Réponse sous 24h",
-        contact: "support@gasycar.mg",
-        action: "mailto:support@gasycar.mg"
-    },
-    {
-        icon: <MessageCircle className="w-6 h-6" />,
-        title: "Chat en direct",
-        description: "Assistance immédiate",
-        contact: "Ouvrir le chat",
-        action: "#chat"
-    }
-];
-// ** Fin Définition des données **
-
+const helpCenterByTab: Record<"guests" | "hosts", HelpCenterContent> = {
+  guests: {
+    featuredArticles: [
+      "Messagerie avec votre hôte",
+      "Annuler un voyage avec votre hôte",
+      "Remboursements",
+      "Prise en charge et retour",
+      "Méthodes de paiement acceptées",
+      "Admissibilité du conducteur",
+      "Coût d'un voyage",
+      "Prolonger un voyage",
+      "Numéros d'assistance routière",
+    ],
+    sections: [
+      {
+        title: "Premiers pas",
+        icon: <BusFront className="h-6 w-6" />,
+        links: [
+          "Réserver une voiture",
+          "Admissibilité du conducteur",
+          "Vérification d'identité",
+        ],
+        allLinks: [
+          "Réserver une voiture",
+          "Admissibilité du conducteur",
+          "Vérification d'identité",
+          "Compte unique utilisateur",
+          "Où Mcar opère",
+        ],
+        moreLabel: "Voir les 5 articles",
+      },
+      {
+        title: "Planifier votre trajet",
+        icon: <Bookmark className="h-6 w-6" />,
+        links: [
+          "Vérification avant départ",
+          "Prise en charge et retour",
+          "Ajouter un conducteur",
+        ],
+        allLinks: [
+          "Vérification avant départ",
+          "Prise en charge et retour",
+          "Ajouter un conducteur",
+          "Utilisation avec chauffeur",
+          "Messagerie avec votre hôte",
+        ],
+        moreLabel: "Voir les 5 articles",
+      },
+      {
+        title: "Paiement de votre location",
+        icon: <CircleDollarSign className="h-6 w-6" />,
+        links: [
+          "Méthodes de paiement acceptées",
+          "Coût d'un voyage",
+          "Dépôt de garantie",
+        ],
+        allLinks: [
+          "Méthodes de paiement acceptées",
+          "Coût d'un voyage",
+          "Dépôt de garantie",
+          "Factures impayées",
+          "Promotions et crédits",
+          "Remboursements",
+        ],
+        moreLabel: "Voir les 6 articles",
+      },
+      {
+        title: "Changer ou annuler un voyage",
+        icon: <FileText className="h-6 w-6" />,
+        links: [
+          "Annuler un voyage avec votre hôte",
+          "Modifier une réservation",
+          "Prolonger un voyage",
+        ],
+        allLinks: [
+          "Annuler un voyage avec votre hôte",
+          "Modifier une réservation",
+          "Prolonger un voyage",
+          "Absence du voyageur (No-show)",
+          "Circonstances exceptionnelles",
+        ],
+        moreLabel: "Voir les 5 articles",
+      },
+      {
+        title: "Organisation de la livraison aéroport",
+        icon: <Plane className="h-6 w-6" />,
+        links: [
+          "Prise en charge aéroport Antananarivo",
+          "Prise en charge aéroport Nosy Be",
+          "Prise en charge aéroport Toamasina",
+        ],
+        moreLabel: "Voir les 3 articles",
+      },
+      {
+        title: "Comprendre les responsabilités de l'invité",
+        icon: <Handshake className="h-6 w-6" />,
+        links: [
+          "Respect du code de la route",
+          "Amendes et péages",
+          "Carburant et recharge",
+        ],
+        allLinks: [
+          "Respect du code de la route",
+          "Amendes et péages",
+          "Carburant et recharge",
+          "Objets oubliés",
+          "Usages interdits",
+        ],
+        moreLabel: "Voir les 5 articles",
+      },
+      {
+        title: "Gestion des incidents",
+        icon: <TriangleAlert className="h-6 w-6" />,
+        links: [
+          "Numéros d'assistance routière",
+          "Procédure en cas d'incident",
+          "Vol ou accident",
+        ],
+        allLinks: [
+          "Numéros d'assistance routière",
+          "Procédure en cas d'incident",
+          "Vol ou accident",
+          "Véhicule en panne",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Gérer votre compte",
+        icon: <User className="h-6 w-6" />,
+        links: [
+          "Réinitialiser le mot de passe",
+          "Modifier email et téléphone",
+          "Suspension de compte",
+        ],
+        allLinks: [
+          "Réinitialiser le mot de passe",
+          "Modifier email et téléphone",
+          "Suspension de compte",
+          "Prévention de fraude",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+    ],
+  },
+  hosts: {
+    featuredArticles: [
+      "Démarrer en tant qu'hôte",
+      "Publier un véhicule",
+      "Documents obligatoires du véhicule",
+      "Assurance obligatoire de l’hôte",
+      "Gestion des réservations",
+      "Annulation par l’hôte",
+      "Paiements et versements",
+      "Maintenance obligatoire",
+      "Gestion des dommages véhicule",
+    ],
+    sections: [
+      {
+        title: "Premiers pas",
+        icon: <BusFront className="h-6 w-6" />,
+        links: [
+          "Démarrer en tant qu'hôte",
+          "Publier un véhicule",
+          "Documents obligatoires du véhicule",
+        ],
+        allLinks: [
+          "Démarrer en tant qu'hôte",
+          "Publier un véhicule",
+          "Documents obligatoires du véhicule",
+          "Assurance obligatoire de l’hôte",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Tarifer votre véhicule",
+        icon: <Banknote className="h-6 w-6" />,
+        links: [
+          "Tarification de location",
+          "Remises et promotions hôte",
+          "Paiements et versements",
+        ],
+        allLinks: [
+          "Tarification de location",
+          "Remises et promotions hôte",
+          "Paiements et versements",
+          "Taxes de l’hôte",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Paramètres et options",
+        icon: <Settings className="h-6 w-6" />,
+        links: [
+          "Disponibilité du véhicule",
+          "Livraison du véhicule",
+          "Gestion des réservations",
+        ],
+        allLinks: [
+          "Disponibilité du véhicule",
+          "Livraison du véhicule",
+          "Gestion des réservations",
+          "Check-in et check-out",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Recevoir des paiements",
+        icon: <CircleDollarSign className="h-6 w-6" />,
+        links: [
+          "Paiements et versements",
+          "Refus de paiement et recouvrement",
+          "Taxes de l’hôte",
+        ],
+        allLinks: [
+          "Paiements et versements",
+          "Refus de paiement et recouvrement",
+          "Taxes de l’hôte",
+          "Gestion des dommages véhicule",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Gérer les réservations et voyages",
+        icon: <CalendarCheck className="h-6 w-6" />,
+        links: [
+          "Gestion des réservations",
+          "Check-in et check-out",
+          "Annulation par l’hôte",
+        ],
+        allLinks: [
+          "Gestion des réservations",
+          "Check-in et check-out",
+          "Annulation par l’hôte",
+          "Prolonger un voyage",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Gérer votre annonce véhicule",
+        icon: <ClipboardList className="h-6 w-6" />,
+        links: [
+          "Publier un véhicule",
+          "Maintenance obligatoire",
+          "Disponibilité du véhicule",
+        ],
+        allLinks: [
+          "Publier un véhicule",
+          "Maintenance obligatoire",
+          "Disponibilité du véhicule",
+          "Sanctions et résiliation du compte",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Prendre des mesures de sécurité",
+        icon: <Siren className="h-6 w-6" />,
+        links: [
+          "Assurance obligatoire de l’hôte",
+          "Procédure en cas d'incident",
+          "Numéros d'assistance routière",
+        ],
+        allLinks: [
+          "Assurance obligatoire de l’hôte",
+          "Procédure en cas d'incident",
+          "Numéros d'assistance routière",
+          "Usages interdits",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Politiques véhicule",
+        icon: <CreditCard className="h-6 w-6" />,
+        links: [
+          "Usages interdits",
+          "Gestion des dommages véhicule",
+          "Maintenance obligatoire",
+        ],
+        allLinks: [
+          "Usages interdits",
+          "Gestion des dommages véhicule",
+          "Maintenance obligatoire",
+          "Vol ou accident",
+        ],
+        moreLabel: "Voir les 4 articles",
+      },
+      {
+        title: "Comprendre et choisir la protection",
+        icon: <Shield className="h-6 w-6" />,
+        links: [
+          "Assurance obligatoire de l’hôte",
+          "Gestion des dommages véhicule",
+          "Vol ou accident",
+        ],
+        moreLabel: "Voir les 3 articles",
+      },
+      {
+        title: "Gérer les dommages véhicule",
+        icon: <Wrench className="h-6 w-6" />,
+        links: [
+          "Gestion des dommages véhicule",
+          "Procédure en cas d'incident",
+          "Refus de paiement et recouvrement",
+        ],
+        moreLabel: "Voir les 3 articles",
+      },
+      {
+        title: "Taxes",
+        icon: <Receipt className="h-6 w-6" />,
+        links: ["Taxes de l’hôte", "Paiements et versements", "Coût d'un voyage"],
+        moreLabel: "Voir les 3 articles",
+      },
+    ],
+  },
+};
 
 const FAQ = () => {
-  const ref1 = useScrollAnimation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState(faqs[0].category); // Set first category as default active
+  const [activeTab, setActiveTab] = useState<"guests" | "hosts">("guests");
+  const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
-  const filteredFaqs = faqs
-    .map(category => ({
-      ...category,
-      questions: category.questions.filter(faq =>
-        faq.q.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        faq.a.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }))
-    .filter(category => category.questions.length > 0);
+  const activeContent = helpCenterByTab[activeTab];
 
-  const activeFaqCategory = activeCategory === "all" ? filteredFaqs.flatMap(cat => cat.questions) : filteredFaqs.find(c => c.category === activeCategory)?.questions || [];
-  
-  // Utilise la première catégorie trouvée ou la première si "all" n'est pas utilisé
-  const displayCategory = activeFaqCategory.length > 0 ? filteredFaqs.find(c => c.category === activeCategory) || filteredFaqs[0] : null;
+  const filteredFeatured = useMemo(
+    () =>
+      activeContent.featuredArticles.filter((article) =>
+        article.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
+    [activeContent.featuredArticles, searchTerm],
+  );
 
+  const filteredSections = useMemo(
+    () =>
+      activeContent.sections
+        .map((section) => {
+          const sourceLinks = section.allLinks ?? section.links;
+          const filteredLinks = sourceLinks.filter((link) =>
+            link.toLowerCase().includes(searchTerm.toLowerCase()),
+          );
+
+          return {
+            ...section,
+            links: filteredLinks,
+          };
+        })
+        .filter((section) => section.links.length > 0 || searchTerm.length === 0),
+    [activeContent.sections, searchTerm],
+  );
 
   return (
-    <div className="min-h-screen bg-white">
-      <div>
-        
-        {/* 1. Hero Section avec Barre de Recherche intégrée */}
-        <section className="relative py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-primary to-blue-700 text-white overflow-hidden">
-          <div className="absolute inset-0 bg-black/10"></div>
-          <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="max-w-4xl mx-auto text-center">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-poppins font-extrabold mb-3 sm:mb-4 leading-tight px-4">
-                Centre d'Aide
-              </h1>
-              <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 opacity-90 px-4">
-                Trouvez rapidement les réponses à vos questions.
-              </p>
+    <main className="bg-[#f6f6f7] pb-20 text-[#121214]">
+      <section className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-12 pt-16 sm:px-6 lg:px-8">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl">
+            Centre d'aide ici
+          </h1>
+          <p className="mt-3 text-lg text-gray-600">
+            Que pouvons-nous faire pour vous ?
+          </p>
 
-              {/* Barre de recherche améliorée */}
-              <div className="relative max-w-2xl mx-auto px-4">
-                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Rechercher 'assurance', 'annulation' ou 'paiement'..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 h-12 sm:h-14 rounded-xl bg-white text-sm sm:text-base text-gray-800 placeholder-gray-500 border-2 border-primary focus:border-blue-500 focus:ring-0 shadow-lg transition-all duration-300"
-                />
-              </div>
-
+          <div className="mt-8 max-w-xl">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher des articles"
+                className="h-12 rounded-md border-gray-300 bg-white pl-10"
+              />
             </div>
           </div>
-        </section>
 
-        {/* 2. Contenu FAQ avec mise en page à deux colonnes */}
-        <section className="py-12 sm:py-16 md:py-20 bg-slate-50" ref={ref1}>
-          <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-            <div className="lg:grid lg:grid-cols-12 lg:gap-8 xl:gap-12">
-
-                {/* Colonne de gauche: Navigation Catégories (Sticky) */}
-                <div className="lg:col-span-4 mb-8 sm:mb-10 lg:mb-0">
-                    <Card className="p-3 sm:p-4 rounded-xl shadow-xl lg:sticky lg:top-24 border-2 border-primary/10">
-                        <CardHeader className="p-3 sm:p-4 pb-2">
-                            <CardTitle className="text-lg sm:text-xl font-poppins font-bold text-gray-800">Parcourir les thèmes</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-2 space-y-1">
-                            {faqs.map((category) => (
-                                <button
-                                    key={category.category}
-                                    onClick={() => setActiveCategory(category.category)}
-                                    className={`w-full text-left flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg transition-colors duration-200 text-sm sm:text-base ${
-                                        activeCategory === category.category
-                                            ? "bg-primary text-white shadow-md font-bold"
-                                            : "bg-transparent text-gray-700 hover:bg-gray-100 font-medium"
-                                    }`}
-                                >
-                                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${activeCategory === category.category ? "bg-white/20" : "text-primary bg-primary/10"}`}>
-                                        {category.icon}
-                                    </div>
-                                    <span className="flex-1">{category.category}</span>
-                                    <ChevronRight className={`w-3 h-3 sm:w-4 sm:h-4 ml-auto transition-transform ${activeCategory === category.category ? "" : "text-gray-400"}`} />
-                                </button>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Colonne de droite: Questions/Réponses (Accordion) */}
-                <div className="lg:col-span-8">
-                    {activeFaqCategory.length === 0 ? (
-                        <div className="text-center py-12 sm:py-16 md:py-20 bg-white rounded-xl shadow-lg border border-gray-100 px-4">
-                            <Search className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
-                            <h3 className="text-lg sm:text-xl md:text-2xl font-poppins font-bold text-gray-600 mb-2">
-                                {searchTerm ? "Aucun résultat trouvé pour votre recherche." : `La catégorie '${activeCategory}' est vide.`}
-                            </h3>
-                            <p className="text-sm sm:text-base text-gray-500">
-                                Essayez d'autres termes de recherche ou sélectionnez une autre catégorie.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="mb-12 sm:mb-16">
-                            <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8 p-3 sm:p-4">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-primary to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                                    {displayCategory?.icon}
-                                </div>
-                                <h2 className="text-xl sm:text-2xl md:text-3xl font-poppins font-bold text-gray-900">
-                                    {displayCategory?.category}
-                                </h2>
-                            </div>
-                            
-                            <Card className="shadow-2xl border-0 rounded-3xl overflow-hidden">
-                                <CardContent className="p-0">
-                                    <Accordion type="single" collapsible className="w-full">
-                                        {activeFaqCategory.map((faq, qIdx) => (
-                                            <AccordionItem 
-                                                key={qIdx} 
-                                                value={`item-${qIdx}`}
-                                                className="border-b border-gray-100 last:border-b-0"
-                                            >
-                                                <AccordionTrigger className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 hover:bg-gray-50 transition-colors text-left group">
-                                                    <span className="text-sm sm:text-base md:text-lg font-poppins font-semibold text-gray-900 group-hover:text-primary transition-colors">
-                                                        {faq.q}
-                                                    </span>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-5 pt-1 bg-blue-50/20">
-                                                    <div className="text-sm sm:text-base text-gray-700 leading-relaxed whitespace-pre-line">
-                                                        {faq.a}
-                                                    </div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        ))}
-                                    </Accordion>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
-                </div>
-
-            </div>
+          <div className="mt-10 flex gap-8 border-b border-gray-200 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("guests");
+                setExpandedSections([]);
+              }}
+              className={`border-b-2 pb-3 transition ${
+                activeTab === "guests"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent hover:text-gray-700"
+              }`}
+            >
+              Voyageurs
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("hosts");
+                setExpandedSections([]);
+              }}
+              className={`border-b-2 pb-3 transition ${
+                activeTab === "hosts"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent hover:text-gray-700"
+              }`}
+            >
+              Hôtes
+            </button>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* 3. Contact Section (Améliorée) */}
-        {/* <section className="py-20 bg-slate-900 text-white">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto text-center mb-16">
-              <h2 className="text-4xl font-poppins font-extrabold mb-4">
-                Besoin d'aide personnalisée ?
-              </h2>
-              <p className="text-xl text-blue-200">
-                Notre équipe est à votre écoute. Choisissez votre méthode de contact préférée.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {contactMethods.map((method, index) => (
-                <a href={method.action} key={index} className="block group">
-                    <Card className="bg-white/5 backdrop-blur-sm border border-white/10 text-center hover:bg-white/10 transition-all duration-300">
-                        <CardContent className="p-8">
-                            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary transition-colors duration-300">
-                                <div className="text-white transform group-hover:scale-110 transition-transform">
-                                    {method.icon}
-                                </div>
-                            </div>
-                            <h3 className="text-xl font-poppins font-bold mb-1">{method.title}</h3>
-                            <p className="text-blue-200 text-sm mb-4">{method.description}</p>
-                            <span className="text-lg font-bold border-b border-primary/50 group-hover:text-primary transition-colors">
-                                {method.contact}
-                            </span>
-                        </CardContent>
-                    </Card>
-                </a>
-              ))}
-            </div>
-
-            <div className="text-center mt-16">
-              <Button className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-full text-lg font-semibold shadow-lg">
-                📞 Demander un Rappel
-              </Button>
-              <p className="text-blue-200 mt-4 text-sm">
-                Laissez votre numéro, nous vous rappelons sous 30 minutes.
-              </p>
-            </div>
+      <section className="mx-auto w-full max-w-6xl px-4 pt-12 sm:px-6 lg:px-8">
+        <div className="rounded-xl bg-[#efebff] p-6 sm:p-8">
+          <div className="mb-6 flex items-center gap-3 text-indigo-600">
+            <Bookmark className="h-7 w-7" />
+            <h2 className="text-3xl font-bold text-[#151522]">Articles mis en avant</h2>
           </div>
-        </section> */}
-      </div>
-      
-      {/* <ChatBubble /> */}
-    </div>
+
+          <div className="grid gap-x-8 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredFeatured.map((article) => (
+              <Link
+                key={article}
+                to={buildHelpArticleRoute(article)}
+                className="border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
+              >
+                {article}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto mt-12 grid w-full max-w-6xl gap-10 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-8">
+        {filteredSections.map((section) => (
+          <article key={section.title} className="space-y-4">
+            <div className="flex items-center gap-3 text-indigo-600">
+              {section.icon}
+              <h3 className="text-3xl font-bold leading-tight text-[#1a1a27]">
+                {section.title}
+              </h3>
+            </div>
+            {(() => {
+              const shouldShowToggle = section.links.length > 3;
+              const isExpanded = expandedSections.includes(section.title);
+              const visibleLinks = isExpanded ? section.links : section.links.slice(0, 3);
+
+              return (
+                <>
+                  <ul className="space-y-3">
+                    {visibleLinks.map((link) => (
+                      <li key={link}>
+                        <Link
+                          to={buildHelpArticleRoute(link)}
+                          className="block border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
+                        >
+                          {link}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {shouldShowToggle ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedSections((current) =>
+                          current.includes(section.title)
+                            ? current.filter((title) => title !== section.title)
+                            : [...current, section.title],
+                        )
+                      }
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+                    >
+                      {isExpanded ? "Voir moins" : section.moreLabel}
+                    </button>
+                  ) : (
+                    <Link
+                      to={buildHelpCategoryRoute(section.moreLabel)}
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+                    >
+                      {section.moreLabel}
+                    </Link>
+                  )}
+                </>
+              );
+            })()}
+          </article>
+        ))}
+      </section>
+    </main>
   );
 };
 

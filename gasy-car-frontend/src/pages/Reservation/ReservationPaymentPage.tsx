@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useReservationQuery, useUpdateReservationMutation } from "@/useQuery/reservationsUseQuery";
+import { useReservationPricingConfigQuery, useReservationQuery, useUpdateReservationMutation } from "@/useQuery/reservationsUseQuery";
 import { useCreateReservationPaymentMutation, useSendPaymentLink } from "@/useQuery/useReservationPayment";
 import { useModePaymentsQuery } from "@/useQuery/modePaymentUseQuery";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Clock, Upload, FileText, RefreshCw, Check, Smartphone, Monitor, Send } from "lucide-react";
 import { toast } from "sonner";
 import { ModePayment } from "@/types/modePayment";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 // Generate payment reference
 const generatePaymentRef = (methodName: string) => {
@@ -18,8 +19,10 @@ const generatePaymentRef = (methodName: string) => {
 const ReservationPaymentPage = () => {
   const { reservationId } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuthContext();
 
   const { data: reservation, isLoading: isLoadingReservation } = useReservationQuery(reservationId);
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
   const { data: paymentModes } = useModePaymentsQuery();
   const createPayment = useCreateReservationPaymentMutation();
   const updateReservation = useUpdateReservationMutation();
@@ -97,7 +100,11 @@ const ReservationPaymentPage = () => {
       {
         onSuccess: () => {
           toast.success("Paiement envoyé pour validation !");
-          navigate(`/client/booking/${reservation.id}`);
+          const destination =
+            role === "PRESTATAIRE"
+              ? `/prestataire/bookings/${reservation.id}`
+              : `/client/booking/${reservation.id}`;
+          navigate(`${destination}#payment-details`);
         },
         onError: (error: any) => {
           // Handle backend error response
@@ -191,6 +198,48 @@ const ReservationPaymentPage = () => {
     setIsExpired(false);
     toast.success("Temps prolongé de 15 minutes.");
   };
+
+  const paymentAmounts = useMemo(() => {
+    if (!reservation) {
+      return {
+        baseAmount: 0,
+        optionsAmount: 0,
+        serviceFee: 0,
+        cautionAmount: 0,
+        subtotalWithoutCaution: 0,
+        totalToPay: 0,
+      };
+    }
+
+    const baseAmount = Number(reservation.base_amount ?? 0) || 0;
+    const rawOptionsAmount = Number(reservation.options_amount ?? 0) || 0;
+    const equipmentOptionsAmount = (reservation.equipments_data ?? []).reduce(
+      (sum, equipment) => sum + (Number(equipment.price ?? 0) || 0) * (Number(reservation.total_days ?? 1) || 1),
+      0
+    );
+    const optionsAmount = Math.max(rawOptionsAmount, equipmentOptionsAmount);
+
+    const cautionAmount = Number(reservation.caution_amount ?? 0) || 0;
+    const apiTotalAmount = Number(reservation.total_amount ?? 0) || 0;
+
+    const configuredServiceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
+    const computedWithoutCaution = baseAmount + optionsAmount + configuredServiceFee;
+
+    const subtotalWithoutCaution = Math.max(
+      apiTotalAmount,
+      computedWithoutCaution,
+      baseAmount + optionsAmount
+    );
+
+    return {
+      baseAmount,
+      optionsAmount,
+      serviceFee: Math.max(0, subtotalWithoutCaution - baseAmount - optionsAmount),
+      cautionAmount,
+      subtotalWithoutCaution,
+      totalToPay: subtotalWithoutCaution + cautionAmount,
+    };
+  }, [reservation, pricingConfig?.service_fee]);
 
   // Format timer
   const formatTime = (ms: number) => {
@@ -459,11 +508,35 @@ const ReservationPaymentPage = () => {
               </div>
 
               <div className="bg-slate-50 rounded-2xl p-6 space-y-4 border border-slate-100">
-                <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-                  <span className="text-slate-600">Montant à payer</span>
-                  <span className="text-2xl font-bold text-slate-900">
-                    {Number(reservation.total_amount).toLocaleString()} Ar
-                  </span>
+                <div className="space-y-2 pb-4 border-b border-slate-200">
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Location</span>
+                    <span>{paymentAmounts.baseAmount.toLocaleString()} Ar</span>
+                  </div>
+                  {paymentAmounts.optionsAmount > 0 && (
+                    <div className="flex justify-between items-center text-sm text-slate-600">
+                      <span>Options</span>
+                      <span>+{paymentAmounts.optionsAmount.toLocaleString()} Ar</span>
+                    </div>
+                  )}
+                  {paymentAmounts.serviceFee > 0 && (
+                    <div className="flex justify-between items-center text-sm text-slate-600">
+                      <span>Frais de service</span>
+                      <span>+{paymentAmounts.serviceFee.toLocaleString()} Ar</span>
+                    </div>
+                  )}
+                  {paymentAmounts.cautionAmount > 0 && (
+                    <div className="flex justify-between items-center text-sm text-emerald-700">
+                      <span>Caution remboursable</span>
+                      <span>+{paymentAmounts.cautionAmount.toLocaleString()} Ar</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-200">
+                    <span className="text-slate-600 font-semibold">Montant à payer</span>
+                    <span className="text-2xl font-bold text-slate-900">
+                      {paymentAmounts.totalToPay.toLocaleString()} Ar
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-4">

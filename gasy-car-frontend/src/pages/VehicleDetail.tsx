@@ -37,7 +37,7 @@ import ChauffeurCard from "@/components/vehicule/ChauffeurCard";
 import { useVehiculeQuery } from "@/useQuery/vehiculeUseQuery";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useReservationAction } from "@/hooks/useReservationAction";
-import { useOwnerReviews, useCreateReview, useReviewEligibility } from "@/hooks/useReviews";
+import { useVehicleReviews, useCreateReview, useReviewEligibility } from "@/hooks/useReviews";
 import { CreateReviewPayload } from "@/types/reveiewType";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,7 +61,7 @@ const VehicleDetail = () => {
   const { toast } = useToast();
   const { data: vehicle, isLoading } = useVehiculeQuery(id);
   const { user } = useCurentuser();
-  const { data: reviews, isLoading: isLoadingReviews } = useOwnerReviews(vehicle?.proprietaire_data?.id);
+  const { data: reviews, isLoading: isLoadingReviews } = useVehicleReviews(vehicle?.id);
   const { data: pendingReservations, isLoading: isLoadingEligibility } = useReviewEligibility(vehicle?.id);
   const { mutate: submitReview, isPending: isSubmittingReview } = useCreateReview();
 
@@ -122,13 +122,22 @@ const VehicleDetail = () => {
       ? pendingReservations[0]
       : null;
 
+    if (!user?.id || !vehicle?.proprietaire_data?.id || !mostRecentReservation?.id) {
+      toast({
+        variant: "destructive",
+        title: "Action impossible",
+        description: "Vous pouvez noter uniquement après une réservation confirmée pour ce véhicule.",
+      });
+      return;
+    }
+
     const reviewData: CreateReviewPayload = {
-      author: user?.id,
-      target: vehicle?.proprietaire_data?.id,
+      author: user.id,
+      target: vehicle.proprietaire_data.id,
       review_type: "CLIENT_TO_OWNER" as const,
       rating,
       comment,
-      ...(mostRecentReservation?.id && { reservation: mostRecentReservation.id }),
+      reservation: mostRecentReservation.id,
     };
 
     submitReview(reviewData, {
@@ -484,14 +493,22 @@ const VehicleDetail = () => {
                       </div>
                     ) : (
                       <div>
-                        {pendingReservations && pendingReservations.length > 0 && (
+                        {pendingReservations && pendingReservations.length > 0 ? (
                           <div className="mb-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                             <p className="text-xs text-green-700 dark:text-green-400">
-                              ✓ Vous avez loué ce véhicule - Votre avis sera marqué comme vérifié
+                              ✓ Réservation confirmée détectée - vous pouvez laisser un avis vérifié
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              La notation est réservée aux utilisateurs ayant une réservation confirmée (ou terminée) pour ce véhicule.
                             </p>
                           </div>
                         )}
-                        <ReviewForm onSubmit={handleReviewSubmit} />
+                        {pendingReservations && pendingReservations.length > 0 && (
+                          <ReviewForm onSubmit={handleReviewSubmit} />
+                        )}
                       </div>
                     )}
                   </CardContent>

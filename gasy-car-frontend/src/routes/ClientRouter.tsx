@@ -15,6 +15,7 @@ import CreateTicketClient from "@/pages/Client/Support/CreateTicketClient";
 import MyTickets from "@/pages/Support/MyTickets";
 import TicketDetailsClient from "@/pages/Client/Support/TicketDetailsClient";
 import ReservationFormPage from "@/pages/Reservation/ReservationFormPage";
+import VehicleConditionReportPage from "@/pages/Prestataire/VehicleConditionReportPage";
 
 export const ClientRoutes = () => {
   return (
@@ -26,6 +27,8 @@ export const ClientRoutes = () => {
           <Route path="booking/:id" element={<BookingClientDetail />} />
           <Route path="browse" element={<BrowseCarsClientView />} />
           <Route path="rentals" element={<BookingsClientsView />} />
+          <Route path="rentals/:id" element={<BookingClientDetail />} />
+          <Route path="condition-report" element={<VehicleConditionReportPage />} />
           <Route path="favorites" element={<FavoritesClientView />} />
           <Route path="settings" element={<SettingsClientView />} />
           <Route path="reservation/:vehicleId" element={<ReservationFormPage />} />

@@ -1,7 +1,7 @@
 // src/hooks/support/useTicketSocket.ts
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { WS_BASE_URL } from "@/helper/InstanceAxios";
+import { resolveWsBaseUrl, WS_BASE_URL } from "@/helper/InstanceAxios";
 import type { TicketMessage } from "@/types/supportTypes";
 import { ticketMessagesKey } from "@/useQuery/support/useTicketMessages";
 import { useUnreadTickets } from "./useUnreadTickets";
@@ -16,12 +16,6 @@ function getUserIdFromAccessToken(): string | null {
   } catch {
     return null;
   }
-}
-
-// Convertit base URL en WS + enlève /api si présent
-function buildWsBaseUrl(base: string) {
-  const noApi = base.replace(/\/api\/?$/, "");
-  return noApi.replace(/^https?/, (m) => (m === "https" ? "wss" : "ws"));
 }
 
 // Extraction robuste sender id
@@ -75,6 +69,7 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const { markUnread } = useUnreadTickets();
+  const [isConnected, setIsConnected] = useState(false);
 
   // messages envoyés localement en attente de confirmation WS
   const pendingRef = useRef<
@@ -83,16 +78,16 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
 
   const sendMessage = useCallback(
     (text: string) => {
-      if (!enabled) return;
+      if (!enabled) return false;
 
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         console.warn("WS non connecté, impossible d'envoyer.");
-        return;
+        return false;
       }
 
       const msg = text.trim();
-      if (!msg) return;
+      if (!msg) return false;
 
       // ✅ optimistic
       const senderId = getUserIdFromAccessToken() ?? "me";
@@ -122,6 +117,7 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
       );
 
       ws.send(JSON.stringify({ message: msg }));
+      return true;
     },
     [enabled, queryClient, ticketId]
   );
@@ -139,21 +135,24 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
       wsRef.current = null;
     }
 
-    const wsBase = buildWsBaseUrl(WS_BASE_URL);
+    const wsBase = resolveWsBaseUrl(WS_BASE_URL);
     const url = `${wsBase}/ws/support/tickets/${ticketId}/?token=${token}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      setIsConnected(true);
       console.log("✅ SUPPORT WS connecté :", url);
     };
 
     ws.onerror = (e) => {
+      setIsConnected(false);
       console.log("❌ SUPPORT WS error", e);
     };
 
     ws.onclose = () => {
+      setIsConnected(false);
       console.log("🔌 SUPPORT WS fermé", ticketId);
     };
 
@@ -241,10 +240,11 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
     };
 
     return () => {
+      setIsConnected(false);
       ws.close();
       wsRef.current = null;
     };
   }, [enabled, ticketId, queryClient, markUnread]);
 
-  return { sendMessage };
+  return { sendMessage, isConnected };
 }

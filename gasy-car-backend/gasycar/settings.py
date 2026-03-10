@@ -1,18 +1,19 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-
-# Configuration JWT
 from datetime import timedelta
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-gasycar-secret-key-2025"
-DEBUG = os.getenv("DEBUG", True)
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
+DEBUG = str(os.getenv("DEBUG", "False")).lower() in ("true", "1", "yes", "on")
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost,madagasycar.com,www.madagasycar.com"
+).split(",")
 
 INSTALLED_APPS = [
     "daphne",
@@ -40,11 +41,8 @@ INSTALLED_APPS = [
     "blogs",
     "modepayment",
     "driver",
-    "smsapp"
+    "smsapp",
 ]
-
-
-# Django REST Framework
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [],
@@ -52,7 +50,6 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }
-
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
@@ -101,22 +98,20 @@ TEMPLATES = [
 WSGI_APPLICATION = "gasycar.wsgi.application"
 ASGI_APPLICATION = "gasycar.asgi.application"
 
-
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'gasycar'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASS', 'lalaina14'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "gasycar"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASS", ""),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -136,12 +131,9 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-MEDIA_URL = "/media/"
-if DEBUG:
-    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-else:
-    MEDIA_ROOT = "/app/media"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media") if DEBUG else "/app/media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -160,7 +152,7 @@ CORS_ALLOWED_ORIGINS = [
 
 # Session Configuration
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_AGE = 3600 * 24 * 30  # 30 jours
+SESSION_COOKIE_AGE = 3600 * 24 * 30
 SESSION_SAVE_EVERY_REQUEST = True
 
 # CSRF Configuration
@@ -178,45 +170,36 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.madagasycar.com",
 ]
 
-# Custom User Model
 AUTH_USER_MODEL = "users.User"
 
-# Email configuration
+# ============================================================
+# EMAIL CONFIGURATION - ENVOI RÉEL VIA BREVO SMTP
+# ============================================================
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp-relay.brevo.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "9c6095001@smtp-brevo.com"
-EMAIL_HOST_PASSWORD = "xsmtpsib-b22943aa7454a84f8000a55cb1643e2894f90e8239db6a4cfd71ae814b25964c-MFPJ4jngvMtiH7tA"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
-DEFAULT_FROM_EMAIL = "contact@madagasycar.com"
-
-# EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST="smtp-relay.brevo.com"
-# EMAIL_PORT=587
-# EMAIL_HOST_USER="9c6095001@smtp-brevo.com"
-# EMAIL_HOST_PASSWORD="xsmtpsib-b22943aa7454a84f8000a55cb1643e2894f90e8239db6a4cfd71ae814b25964c-5nU4CdACgDiPUfmL"
-# EMAIL_USE_TLS=True
-# EMAIL_USE_SSL=False
-# DEFAULT_FROM_EMAIL="workshop@widea.center"
-
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "contact@madagasycar.com")
+EMAIL_TIMEOUT = 20
 
 # Configuration OTP
 OTP_VALIDITY_MINUTES = 10
 OTP_LENGTH = 6
 
-# Configuration email (déjà dans votre settings)
 APPEND_SLASH = False
 
-# Public base URL used in password-reset emails.
-# Example: https://madagasycar.com
-PASSWORD_RESET_BASE_URL = os.environ.get("PASSWORD_RESET_BASE_URL", "https://madagasycar.com")
-
-# infor user
-
-DEFAULT_ADMIN_EMAIL = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@gasysystem.com")
-DEFAULT_ADMIN_PASSWORD = os.environ.get(
-    "DEFAULT_ADMIN_PASSWORD", "AdminSuperSecret123!"
+PASSWORD_RESET_BASE_URL = os.getenv(
+    "PASSWORD_RESET_BASE_URL",
+    "https://madagasycar.com"
 )
-DEFAULT_ADMIN_FIRST_NAME = os.environ.get("DEFAULT_ADMIN_FIRST_NAME", "Super")
-DEFAULT_ADMIN_LAST_NAME = os.environ.get("DEFAULT_ADMIN_LAST_NAME", "Admin")
+
+DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gasysystem.com")
+DEFAULT_ADMIN_PASSWORD = os.getenv(
+    "DEFAULT_ADMIN_PASSWORD",
+    "AdminSuperSecret123!"
+)
+DEFAULT_ADMIN_FIRST_NAME = os.getenv("DEFAULT_ADMIN_FIRST_NAME", "Super")
+DEFAULT_ADMIN_LAST_NAME = os.getenv("DEFAULT_ADMIN_LAST_NAME", "Admin")

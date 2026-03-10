@@ -18,6 +18,8 @@ type SupportFleetFilter =
   | "TO_CERTIFY" // validé admin mais non certifié
   | "CERTIFIED" // certifié
   | "VALIDATED" // validé admin (tous)
+  | "SPONSORED" // sponsorisé
+  | "FAVORITE" // coup de cœur
   | "ALL";
 
 type AnyVehicule = {
@@ -29,9 +31,12 @@ type AnyVehicule = {
   zone?: string;
   photo_principale?: string | null;
   prix_jour?: number | null;
+  nombre_locations?: number;
 
   est_disponible?: boolean;
   est_certifie?: boolean;
+  est_sponsorise?: boolean;
+  est_coup_de_coeur?: boolean;
 
   // parfois présent selon backend
   valide?: boolean;
@@ -83,6 +88,20 @@ export default function FleetView() {
     return false;
   };
 
+  const getSponsorise = (v: AnyVehicule) => {
+    if (typeof v.est_sponsorise === "boolean") return v.est_sponsorise;
+    const d = detailsById.get(v.id);
+    if (typeof d?.est_sponsorise === "boolean") return d.est_sponsorise;
+    return false;
+  };
+
+
+  const getCoupDeCoeur = (v: AnyVehicule) => {
+    if (typeof v.est_coup_de_coeur === "boolean") return v.est_coup_de_coeur;
+    const d = detailsById.get(v.id);
+    if (typeof d?.est_coup_de_coeur === "boolean") return d.est_coup_de_coeur;
+    return false;
+  };
   const matchesSearch = (v: AnyVehicule, q: string) => {
     if (!q) return true;
 
@@ -121,6 +140,10 @@ export default function FleetView() {
     } else if (filter === "TO_CERTIFY") {
       // ✅ À certifier = validé admin MAIS pas certifié
       list = list.filter((v) => getValide(v) === true && getCertifie(v) === false);
+    } else if (filter === "SPONSORED") {
+      list = list.filter((v) => getSponsorise(v) === true);
+    } else if (filter === "FAVORITE") {
+      list = list.filter((v) => getCoupDeCoeur(v) === true);
     }
 
     // 3) tri support (toujours logique)
@@ -152,7 +175,9 @@ export default function FleetView() {
     const validated = all.filter((v) => getValide(v) === true).length;
     const certified = all.filter((v) => getCertifie(v) === true).length;
     const toCertify = all.filter((v) => getValide(v) === true && getCertifie(v) === false).length;
-    return { all: all.length, pending, validated, certified, toCertify };
+    const sponsored = all.filter((v) => getSponsorise(v) === true).length;
+    const favorite = all.filter((v) => getCoupDeCoeur(v) === true).length;
+    return { all: all.length, pending, validated, certified, toCertify, sponsored, favorite };
   }, [vehicules, detailsById]);
 
   // ✅ Loading Skeleton
@@ -235,6 +260,22 @@ export default function FleetView() {
           </Button>
 
           <Button
+            variant={filter === "SPONSORED" ? "default" : "outline"}
+            className={`rounded-xl ${filter === "SPONSORED" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            onClick={() => setFilter("SPONSORED")}
+          >
+            Sponsorisés ({counts.sponsored})
+          </Button>
+
+          <Button
+            variant={filter === "FAVORITE" ? "default" : "outline"}
+            className={`rounded-xl ${filter === "FAVORITE" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            onClick={() => setFilter("FAVORITE")}
+          >
+            Coups de cœur ({counts.favorite})
+          </Button>
+
+          <Button
             variant={filter === "ALL" ? "default" : "outline"}
             className={`rounded-xl ${filter === "ALL" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
             onClick={() => setFilter("ALL")}
@@ -287,6 +328,18 @@ export default function FleetView() {
                     {v.est_disponible ? "Disponible" : "Indisponible"}
                   </div>
 
+                  {getSponsorise(v) ? (
+                    <div className="absolute top-3 left-3 px-3 py-1 text-xs font-bold rounded-full shadow bg-amber-100 text-amber-700">
+                      Sponsorisé
+                    </div>
+                  ) : null}
+
+                  {getCoupDeCoeur(v) ? (
+                    <div className="absolute top-3 left-28 px-3 py-1 text-xs font-bold rounded-full shadow bg-rose-100 text-rose-700">
+                      Coup de cœur
+                    </div>
+                  ) : null}
+
                   {/* Badge validation */}
                   <div
                     className={`absolute bottom-3 left-3 px-3 py-1 text-xs font-bold rounded-full shadow ${
@@ -321,6 +374,10 @@ export default function FleetView() {
                     <span className="font-semibold text-gray-900">
                       {v.prix_jour ? `${v.prix_jour} Ar / jour` : "Prix non défini"}
                     </span>
+                  </div>
+
+                  <div className="inline-flex items-center rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 border border-blue-100">
+                    {Number(v.nombre_locations ?? 0)} réservation{Number(v.nombre_locations ?? 0) > 1 ? "s" : ""}
                   </div>
 
                   {/* Lien détail (là-bas on valide/certifie) */}
