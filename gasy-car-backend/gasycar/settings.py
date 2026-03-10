@@ -173,9 +173,14 @@ CSRF_TRUSTED_ORIGINS = [
 AUTH_USER_MODEL = "users.User"
 
 # ============================================================
-# EMAIL CONFIGURATION - ENVOI RÉEL VIA BREVO SMTP
+# EMAIL CONFIGURATION
+# - Production: SMTP (Brevo)
+# - Local dev fallback: console backend if SMTP credentials are missing
 # ============================================================
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend",
+)
 EMAIL_HOST = "smtp-relay.brevo.com"
 EMAIL_PORT = 587
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -184,6 +189,12 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "contact@madagasycar.com")
 EMAIL_TIMEOUT = 20
+
+if (
+    EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+    and (not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD)
+):
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Configuration OTP
 OTP_VALIDITY_MINUTES = 10
