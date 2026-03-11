@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.files.storage import default_storage
-from django.db import OperationalError, ProgrammingError, transaction
+from django.db import transaction
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -69,20 +69,6 @@ class UserRegistrationView(APIView):
             return Response(
                 {"email": [str(e)]},
                 status=status.HTTP_400_BAD_REQUEST,
-            )
-        except (ProgrammingError, OperationalError):
-            logger.exception(
-                "Inscription OTP impossible: tables DB manquantes ou indisponibles."
-            )
-            return Response(
-                {
-                    "detail": (
-                        "Service d'inscription temporairement indisponible. "
-                        "Exécutez les migrations backend (python manage.py migrate)."
-                    ),
-                    "error_code": "db_schema_not_ready",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
             logger.exception(
@@ -198,18 +184,6 @@ class OTPRequestView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        except (ProgrammingError, OperationalError):
-            logger.exception("Envoi OTP impossible: tables DB manquantes ou indisponibles.")
-            return Response(
-                {
-                    "detail": (
-                        "Service OTP temporairement indisponible. "
-                        "Exécutez les migrations backend (python manage.py migrate)."
-                    ),
-                    "error_code": "db_schema_not_ready",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
         except Exception as e:
             logger.exception("Erreur lors de l'envoi OTP pour email=%s", email)
             return Response(
@@ -234,18 +208,15 @@ class OTPVerifyView(APIView):
         try:
             if purpose == "email_verification":
                 user = OTPService.verify_registration_otp(email=email, code=code)
-            else:
-                user = OTPService.verify_otp(email=email, code=code, purpose=purpose)
 
-            response_data = {
-                "message": "Vérification réussie.",
-                "verified": True,
-                "email": user.email,
-                "role": user.role,
-                "user_id": str(user.id),
-            }
+                response_data = {
+                    "message": "Vérification réussie.",
+                    "verified": True,
+                    "email": user.email,
+                    "role": user.role,
+                    "user_id": str(user.id),
+                }
 
-            if purpose == "email_verification":
                 refresh = RefreshToken.for_user(user)
                 response_data.update(
                     {
@@ -254,7 +225,26 @@ class OTPVerifyView(APIView):
                     }
                 )
 
-            return Response(response_data, status=status.HTTP_200_OK)
+                return Response(response_data, status=status.HTTP_200_OK)
+
+            if purpose == "password_reset":
+                user = OTPService.verify_otp(email=email, code=code, purpose=purpose)
+                reset_session = OTPService.create_password_reset_session(user)
+
+                return Response(
+                    {
+                        "message": "Code vérifié avec succès.",
+                        "verified": True,
+                        "email": user.email,
+                        "reset_token": reset_session.token,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            return Response(
+                {"error": "Purpose OTP invalide.", "verified": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         except ValueError as e:
             return Response(
@@ -270,20 +260,23 @@ class OTPVerifyView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 class PasswordResetView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         email = serializer.validated_data["email"]
-        code = serializer.validated_data["code"]
+        reset_token = serializer.validated_data["reset_token"]
         new_password = serializer.validated_data["new_password"]
 
         try:
-            user = OTPService.verify_otp(email, code, "password_reset")
-        except Exception as e:
+            user = OTPService.consume_password_reset_session(email, reset_token)
+        except ValueError as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -296,7 +289,6 @@ class PasswordResetView(APIView):
             {"message": "Mot de passe réinitialisé avec succès."},
             status=status.HTTP_200_OK,
         )
-
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]

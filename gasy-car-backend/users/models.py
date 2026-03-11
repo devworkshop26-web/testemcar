@@ -174,3 +174,21 @@ class RefreshToken(models.Model):
 
     def is_valid(self):
         return not self.is_blacklisted and timezone.now() < self.expires_at
+
+class PasswordResetSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_sessions")
+    token = models.CharField(max_length=128, unique=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "password_reset_sessions"
+        indexes = [
+            models.Index(fields=["user", "is_used"]),
+            models.Index(fields=["token"]),
+        ]
+
+    def is_valid(self):
+        return not self.is_used and timezone.now() < self.expires_at

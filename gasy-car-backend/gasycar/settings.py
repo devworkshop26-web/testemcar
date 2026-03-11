@@ -52,8 +52,13 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
+    # access token court pour la sécurité
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=15),
+
+    # refresh token long pour permettre à l'utilisateur actif
+    # de rester connecté sans être déconnecté brutalement
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
@@ -107,11 +112,11 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "gasycar"),
-        "USER": os.getenv("DB_USER", "postgres"),
+        "NAME": os.getenv("DB_NAME", ""),
+        "USER": os.getenv("DB_USER", ""),
         "PASSWORD": os.getenv("DB_PASS", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
     }
 }
 
@@ -173,14 +178,9 @@ CSRF_TRUSTED_ORIGINS = [
 AUTH_USER_MODEL = "users.User"
 
 # ============================================================
-# EMAIL CONFIGURATION
-# - Production: SMTP (Brevo)
-# - Local dev fallback: console backend if SMTP credentials are missing
+# EMAIL CONFIGURATION - ENVOI RÉEL VIA BREVO SMTP
 # ============================================================
-EMAIL_BACKEND = os.getenv(
-    "EMAIL_BACKEND",
-    "django.core.mail.backends.smtp.EmailBackend",
-)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp-relay.brevo.com"
 EMAIL_PORT = 587
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -189,12 +189,6 @@ EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "contact@madagasycar.com")
 EMAIL_TIMEOUT = 20
-
-if (
-    EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
-    and (not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD)
-):
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Configuration OTP
 OTP_VALIDITY_MINUTES = 10

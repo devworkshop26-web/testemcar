@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersAPI } from "@/Actions/usersApi";
@@ -18,6 +18,96 @@ export interface ClientSettingsFormValues {
   new_password_confirm: string;
 }
 
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
+];
+
+const toAbsoluteMediaUrl = (path?: string | null) => {
+  if (!path) return "";
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  const rawBaseUrl = String(InstanceAxis.defaults.baseURL || "");
+  const baseUrl = rawBaseUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+  if (!baseUrl) return path;
+
+  return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+};
+
+const normalizeDateOfBirth = (value?: string | null) => {
+  const raw = String(value || "").trim();
+  if (!raw) return undefined;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+};
+
+/**
+ * Affichage front :
+ * +261348982385 -> 0348982385
+ * 261348982385  -> 0348982385
+ * 0348982385    -> 0348982385
+ */
+const normalizePhoneForDisplay = (value?: string | null) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  let digits = raw.replace(/\D/g, "");
+
+  if (digits.startsWith("261") && digits.length >= 12) {
+    digits = digits.slice(3);
+  }
+
+  if (digits.length === 9) {
+    return `0${digits}`;
+  }
+
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return digits;
+  }
+
+  return raw;
+};
+
+/**
+ * Enregistrement backend :
+ * 0348982385 -> +261348982385
+ * 348982385  -> +261348982385
+ * +261348982385 -> +261348982385
+ */
+const normalizePhoneForSubmit = (value?: string | null) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  let digits = raw.replace(/\D/g, "");
+
+  if (digits.startsWith("261") && digits.length >= 12) {
+    digits = digits.slice(3);
+  }
+
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  if (!digits) return "";
+  return `+261${digits}`;
+};
+
 export const useClientSettings = () => {
   const { user, isLoading: isUserLoading } = useCurentuser();
   const { toast } = useToast();
@@ -25,25 +115,19 @@ export const useClientSettings = () => {
 
   const [section, setSection] = useState<"profile" | "security">("profile");
 
-  // Preview affichée
   const [previewPhoto, setPreviewPhoto] = useState("");
-
-  // 🔥 Fichier réel envoyé au backend
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // ✅ CIN (recto/verso) : preview + fichiers
   const [previewCinRecto, setPreviewCinRecto] = useState("");
   const [previewCinVerso, setPreviewCinVerso] = useState("");
   const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
   const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
 
-  /* ---------------------------------------------------------
-     📌 FORMULAIRE REACT-HOOK-FORM
-  --------------------------------------------------------- */
   const {
     register,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<ClientSettingsFormValues>({
     defaultValues: {
@@ -55,13 +139,32 @@ export const useClientSettings = () => {
       date_of_birth: "",
       old_password: "",
       new_password: "",
-      new_password_confirm: "", // ✅ AJOUT (sans rien supprimer)
+      new_password_confirm: "",
     },
   });
 
-  /* ---------------------------------------------------------
-     🔐 MUTATION : CHANGEMENT MOT DE PASSE
-  --------------------------------------------------------- */
+  const validateImageFile = (file: File) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast({
+        title: "Format non accepté",
+        description: "Utilisez une image JPG, JPEG, PNG ou WEBP.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast({
+        title: "Image trop lourde",
+        description: "L'image ne doit pas dépasser 3 MB.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const changePasswordMutation = useMutation({
     mutationFn: (data: {
       old_password: string;
@@ -70,34 +173,40 @@ export const useClientSettings = () => {
     }) => usersAPI.changePassword(data),
 
     onSuccess: () => {
-      toast({
-        title: "Mot de passe modifié",
-        description: "Votre mot de passe a été modifié avec succès.",
-      });
+      const currentValues = getValues();
 
-      // On vide uniquement les champs password
       reset({
+        ...currentValues,
         old_password: "",
         new_password: "",
         new_password_confirm: "",
       });
+
+      toast({
+        title: "Mot de passe modifié",
+        description: "Votre mot de passe a été modifié avec succès.",
+      });
     },
 
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Erreur",
-        description: "Impossible de modifier le mot de passe.",
+        description:
+          error?.response?.data?.detail ||
+          "Impossible de modifier le mot de passe.",
         variant: "destructive",
       });
     },
   });
 
-  /* ---------------------------------------------------------
-     📌 UPLOAD PHOTO → preview + sauvegarde du fichier
-  --------------------------------------------------------- */
-  const handlePhotoUpload = (e: any) => {
+  const handlePhotoUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!validateImageFile(file)) {
+      e.target.value = "";
+      return;
+    }
 
     setImageFile(file);
 
@@ -111,12 +220,14 @@ export const useClientSettings = () => {
     setImageFile(null);
   };
 
-  /* ---------------------------------------------------------
-     ✅ UPLOAD CIN RECTO → preview + sauvegarde du fichier
-  --------------------------------------------------------- */
-  const handleCinRectoUpload = (e: any) => {
+  const handleCinRectoUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!validateImageFile(file)) {
+      e.target.value = "";
+      return;
+    }
 
     setCinRectoFile(file);
 
@@ -125,12 +236,14 @@ export const useClientSettings = () => {
     reader.readAsDataURL(file);
   };
 
-  /* ---------------------------------------------------------
-     ✅ UPLOAD CIN VERSO → preview + sauvegarde du fichier
-  --------------------------------------------------------- */
-  const handleCinVersoUpload = (e: any) => {
+  const handleCinVersoUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!validateImageFile(file)) {
+      e.target.value = "";
+      return;
+    }
 
     setCinVersoFile(file);
 
@@ -139,171 +252,212 @@ export const useClientSettings = () => {
     reader.readAsDataURL(file);
   };
 
-  /* ---------------------------------------------------------
-     ✅ SUPPRESSION BACKEND : une seule photo à la fois
-  --------------------------------------------------------- */
   const deleteProfilePhoto = async () => {
     if (!user?.id) return;
 
-    // Supprime uniquement "image" en base
-    await usersAPI.clearProfilePhoto(user.id);
+    try {
+      await usersAPI.clearProfilePhoto(user.id);
 
-    // Mettre à jour l'UI
-    handleDeletePhoto();
+      setPreviewPhoto("");
+      setImageFile(null);
 
-    // refresh user
-    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
-    toast({
-      title: "Photo supprimée",
-      description: "Votre photo de profil a été supprimée.",
-    });
+      toast({
+        title: "Photo supprimée",
+        description: "Votre photo de profil a été supprimée.",
+      });
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la photo de profil.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deleteCinRecto = async () => {
     if (!user?.id) return;
 
-    // Supprime uniquement "cin_photo_recto" en base
-    await usersAPI.clearCinRecto(user.id);
+    try {
+      await usersAPI.clearCinRecto(user.id);
 
-    // Mettre à jour l'UI
-    setPreviewCinRecto("");
-    setCinRectoFile(null);
+      setPreviewCinRecto("");
+      setCinRectoFile(null);
 
-    // refresh user
-    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
-    toast({
-      title: "CIN recto supprimé",
-      description: "La photo CIN recto a été supprimée.",
-    });
+      toast({
+        title: "CIN recto supprimé",
+        description: "La photo CIN recto a été supprimée.",
+      });
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la photo CIN recto.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deleteCinVerso = async () => {
     if (!user?.id) return;
 
-    // Supprime uniquement "cin_photo_verso" en base
-    await usersAPI.clearCinVerso(user.id);
+    try {
+      await usersAPI.clearCinVerso(user.id);
 
-    // Mettre à jour l'UI
-    setPreviewCinVerso("");
-    setCinVersoFile(null);
+      setPreviewCinVerso("");
+      setCinVersoFile(null);
 
-    // refresh user
-    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
-    toast({
-      title: "CIN verso supprimé",
-      description: "La photo CIN verso a été supprimée.",
-    });
+      toast({
+        title: "CIN verso supprimé",
+        description: "La photo CIN verso a été supprimée.",
+      });
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la photo CIN verso.",
+        variant: "destructive",
+      });
+    }
   };
 
-  /* ---------------------------------------------------------
-     📌 MUTATION UPDATE (FormData si image)
-  --------------------------------------------------------- */
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: any) => usersAPI.updateUser(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: FormData | Record<string, any>;
+    }) => usersAPI.updateUser(id, data),
+
+    onSuccess: async () => {
+      setImageFile(null);
+      setCinRectoFile(null);
+      setCinVersoFile(null);
+
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
       toast({
         title: "Profil mis à jour",
         description: "Vos informations ont bien été enregistrées.",
       });
     },
-    onError: () => {
+
+    onError: (error: any) => {
+      const backendErrors = error?.response?.data;
+
+      let description = "Impossible de mettre à jour votre profil.";
+
+      if (backendErrors && typeof backendErrors === "object") {
+        const messages = Object.entries(backendErrors)
+          .map(([field, value]) => {
+            if (Array.isArray(value)) {
+              return `${field}: ${value.join(", ")}`;
+            }
+            return `${field}: ${String(value)}`;
+          })
+          .join(" | ");
+
+        if (messages) {
+          description = messages;
+        }
+      }
+
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre profil.",
+        description,
         variant: "destructive",
       });
     },
   });
 
-  /* ---------------------------------------------------------
-     📌 CHARGER LES DONNÉES DU USER + image instantanée
-  --------------------------------------------------------- */
   useEffect(() => {
     if (!user) return;
 
-    // Si user.image existe → afficher direct !
-    if (user.image) {
-      const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-      const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
-      setPreviewPhoto(`${BASE_URL}${user.image}`);
-    }
-
-    // ✅ charger CIN recto/verso si le backend les renvoie
-    const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-    const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
-
-    if ((user as any).cin_photo_recto) {
-      setPreviewCinRecto(`${BASE_URL}${(user as any).cin_photo_recto}`);
-    } else {
-      setPreviewCinRecto("");
-    }
-
-    if ((user as any).cin_photo_verso) {
-      setPreviewCinVerso(`${BASE_URL}${(user as any).cin_photo_verso}`);
-    } else {
-      setPreviewCinVerso("");
-    }
+    setPreviewPhoto(toAbsoluteMediaUrl(user.image || ""));
+    setPreviewCinRecto(toAbsoluteMediaUrl((user as any).cin_photo_recto || ""));
+    setPreviewCinVerso(toAbsoluteMediaUrl((user as any).cin_photo_verso || ""));
 
     reset({
       first_name: user.first_name || "",
       last_name: user.last_name || "",
-      phone: user.phone || "",
+      phone: normalizePhoneForDisplay(user.phone || ""),
       cin_number: user.cin_number || "",
       address: user.address || "",
-      date_of_birth: user.date_of_birth || "",
+      date_of_birth: normalizeDateOfBirth(user.date_of_birth) || "",
       old_password: "",
       new_password: "",
       new_password_confirm: "",
     });
   }, [user, reset]);
 
-  /* ---------------------------------------------------------
-     📌 SUBMIT FINAL
-  --------------------------------------------------------- */
   const onSubmit = handleSubmit(async (values) => {
     if (!user?.id) return;
 
-    // 🔐 MODE SÉCURITÉ (CHANGEMENT MOT DE PASSE)
     if (section === "security") {
+      if ((values.new_password || "") !== (values.new_password_confirm || "")) {
+        toast({
+          title: "Erreur",
+          description: "La confirmation du mot de passe ne correspond pas.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await changePasswordMutation.mutateAsync({
         old_password: values.old_password || "",
         new_password: values.new_password || "",
-        new_password_confirm: values.new_password_confirm,
+        new_password_confirm: values.new_password_confirm || "",
       });
       return;
     }
 
-    // 👤 MODE PROFIL (CODE EXISTANT INCHANGÉ)
-    let payload: any = {
-      first_name: values.first_name,
-      last_name: values.last_name,
-      phone: values.phone,
-      cin_number: values.cin_number,
-      address: values.address,
-      date_of_birth: values.date_of_birth,
+    const normalizedDateOfBirth = normalizeDateOfBirth(values.date_of_birth);
+
+    const payload: Record<string, string> = {
+      first_name: values.first_name?.trim() || "",
+      last_name: values.last_name?.trim() || "",
+      phone: normalizePhoneForSubmit(values.phone),
+      cin_number: values.cin_number?.trim() || "",
+      address: values.address?.trim() || "",
     };
 
-    let finalData: any = payload;
+    if (normalizedDateOfBirth) {
+      payload.date_of_birth = normalizedDateOfBirth;
+    }
 
-    // 📌 Si une image est présente → construire FormData
-    // ✅ Si CIN recto/verso sont présents → FormData aussi
-    if (imageFile || cinRectoFile || cinVersoFile) {
+    const hasFiles =
+      imageFile instanceof File ||
+      cinRectoFile instanceof File ||
+      cinVersoFile instanceof File;
+
+    let finalData: FormData | Record<string, string>;
+
+    if (hasFiles) {
       const formData = new FormData();
 
-      Object.keys(payload).forEach((key) => {
-        formData.append(key, payload[key]);
+      Object.entries(payload).forEach(([key, value]) => {
+        formData.append(key, value);
       });
 
-      if (imageFile) formData.append("image", imageFile);
-      if (cinRectoFile) formData.append("cin_photo_recto", cinRectoFile);
-      if (cinVersoFile) formData.append("cin_photo_verso", cinVersoFile);
+      if (imageFile instanceof File) {
+        formData.append("image", imageFile, imageFile.name);
+      }
+
+      if (cinRectoFile instanceof File) {
+        formData.append("cin_photo_recto", cinRectoFile, cinRectoFile.name);
+      }
+
+      if (cinVersoFile instanceof File) {
+        formData.append("cin_photo_verso", cinVersoFile, cinVersoFile.name);
+      }
 
       finalData = formData;
+    } else {
+      finalData = payload;
     }
 
     await updateMutation.mutateAsync({
@@ -319,18 +473,13 @@ export const useClientSettings = () => {
     previewPhoto,
     handlePhotoUpload,
     handleDeletePhoto,
-
-    // ✅ CIN exports
     previewCinRecto,
     previewCinVerso,
     handleCinRectoUpload,
     handleCinVersoUpload,
-
-    // ✅ suppression backend
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
-
     register,
     onSubmit,
     errors,

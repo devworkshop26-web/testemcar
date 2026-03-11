@@ -1,37 +1,41 @@
 import { queryClient } from "@/lib/queryClient";
 import { accessTokenKey, refreshTokenKey } from "./InstanceAxios";
 
-// ❗ PAS de useNavigate ici → fichier utilitaire
-export const deconnectionAction = () => {
+export const deconnectionAction = (redirectTo: string = "/login") => {
   localStorage.removeItem(accessTokenKey);
   localStorage.removeItem(refreshTokenKey);
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
   localStorage.removeItem("email_verification_token");
+  localStorage.removeItem("last_activity_at");
+  localStorage.removeItem("logout_reason");
+  localStorage.removeItem("password_reset_email");
+  localStorage.removeItem("password_reset_token");
+  localStorage.removeItem("user_email");
 
-  // Vider le cache de TanStack Query
   queryClient.clear();
 
-  window.location.href = "/";
+  window.location.href = redirectTo;
 };
 
 export const videLocalStorage = () => {
   localStorage.clear();
   queryClient.clear();
-
-}
+};
 
 export function formatDate(dateString?: string) {
   if (!dateString) {
-    return '';
+    return "";
   }
 
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) {
-    return '';
+    return "";
   }
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Les mois commencent à 0
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
 
   return `${day}/${month}/${year}`;
-
 }

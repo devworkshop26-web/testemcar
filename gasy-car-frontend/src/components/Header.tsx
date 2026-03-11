@@ -210,9 +210,11 @@ const Header = () => {
               </>
             ) : (
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 bg-slate-50/50 border border-slate-100 px-4 py-2 rounded-full hover:bg-slate-50 transition-colors cursor-default group">
+                <div className="flex items-center justify-center gap-2 bg-slate-50/50 border border-slate-100 px-4 py-2 rounded-full hover:bg-slate-50 transition-colors cursor-default group">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mode</span>
-                  <span className="text-xs font-bold text-primary uppercase tracking-wide group-hover:scale-105 transition-transform">{user.role}</span>
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-wide group-hover:scale-105 transition-transform">
+                    {user.role}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-4 pl-4 border-l border-slate-100">

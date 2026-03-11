@@ -20,7 +20,7 @@ export default function HeroSection() {
   }, [apiHero, isLoading]);
 
   const totalSlides = herodata.length;
-  const currentSlide = herodata[activeIndex]
+  const currentSlide = herodata[activeIndex];
 
   useEffect(() => {
     herodata.forEach((slide, i) => {
@@ -57,18 +57,18 @@ export default function HeroSection() {
 
   return (
     <div className="relative w-full overflow-hidden min-h-[650px] md:min-h-[750px] lg:min-h-[89vh] flex items-center bg-black">
-
       {/* ================= BACKGROUND IMAGE & ANIMATION ================= */}
       <div key={activeIndex} className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-black/20 z-10" /> {/* Overlay global subtil */}
+        <div className="absolute inset-0 bg-black/20 z-10" />{" "}
+        {/* Overlay global subtil */}
         <img
           src={imageError[activeIndex] ? fallbackImage : currentSlide.image}
           className="w-full h-full object-cover animate-in fade-in zoom-in-105 [animation-duration:2000ms] ease-out fill-mode-forwards"
           style={{
-            animationName: 'subtleZoom',
-            animationDuration: '10s',
-            animationFillMode: 'forwards',
-            animationTimingFunction: 'ease-out'
+            animationName: "subtleZoom",
+            animationDuration: "10s",
+            animationFillMode: "forwards",
+            animationTimingFunction: "ease-out",
           }}
           alt="Hero background"
         />
@@ -88,23 +88,25 @@ export default function HeroSection() {
       {/* Dégradé bas -> haut pour la lisibilité sur mobile */}
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden"></div>
 
-
       {/* ================= CONTENT BLOCK ================= */}
       <div className="relative z-[10] container mx-auto px-4 sm:px-6 lg:px-12 w-full h-full flex flex-col justify-center sm:mt-10">
-
         {/* Utilisation de key={activeIndex} pour relancer l'animation du texte à chaque slide */}
-        <div key={activeIndex} className="max-w-3xl space-y-8 animate-in slide-in-from-bottom-5 fade-in duration-700">
-
+        <div
+          key={activeIndex}
+          className="max-w-3xl space-y-8 animate-in slide-in-from-bottom-5 fade-in duration-700"
+        >
           {/* BADGE / SUBTITLE */}
           {currentSlide.subtitle && (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-md text-sm font-medium text-emerald-300 shadow-lg animate-in slide-in-from-left-5 fade-in duration-700 delay-100">
               <Sparkles className="w-3.5 h-3.5" />
-              <span className="uppercase tracking-wider text-xs font-bold">{currentSlide.subtitle}</span>
+              <span className="uppercase tracking-wider text-xs font-bold">
+                {currentSlide.subtitle}
+              </span>
             </div>
           )}
 
           {/* TITRE PRINCIPAL */}
-          <h1 className="font-bold leading-[1.1] text-white tracking-tight text-5xl sm:text-4xl lg:text-[3rem] drop-shadow-lg">
+          <h1 className="font-bold text-white drop-shadow-lg text-5xl sm:text-4xl lg:text-[3.5rem] leading-[3.4rem] sm:leading-[3rem] lg:leading-[3.7rem]">
             {currentSlide.titre}
           </h1>
 
@@ -116,18 +118,25 @@ export default function HeroSection() {
           {/* ACTION BUTTONS */}
           <div className="flex flex-wrap gap-4 pt-4 animate-in slide-in-from-bottom-3 fade-in duration-700 delay-300">
             <Link
-
               to={currentSlide.link || "/allcars"}
-              
               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 bg-emerald-600 rounded-full hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95"
-
-//               to={currentSlide.link || "/cars"}
-//               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 btn-gradient-premium 
-//              /* Ombre adaptée aux teintes du dégradé (ici, Vert Émeraude/Bleu) */ shadow-lg shadow-[rgba(16,185,129,0.4)] hover:shadow-xl hover:shadow-[rgba(16,185,129,0.6)]
-//              /* Anneau de focus utilisant une des couleurs du dégradé (Bleu) */ focus:ring-[#0ea5e9]"
+            //               to={currentSlide.link || "/cars"}
+            //               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 btn-gradient-premium
+            //              /* Ombre adaptée aux teintes du dégradé (ici, Vert Émeraude/Bleu) */ shadow-lg shadow-[rgba(16,185,129,0.4)] hover:shadow-xl hover:shadow-[rgba(16,185,129,0.6)]
+            //              /* Anneau de focus utilisant une des couleurs du dégradé (Bleu) */ focus:ring-[#0ea5e9]"
             >
-              <span className="mr-2">{currentSlide.btn_text || "Découvrir nos offres"}</span>
+              <span className="mr-2">
+                {currentSlide.btn_text || "Découvrir nos offres"}
+              </span>
               <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+            </Link>
+
+            {/* ✅ Deuxième bouton ajouté (harmonisé) */}
+            <Link
+              to="/proposer-mon-vehicule"
+              className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 rounded-full border border-white/20 bg-white/10 hover:bg-white/15 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/30 shadow-[0_0_20px_rgba(255,255,255,0.08)] hover:shadow-[0_0_25px_rgba(255,255,255,0.12)] active:scale-95"
+            >
+              <span className="mr-2">Proposer mon véhicule</span>
             </Link>
 
             {/* Bouton secondaire optionnel pour équilibrer */}
@@ -136,32 +145,33 @@ export default function HeroSection() {
             </button> */}
           </div>
         </div>
-
         {/* ================= NAVIGATION DOTS ================= */}
-        <div className="absolute bottom-[-6vh] sm:left-6 lg:left-12 flex items-center space-x-4 z-20">
-          {herodata.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIndex(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              className={`
-                group relative flex items-center justify-center transition-all duration-500
-                ${i === activeIndex ? "w-12" : "w-3 hover:w-6"}
-              `}
-            >
-              {/* Ligne active */}
-              <span
+        {totalSlides > 1 && (
+          <div className="absolute bottom-[-6vh] sm:left-6 lg:left-12 flex items-center space-x-4 z-20">
+            {herodata.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveIndex(i)}
+                aria-label={`Go to slide ${i + 1}`}
                 className={`
-                  h-1.5 rounded-full shadow-sm transition-all duration-300
-                  ${i === activeIndex
-                    ? "w-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]"
-                    : "w-3 bg-white/30 group-hover:bg-white/60"}
-                `}
-              />
-            </button>
-          ))}
-        </div>
-
+          group relative flex items-center justify-center transition-all duration-500
+          ${i === activeIndex ? "w-12" : "w-3 hover:w-6"}
+        `}
+              >
+                {/* Ligne active */}
+                <span
+                  className={`
+            h-1.5 rounded-full shadow-sm transition-all duration-300
+            ${i === activeIndex
+                      ? "w-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]"
+                      : "w-3 bg-white/30 group-hover:bg-white/60"
+                    }
+          `}
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

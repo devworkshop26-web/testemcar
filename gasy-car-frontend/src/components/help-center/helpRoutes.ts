@@ -1,13 +1,6 @@
 export const staticArticleRoutes: Record<string, string> = {
   "Messagerie avec votre hôte": "/faq/messagerie-avec-votre-hote",
   "Annuler un voyage avec votre hôte": "/faq/annuler-voyage-avec-votre-hote",
-  Remboursements: "/faq/article/remboursements",
-  "Prise en charge et retour": "/faq/article/prise-en-charge-et-retour",
-  "Méthodes de paiement acceptées": "/faq/article/methodes-de-paiement-acceptees",
-  "Admissibilité du conducteur": "/faq/article/admissibilite-du-conducteur",
-  "Coût d'un voyage": "/faq/article/cout-d-un-voyage",
-  "Prolonger un voyage": "/faq/article/prolonger-un-voyage",
-  "Numéros d'assistance routière": "/faq/article/numeros-d-assistance-routiere",
 };
 
 export function slugifyHelpLabel(value: string): string {

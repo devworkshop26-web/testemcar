@@ -9,7 +9,13 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken as JWTRefreshToken
 
-from .models import OTPCode, PendingRegistration, RefreshToken as RefreshTokenModel, User
+from .models import (
+    OTPCode,
+    PendingRegistration,
+    RefreshToken as RefreshTokenModel,
+    User,
+    PasswordResetSession,
+)
 
 
 class OTPService:
@@ -110,7 +116,9 @@ class OTPService:
                 user.password = pending.password_hash
                 user.is_active = True
                 user.email_verified = True
-                user.is_staff = False if user.role in ["CLIENT", "PRESTATAIRE"] else user.is_staff
+                user.is_staff = (
+                    False if user.role in ["CLIENT", "PRESTATAIRE"] else user.is_staff
+                )
                 user.save()
             else:
                 user = User.objects.create(
@@ -210,6 +218,53 @@ class OTPService:
             user.email_verified = True
             user.is_active = True
             user.save(update_fields=["email_verified", "is_active"])
+
+        return user
+
+    @classmethod
+    def create_password_reset_session(cls, user: User):
+        PasswordResetSession.objects.filter(
+            user=user,
+            is_used=False,
+        ).update(is_used=True)
+
+        return PasswordResetSession.objects.create(
+            user=user,
+            token=secrets.token_urlsafe(48),
+            expires_at=timezone.now() + timedelta(minutes=15),
+            is_used=False,
+        )
+
+    @staticmethod
+    def consume_password_reset_session(email: str, reset_token: str):
+        email = email.strip().lower()
+        reset_token = reset_token.strip()
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise ValueError("Utilisateur introuvable.")
+
+        session = (
+            PasswordResetSession.objects.filter(
+                user=user,
+                token=reset_token,
+                is_used=False,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not session:
+            raise ValueError("Session de réinitialisation invalide.")
+
+        if timezone.now() >= session.expires_at:
+            session.is_used = True
+            session.save(update_fields=["is_used"])
+            raise ValueError("Session de réinitialisation expirée.")
+
+        session.is_used = True
+        session.save(update_fields=["is_used"])
 
         return user
 

@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from django.contrib.auth.password_validation import validate_password
 
 from .models import User
 from gasycar.utils import delete_file
@@ -200,10 +201,9 @@ class OTPVerifySerializer(serializers.Serializer):
         choices=["email_verification", "password_reset"]
     )
 
-
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    code = serializers.CharField(max_length=6)
+    reset_token = serializers.CharField(max_length=128)
     new_password = serializers.CharField(min_length=8)
     new_password_confirm = serializers.CharField(min_length=8)
 
@@ -212,8 +212,9 @@ class PasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"new_password_confirm": "Les mots de passe ne correspondent pas."}
             )
-        return attrs
 
+        validate_password(attrs["new_password"])
+        return attrs
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField()

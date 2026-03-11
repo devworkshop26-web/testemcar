@@ -1,10 +1,9 @@
 import { InstanceAxis } from "@/helper/InstanceAxios";
 import { User } from "@/types/userType";
 
-// Fonction pour générer la silhouette "style Facebook" neutre
 const generateDefaultAvatar = () => {
-  const bgColor = "#F0F2F5"; // Gris clair Facebook
-  const iconColor = "#8A8D91"; // Icône grise
+  const bgColor = "#F0F2F5";
+  const iconColor = "#8A8D91";
 
   const svg = `
     <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${iconColor}'>
@@ -16,6 +15,26 @@ const generateDefaultAvatar = () => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
+const resolveUserImageUrl = (image?: string | null) => {
+  if (!image || typeof image !== "string") return null;
+
+  const trimmed = image.trim();
+  if (!trimmed) return null;
+
+  // Si l'image est déjà une URL absolue, on la garde
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Sinon on reconstruit depuis la base backend
+  const rawBaseUrl = String(InstanceAxis.defaults.baseURL || "");
+  const baseUrl = rawBaseUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+  if (!baseUrl) return trimmed;
+
+  return trimmed.startsWith("/") ? `${baseUrl}${trimmed}` : `${baseUrl}/${trimmed}`;
+};
+
 export const AvatarClient = ({
   user,
   previewPhoto,
@@ -25,21 +44,19 @@ export const AvatarClient = ({
   previewPhoto?: string | null;
   size?: number;
 }) => {
-  // On génère la silhouette par défaut
   const defaultAvatar = generateDefaultAvatar();
 
-  // 🔥 RÉCUPÉRATION DE LA BASE_URL DU BACKEND
-  const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-  const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
+  const backendPhoto = resolveUserImageUrl(user?.image || null);
 
-  // 🔥 IMAGE BACKEND
-  const backendPhoto =
-    user?.image && typeof user.image === "string"
-      ? `${BASE_URL}${user.image}`
-      : null;
+  // petit cache bust pour forcer le navigateur à recharger la nouvelle image
+  const cacheKey =
+    user?.updated_at || user?.date_joined || String(Date.now());
 
-  // 🔥 PRIORITÉ : 1. preview instantané → 2. image backend → 3. avatar silhouette
-  const finalPhoto = previewPhoto || backendPhoto || defaultAvatar;
+  const backendPhotoWithCache = backendPhoto
+    ? `${backendPhoto}${backendPhoto.includes("?") ? "&" : "?"}v=${encodeURIComponent(cacheKey)}`
+    : null;
+
+  const finalPhoto = previewPhoto || backendPhotoWithCache || defaultAvatar;
 
   return (
     <div
@@ -47,7 +64,7 @@ export const AvatarClient = ({
       style={{
         width: size,
         height: size,
-        borderRadius: "20%", // Design moderne (squircle) identique au prestataire
+        borderRadius: "20%",
       }}
     >
       <img
@@ -55,8 +72,7 @@ export const AvatarClient = ({
         alt="avatar client"
         className="w-full h-full object-cover"
         onError={(e) => {
-          // Sécurité : si l'URL de l'image est cassée, on remet la silhouette
-          (e.currentTarget as HTMLImageElement).src = defaultAvatar;
+          e.currentTarget.src = defaultAvatar;
         }}
       />
     </div>
