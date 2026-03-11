@@ -201,10 +201,10 @@ PASSWORD_RESET_BASE_URL = os.getenv(
     "https://madagasycar.com"
 )
 
-DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gasysystem.com")
+DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gmail.com")
 DEFAULT_ADMIN_PASSWORD = os.getenv(
     "DEFAULT_ADMIN_PASSWORD",
-    "AdminSuperSecret123!"
+    "123456789"
 )
 DEFAULT_ADMIN_FIRST_NAME = os.getenv("DEFAULT_ADMIN_FIRST_NAME", "Super")
 DEFAULT_ADMIN_LAST_NAME = os.getenv("DEFAULT_ADMIN_LAST_NAME", "Admin")
