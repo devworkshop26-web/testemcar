@@ -20,7 +20,7 @@ export default function HeroSection() {
   }, [apiHero, isLoading]);
 
   const totalSlides = herodata.length;
-  const currentSlide = herodata[activeIndex]
+  const currentSlide = herodata[activeIndex];
 
   useEffect(() => {
     herodata.forEach((slide, i) => {
@@ -116,27 +116,12 @@ export default function HeroSection() {
           {/* ACTION BUTTONS */}
           <div className="flex flex-wrap gap-4 pt-4 animate-in slide-in-from-bottom-3 fade-in duration-700 delay-300">
             <Link
-
               to={currentSlide.link || "/allcars"}
-              
               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 bg-emerald-600 rounded-full hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95"
-            //               to={currentSlide.link || "/cars"}
-            //               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 btn-gradient-premium
-            //              /* Ombre adaptée aux teintes du dégradé (ici, Vert Émeraude/Bleu) */ shadow-lg shadow-[rgba(16,185,129,0.4)] hover:shadow-xl hover:shadow-[rgba(16,185,129,0.6)]
-            //              /* Anneau de focus utilisant une des couleurs du dégradé (Bleu) */ focus:ring-[#0ea5e9]"
             >
               <span className="mr-2">
                 {currentSlide.btn_text || "Découvrir nos offres"}
               </span>
-              <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
-
-//               to={currentSlide.link || "/cars"}
-//               className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-medium font-poppins text-white transition-all duration-200 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 btn-gradient-premium 
-//              /* Ombre adaptée aux teintes du dégradé (ici, Vert Émeraude/Bleu) */ shadow-lg shadow-[rgba(16,185,129,0.4)] hover:shadow-xl hover:shadow-[rgba(16,185,129,0.6)]
-//              /* Anneau de focus utilisant une des couleurs du dégradé (Bleu) */ focus:ring-[#0ea5e9]"
-            >
-              <span className="mr-2">{currentSlide.btn_text || "Découvrir nos offres"}</span>
               <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
 
