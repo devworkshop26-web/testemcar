@@ -1,4 +1,5 @@
 import os
+import re
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
@@ -7,6 +8,97 @@ from django.contrib.auth.password_validation import validate_password
 
 from .models import User
 from gasycar.utils import delete_file
+
+
+ALLOWED_IMAGE_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".bmp",
+    ".tif",
+    ".tiff",
+}
+
+BLOCKED_EXTENSIONS = {
+    ".gif",
+    ".mp4",
+    ".mp3",
+    ".wav",
+    ".avi",
+    ".mov",
+    ".mkv",
+    ".pdf",
+    ".svg",
+}
+
+BLOCKED_CONTENT_TYPES = {
+    "image/gif",
+    "video/mp4",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "video/x-msvideo",
+    "video/quicktime",
+    "application/pdf",
+    "image/svg+xml",
+}
+
+
+def normalize_mg_phone(value):
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return ""
+
+    digits = re.sub(r"\D", "", raw_value)
+
+    if not digits:
+        return raw_value
+
+    if digits.startswith("00261"):
+        digits = digits[5:]
+    elif digits.startswith("261"):
+        digits = digits[3:]
+
+    if len(digits) == 10 and digits.startswith("0"):
+        return digits
+
+    if len(digits) == 9:
+        return f"0{digits}"
+
+    return raw_value
+
+
+def validate_uploaded_image_file(value, field_name="image"):
+    if value in (None, ""):
+        return value
+
+    max_size = 10 * 1024 * 1024  # 10 MB
+    if value.size > max_size:
+        raise serializers.ValidationError(
+            f"{field_name} ne doit pas dépasser 10 MB."
+        )
+
+    filename = str(getattr(value, "name", "") or "")
+    ext = os.path.splitext(filename)[1].lower()
+    content_type = str(getattr(value, "content_type", "") or "").lower()
+
+    if ext in BLOCKED_EXTENSIONS or content_type in BLOCKED_CONTENT_TYPES:
+        raise serializers.ValidationError(
+            f"Format non autorisé pour {field_name}."
+        )
+
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise serializers.ValidationError(
+            f"Format non supporté pour {field_name}. Formats acceptés : JPG, JPEG, PNG, WEBP, BMP, TIFF."
+        )
+
+    if content_type and not content_type.startswith("image/"):
+        raise serializers.ValidationError(
+            f"{field_name} doit être une vraie image."
+        )
+
+    return value
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -45,6 +137,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         return email
 
+    def validate_phone(self, value):
+        return normalize_mg_phone(value)
+
     def validate_role(self, value):
         allowed_roles = ["CLIENT", "PRESTATAIRE"]
         if value not in allowed_roles:
@@ -75,6 +170,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.save(update_fields=["is_active", "email_verified", "is_staff"])
 
         return user
+
 
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -119,6 +215,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "is_active",
             "email_verified",
             "phone_verified",
+            "is_company",
             "cin_number",
             "cin_photo_recto",
             "cin_photo_verso",
@@ -141,6 +238,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "full_name",
         )
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["phone"] = normalize_mg_phone(data.get("phone"))
+        return data
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -152,27 +254,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "cin_number",
             "address",
             "date_of_birth",
-            "image",
-            "cin_photo_recto",
-            "cin_photo_verso",
-            "permis_conduire",
+            "is_company",
         )
 
-    def update(self, instance, validated_data):
-        new_photo = validated_data.get("image", None)
-        if new_photo and instance.image and new_photo != instance.image:
-            delete_file(instance.image.path)
-
-        if "cin_photo_recto" in validated_data and instance.cin_photo_recto:
-            delete_file(instance.cin_photo_recto.path)
-
-        if "cin_photo_verso" in validated_data and instance.cin_photo_verso:
-            delete_file(instance.cin_photo_verso.path)
-
-        if "permis_conduire" in validated_data and instance.permis_conduire:
-            delete_file(instance.permis_conduire.path)
-
-        return super().update(instance, validated_data)
+    def validate_phone(self, value):
+        return normalize_mg_phone(value)
 
 
 class AdminUserUpdateSerializer(serializers.ModelSerializer):
@@ -184,7 +270,11 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "is_active",
+            "is_company",
         )
+
+    def validate_phone(self, value):
+        return normalize_mg_phone(value)
 
 
 class OTPRequestSerializer(serializers.Serializer):
@@ -201,6 +291,7 @@ class OTPVerifySerializer(serializers.Serializer):
         choices=["email_verification", "password_reset"]
     )
 
+
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
     reset_token = serializers.CharField(max_length=128)
@@ -215,6 +306,7 @@ class PasswordResetSerializer(serializers.Serializer):
 
         validate_password(attrs["new_password"])
         return attrs
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField()
@@ -241,25 +333,10 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
 
 
 class UserPhotoUploadSerializer(serializers.Serializer):
-    photo = serializers.ImageField()
+    photo = serializers.FileField()
 
     def validate_photo(self, value):
-        max_size = 3 * 1024 * 1024
-        if value.size > max_size:
-            raise serializers.ValidationError(
-                "L'image ne doit pas dépasser 3MB."
-            )
-
-        valid_content_types = ["image/jpeg", "image/png", "image/jpg"]
-        content_type = getattr(value, "content_type", None)
-        if content_type and content_type not in valid_content_types:
-            raise serializers.ValidationError("Formats acceptés : JPG, PNG.")
-
-        ext = os.path.splitext(value.name)[1].lower()
-        if ext not in [".jpg", ".jpeg", ".png"]:
-            raise serializers.ValidationError("Formats acceptés : JPG, PNG.")
-
-        return value
+        return validate_uploaded_image_file(value, "photo")
 
     def update(self, instance, validated_data):
         if instance.image:

@@ -138,7 +138,13 @@ STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media") if DEBUG else "/app/media"
+
+# En local, on stocke toujours dans le dossier media du projet.
+# En prod, tu pourras surcharger avec MEDIA_ROOT dans les variables d'environnement.
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, "media"))
+
+# Création automatique du dossier si absent
+os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -201,10 +207,10 @@ PASSWORD_RESET_BASE_URL = os.getenv(
     "https://madagasycar.com"
 )
 
-DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gmail.com")
+DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gasysystem.com")
 DEFAULT_ADMIN_PASSWORD = os.getenv(
     "DEFAULT_ADMIN_PASSWORD",
-    "123456789"
+    "AdminSuperSecret123!"
 )
 DEFAULT_ADMIN_FIRST_NAME = os.getenv("DEFAULT_ADMIN_FIRST_NAME", "Super")
 DEFAULT_ADMIN_LAST_NAME = os.getenv("DEFAULT_ADMIN_LAST_NAME", "Admin")

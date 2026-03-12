@@ -2,7 +2,7 @@ export interface User {
   id: string;
   email: string;
   username: string;
-  role: 'CLIENT' | 'PRESTATAIRE' | 'ADMIN' | 'SUPPORT' | 'CHAUFFEUR' | 'MECANICIEN';
+  role: "CLIENT" | "PRESTATAIRE" | "ADMIN" | "SUPPORT" | "CHAUFFEUR" | "MECANICIEN";
   phone_verified: boolean;
   last_login_at?: string;
   date_joined: string;
@@ -14,7 +14,6 @@ export interface User {
 
   image?: string;
 
-  // ✅ CIN
   cin_number?: string;
   cin_photo_recto?: string;
   cin_photo_verso?: string;
@@ -24,6 +23,9 @@ export interface User {
   created_at: string;
   updated_at: string;
   is_active: boolean;
+
+  is_company?: boolean;
+
   company_name?: string;
   nif?: string;
   stat?: string;
@@ -41,7 +43,7 @@ export interface CreateUserData {
   first_name: string;
   last_name: string;
   phone: string;
-  role: 'CLIENT' | 'PRESTATAIRE' | 'ADMIN' | 'SUPPORT' | 'CHAUFFEUR' | 'MECANICIEN';
+  role: "CLIENT" | "PRESTATAIRE" | "ADMIN" | "SUPPORT" | "CHAUFFEUR" | "MECANICIEN";
   address?: string;
   cin_number?: string;
 }

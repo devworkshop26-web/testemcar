@@ -19,10 +19,12 @@ from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .serializers import validate_uploaded_image_file
+from gasycar.utils import delete_file
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -502,15 +504,14 @@ def get_support_users(request):
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_user(self, request, user_id=None):
-        # profile/ -> utilisateur connecté
         if user_id is None:
             return request.user
 
         user = get_object_or_404(User, id=user_id)
 
-        # seul le propriétaire ou un admin peut accéder à un autre profil
         if (
             str(request.user.id) != str(user.id)
             and request.user.role != "ADMIN"
@@ -519,6 +520,49 @@ class UserProfileView(APIView):
             return None
 
         return user
+
+    def _apply_uploaded_files(self, user, request):
+        file_fields = [
+            "image",
+            "cin_photo_recto",
+            "cin_photo_verso",
+            "permis_conduire",
+        ]
+
+        changed = False
+
+        for field_name in file_fields:
+            uploaded_file = request.FILES.get(field_name)
+
+            if uploaded_file:
+                validate_uploaded_image_file(uploaded_file, field_name)
+
+                old_file = getattr(user, field_name, None)
+                if old_file and getattr(old_file, "name", None):
+                    try:
+                        delete_file(old_file.path)
+                    except Exception:
+                        pass
+
+                setattr(user, field_name, uploaded_file)
+                changed = True
+                continue
+
+            # possibilité d'effacer le champ avec null / ""
+            if field_name in request.data:
+                raw_value = str(request.data.get(field_name)).strip().lower()
+                if raw_value in ("", "null", "none"):
+                    old_file = getattr(user, field_name, None)
+                    if old_file and getattr(old_file, "name", None):
+                        try:
+                            delete_file(old_file.path)
+                        except Exception:
+                            pass
+                    setattr(user, field_name, None)
+                    changed = True
+
+        if changed:
+            user.save()
 
     def get(self, request, user_id=None):
         user = self.get_user(request, user_id)
@@ -551,6 +595,7 @@ class UserProfileView(APIView):
         serializer_class = (
             AdminUserUpdateSerializer if is_admin_edit else UserUpdateSerializer
         )
+
         serializer = serializer_class(
             user,
             data=request.data,
@@ -559,6 +604,14 @@ class UserProfileView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        try:
+            self._apply_uploaded_files(user, request)
+        except Exception as exc:
+            return Response(
+                {"image": [str(exc)]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             UserProfileSerializer(user, context={"request": request}).data,
@@ -604,7 +657,6 @@ class UserProfileView(APIView):
             {"message": "User deleted successfully"},
             status=status.HTTP_204_NO_CONTENT,
         )
-
 
 class UserInfoView(APIView):
     permission_classes = [permissions.IsAuthenticated]

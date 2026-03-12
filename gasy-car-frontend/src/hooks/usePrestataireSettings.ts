@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersAPI } from "@/Actions/usersApi";
@@ -6,6 +6,7 @@ import { prestataireAPI } from "@/Actions/prestataireApi";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { InstanceAxis } from "@/helper/InstanceAxios";
 import { useToast } from "@/components/ui/use-toast";
+import { User } from "@/types/userType";
 
 export interface PrestataireSettingsFormValues {
   first_name: string;
@@ -27,73 +28,87 @@ export interface PrestataireSettingsFormValues {
   company_address: string;
   company_email: string;
 
-  old_password?: string;
-  new_password?: string;
+  old_password: string;
+  new_password: string;
+  new_password_confirm: string;
 }
 
-import { User } from "@/types/userType";
+interface PrestataireProfile {
+  id: string;
+  company_name?: string;
+  logo?: string;
+  nif?: string;
+  stat?: string;
+  rcs?: string;
+  cif?: string;
+  phone?: string;
+  secondary_phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+}
+
+const normalizePhoneForDisplay = (value?: string | null) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const digits = raw.replace(/\D/g, "");
+
+  if (!digits) return raw;
+
+  if (digits.startsWith("00261")) {
+    const rest = digits.slice(5);
+    return rest.length === 9 ? `0${rest}` : raw;
+  }
+
+  if (digits.startsWith("261")) {
+    const rest = digits.slice(3);
+    return rest.length === 9 ? `0${rest}` : raw;
+  }
+
+  if (digits.length === 9) {
+    return `0${digits}`;
+  }
+
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return digits;
+  }
+
+  return raw;
+};
+
+const normalizeDateForInput = (value?: string | null) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return raw.slice(0, 10);
+};
+
+const getMediaUrl = (value?: string | null) => {
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:")) {
+    return value;
+  }
+  const rawBaseUrl = String(InstanceAxis.defaults.baseURL || "");
+  const baseUrl = rawBaseUrl.replace("/api", "").replace(/\/+$/, "");
+  return `${baseUrl}${value}`;
+};
 
 export const usePrestataireSettings = () => {
   const { user } = useCurentuser() as { user: User | null };
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ✅ PRESTATAIRE QUERY
-  const { data: prestataireData } = useQuery({
-    queryKey: ["myPrestataireProfile"],
-    queryFn: () => prestataireAPI.getMyProfile().then((res) => res.data),
-    enabled: !!user,
-    retry: false,
-  });
+  const [section, setSection] = useState<"personal" | "company" | "security">("personal");
+  const [companyEnabled, setCompanyEnabled] = useState(false);
 
-  // ✅ PRESTATAIRE MUTATION (CREATE/UPDATE)
-  const prestataireMutation = useMutation({
-    mutationFn: (data: any) => {
-      // Si on a déjà des data, on fait un update (PATCH), sinon on tente create (POST)
-      // Mais endpoint 'me' gère update (PATCH) si existe.
-      // Si 404 (pas de profil), il faut POST sur /prestataires/ (create standard)
-      // Pour simplifier ici : si prestataireData existe, updateMe. Sinon create.
-      if (prestataireData) {
-        return prestataireAPI.updateMyProfile(data);
-      } else {
-        return prestataireAPI.createPrestataire(data);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["myPrestataireProfile"] });
-      toast({
-        title: "Informations entreprise enregistrées",
-        description: "Votre profil prestataire a été mis à jour.",
-      });
-    },
-    onError: (err) => {
-      console.error(err);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'enregistrer les informations entreprise.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // SECTION PAR DEFAUT
-  const [section, setSection] = useState<"personal" | "company" | "security">(
-    "personal"
-  );
-
-  // Preview affichée
   const [previewPhoto, setPreviewPhoto] = useState("");
-
-  // 🔥 Fichier réel envoyé au backend
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // ✅ CIN (recto/verso) : preview + fichiers
   const [previewCinRecto, setPreviewCinRecto] = useState("");
   const [previewCinVerso, setPreviewCinVerso] = useState("");
   const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
   const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
 
-  // ✅ PRESTATAIRE DOCS & LOGO
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [previewLogo, setPreviewLogo] = useState("");
 
@@ -106,9 +121,9 @@ export const usePrestataireSettings = () => {
     register,
     handleSubmit,
     reset,
-    setValue,
+    getValues,
     formState: { errors, isSubmitting },
-  } = useForm({
+  } = useForm<PrestataireSettingsFormValues>({
     defaultValues: {
       first_name: "",
       last_name: "",
@@ -131,139 +146,68 @@ export const usePrestataireSettings = () => {
 
       old_password: "",
       new_password: "",
+      new_password_confirm: "",
     },
   });
 
-  // -------------------------------------------------------------
-  // Upload image → preview + sauvegarde du fichier
-  // -------------------------------------------------------------
-  const handlePhotoUpload = (e: any) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const { data: prestataireData } = useQuery<PrestataireProfile | null>({
+    queryKey: ["myPrestataireProfile"],
+    queryFn: async () => {
+      try {
+        const res = await prestataireAPI.getMyProfile();
+        return res.data;
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          return null;
+        }
+        throw error;
+      }
+    },
+    enabled: !!user,
+    retry: false,
+  });
 
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setPreviewPhoto(reader.result as string);
-    reader.readAsDataURL(file);
-  };
+  const companyChoiceMutation = useMutation({
+    mutationFn: async (isCompany: boolean) => {
+      if (!user?.id) {
+        throw new Error("Utilisateur introuvable");
+      }
+      return usersAPI.updateUser(user.id, { is_company: isCompany });
+    },
+    onSuccess: async (_response, isCompany) => {
+      setCompanyEnabled(isCompany);
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
-  const handleDeletePhoto = () => {
-    setPreviewPhoto("");
-    setImageFile(null);
-  };
+      if (!isCompany) {
+        setSection("personal");
+      }
 
-  // -------------------------------------------------------------
-  // ✅ UPLOAD CIN RECTO → preview + sauvegarde du fichier
-  // -------------------------------------------------------------
-  const handleCinRectoUpload = (e: any) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+      toast({
+        title: isCompany ? "Mode entreprise activé" : "Mode entreprise désactivé",
+        description: isCompany
+          ? "Les paramètres entreprise sont maintenant disponibles."
+          : "Les paramètres entreprise ont été masqués.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer votre choix entreprise.",
+        variant: "destructive",
+      });
+    },
+  });
 
-    setCinRectoFile(file);
-
-    const reader = new FileReader();
-    reader.onload = () => setPreviewCinRecto(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  // -------------------------------------------------------------
-  // ✅ UPLOAD CIN VERSO → preview + sauvegarde du fichier
-  // -------------------------------------------------------------
-  const handleCinVersoUpload = (e: any) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setCinVersoFile(file);
-
-    const reader = new FileReader();
-    reader.onload = () => setPreviewCinVerso(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  // -------------------------------------------------------------
-  // ✅ UPLOAD DOCS PRESTATAIRE (handlers)
-  // -------------------------------------------------------------
-  const handleLogoUpload = (e: any) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setPreviewLogo(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleNifUpload = (e: any) => setNifFile(e.target.files?.[0] || null);
-  const handleStatUpload = (e: any) => setStatFile(e.target.files?.[0] || null);
-  const handleRcsUpload = (e: any) => setRcsFile(e.target.files?.[0] || null);
-  const handleCifUpload = (e: any) => setCifFile(e.target.files?.[0] || null);
-
-  // -------------------------------------------------------------
-  // ✅ SUPPRESSION BACKEND : une seule photo à la fois
-  // -------------------------------------------------------------
-  const deleteProfilePhoto = async () => {
-    if (!user?.id) return;
-
-    // Supprime uniquement "image" en base
-    await usersAPI.clearProfilePhoto(user.id);
-
-    // Mettre à jour l'UI
-    handleDeletePhoto();
-
-    // refresh user
-    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-    toast({
-      title: "Photo supprimée",
-      description: "Votre photo de profil a été supprimée.",
-    });
-  };
-
-  const deleteCinRecto = async () => {
-    if (!user?.id) return;
-
-    // Supprime uniquement "cin_photo_recto" en base
-    await usersAPI.clearCinRecto(user.id);
-
-    // Mettre à jour l'UI
-    setPreviewCinRecto("");
-    setCinRectoFile(null);
-
-    // refresh user
-    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-    toast({
-      title: "CIN recto supprimé",
-      description: "La photo CIN recto a été supprimée.",
-    });
-  };
-
-  const deleteCinVerso = async () => {
-    if (!user?.id) return;
-
-    // Supprime uniquement "cin_photo_verso" en base
-    await usersAPI.clearCinVerso(user.id);
-
-    // Mettre à jour l'UI
-    setPreviewCinVerso("");
-    setCinVersoFile(null);
-
-    // refresh user
-    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-    toast({
-      title: "CIN verso supprimé",
-      description: "La photo CIN verso a été supprimée.",
-    });
-  };
-
-  // -------------------------------------------------------------
-  // Mutation API
-  // -------------------------------------------------------------
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: any) => usersAPI.updateUser(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-      // setPreviewPhoto("");
+    mutationFn: ({ id, data }: { id: string; data: FormData | Record<string, any> }) =>
+      usersAPI.updateUser(id, data),
+    onSuccess: async () => {
+      setImageFile(null);
+      setCinRectoFile(null);
+      setCinVersoFile(null);
+
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
       toast({
         title: "Modification enregistrée",
         description: "Les informations ont bien été mises à jour.",
@@ -278,134 +222,232 @@ export const usePrestataireSettings = () => {
     },
   });
 
-  // -------------------------------------------------------------
-  // Remplissage automatique du formulaire
-  // -------------------------------------------------------------
-  const getMediaUrl = (value?: string | null) => {
-    if (!value) return "";
-    if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:")) {
-      return value;
-    }
-    const RAW_BASE_URL = InstanceAxis.defaults.baseURL || "";
-    const BASE_URL = RAW_BASE_URL.replace("/api", "").replace(/\/+$/, "");
-    return `${BASE_URL}${value}`;
+  const prestataireMutation = useMutation({
+    mutationFn: (data: FormData | Record<string, any>) => {
+      if (prestataireData) {
+        return prestataireAPI.updateMyProfile(data);
+      }
+      return prestataireAPI.createPrestataire(data);
+    },
+    onSuccess: async () => {
+      setLogoFile(null);
+      setNifFile(null);
+      setStatFile(null);
+      setRcsFile(null);
+      setCifFile(null);
+
+      setCompanyEnabled(true);
+
+      await queryClient.invalidateQueries({ queryKey: ["myPrestataireProfile"] });
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+      toast({
+        title: "Informations entreprise enregistrées",
+        description: "Votre profil prestataire a été mis à jour.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer les informations entreprise.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: {
+      old_password: string;
+      new_password: string;
+      new_password_confirm: string;
+    }) => usersAPI.changePassword(data),
+    onSuccess: () => {
+      const currentValues = getValues();
+      reset({
+        ...currentValues,
+        old_password: "",
+        new_password: "",
+        new_password_confirm: "",
+      });
+
+      toast({
+        title: "Mot de passe modifié",
+        description: "Votre mot de passe a été modifié avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
+        "Impossible de modifier votre mot de passe.";
+
+      toast({
+        title: "Erreur",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePhotoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPreviewPhoto(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeletePhoto = () => {
+    setPreviewPhoto("");
+    setImageFile(null);
+  };
+
+  const handleCinRectoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCinRectoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPreviewCinRecto(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCinVersoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCinVersoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPreviewCinVerso(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPreviewLogo(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleNifUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    setNifFile(e.target.files?.[0] || null);
+  };
+
+  const handleStatUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    setStatFile(e.target.files?.[0] || null);
+  };
+
+  const handleRcsUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    setRcsFile(e.target.files?.[0] || null);
+  };
+
+  const handleCifUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    setCifFile(e.target.files?.[0] || null);
+  };
+
+  const deleteProfilePhoto = async () => {
+    if (!user?.id) return;
+
+    await usersAPI.clearProfilePhoto(user.id);
+    handleDeletePhoto();
+    await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+    toast({
+      title: "Photo supprimée",
+      description: "Votre photo de profil a été supprimée.",
+    });
+  };
+
+  const deleteCinRecto = async () => {
+    if (!user?.id) return;
+
+    await usersAPI.clearCinRecto(user.id);
+    setPreviewCinRecto("");
+    setCinRectoFile(null);
+    await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+    toast({
+      title: "CIN recto supprimé",
+      description: "La photo CIN recto a été supprimée.",
+    });
+  };
+
+  const deleteCinVerso = async () => {
+    if (!user?.id) return;
+
+    await usersAPI.clearCinVerso(user.id);
+    setPreviewCinVerso("");
+    setCinVersoFile(null);
+    await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+    toast({
+      title: "CIN verso supprimé",
+      description: "La photo CIN verso a été supprimée.",
+    });
   };
 
   useEffect(() => {
     if (!user) return;
 
-    // SI le backend renvoie une nouvelle image → affichage instantané !
-    if (user.image) {
-      setPreviewPhoto(getMediaUrl(user.image));
-    }
+    const hasCompany = Boolean(user.is_company || prestataireData);
+    setCompanyEnabled(hasCompany);
 
-    // ✅ charger CIN recto/verso si le backend les renvoie
-    if ((user as any).cin_photo_recto) {
-      setPreviewCinRecto(getMediaUrl((user as any).cin_photo_recto));
-    } else {
-      setPreviewCinRecto("");
-    }
-
-    if ((user as any).cin_photo_verso) {
-      setPreviewCinVerso(getMediaUrl((user as any).cin_photo_verso));
-    } else {
-      setPreviewCinVerso("");
-    }
-
-    // Gestion PRESTATAIRE DATA
-    let prestValues = {
-      company_name: "",
-      nif: "",
-      stat: "",
-      rcs: "",
-      cif: "",
-      company_phone: "",
-      secondary_phone: "",
-      city: "",
-      company_address: "",
-      company_email: "",
-    };
-
-    if (prestataireData) {
-      // Logo preview
-      if (prestataireData.logo) {
-        setPreviewLogo(getMediaUrl(prestataireData.logo));
-      }
-
-      prestValues = {
-        company_name: prestataireData.company_name || "",
-        nif: prestataireData.nif || "",
-        stat: prestataireData.stat || "",
-        rcs: prestataireData.rcs || "",
-        cif: prestataireData.cif || "",
-        company_phone: prestataireData.phone || "",
-        secondary_phone: prestataireData.secondary_phone || "",
-        city: prestataireData.city || "",
-        company_address: prestataireData.address || "",
-        company_email: prestataireData.email || "",
-      };
-    } else {
-      // Fallback user values if not defined? 
-      // Or just leave empty.
-      prestValues = {
-        // Maybe pre-fill company_name with full name?
-        ...prestValues,
-        company_name: user.company_name || "", // if backward compat
-      } as any;
-    }
-
+    setPreviewPhoto(user.image ? getMediaUrl(user.image) : "");
+    setPreviewCinRecto(user.cin_photo_recto ? getMediaUrl(user.cin_photo_recto) : "");
+    setPreviewCinVerso(user.cin_photo_verso ? getMediaUrl(user.cin_photo_verso) : "");
+    setPreviewLogo(prestataireData?.logo ? getMediaUrl(prestataireData.logo) : "");
 
     reset({
       first_name: user.first_name || "",
       last_name: user.last_name || "",
-      phone: user.phone || "",
+      phone: normalizePhoneForDisplay(user.phone),
       email: user.email || "",
       address: user.address || "",
       cin_number: user.cin_number || "",
-      date_of_birth: user.date_of_birth || "",
+      date_of_birth: normalizeDateForInput(user.date_of_birth),
 
-      ...prestValues,
+      company_name: prestataireData?.company_name || "",
+      nif: prestataireData?.nif || "",
+      stat: prestataireData?.stat || "",
+      rcs: prestataireData?.rcs || "",
+      cif: prestataireData?.cif || "",
+      company_phone: normalizePhoneForDisplay(prestataireData?.phone),
+      secondary_phone: normalizePhoneForDisplay(prestataireData?.secondary_phone),
+      city: prestataireData?.city || "",
+      company_address: prestataireData?.address || "",
+      company_email: prestataireData?.email || "",
 
       old_password: "",
       new_password: "",
     });
   }, [user, prestataireData, reset]);
 
-  // -------------------------------------------------------------
-  // Submit final → envoi imageFile + données selon section
-  // -------------------------------------------------------------
+  const saveCompanyChoice = async (isCompany: boolean) => {
+    await companyChoiceMutation.mutateAsync(isCompany);
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     if (!user?.id) return;
 
-    let payload: any = {};
-
-    if (section === "personal") {
-      payload = {
-        first_name: values.first_name,
-        last_name: values.last_name,
-        phone: values.phone,
-        email: values.email,
-        address: values.address,
-        cin_number: values.cin_number,
-        date_of_birth: values.date_of_birth,
-      };
-    }
-
     if (section === "company") {
-      // CONSTRUCTION PAYLOAD PRESTATAIRE
       const formData = new FormData();
-      formData.append("company_name", values.company_name);
-      formData.append("nif", values.nif);
-      formData.append("stat", values.stat);
-      if (values.rcs) formData.append("rcs", values.rcs);
-      if (values.cif) formData.append("cif", values.cif);
-      formData.append("phone", values.company_phone);
-      if (values.secondary_phone) formData.append("secondary_phone", values.secondary_phone);
-      formData.append("email", values.company_email);
-      formData.append("address", values.company_address);
-      formData.append("city", values.city);
 
-      // FILES
+      formData.append("company_name", values.company_name || "");
+      formData.append("nif", values.nif || "");
+      formData.append("stat", values.stat || "");
+      formData.append("rcs", values.rcs || "");
+      formData.append("cif", values.cif || "");
+      formData.append("phone", normalizePhoneForDisplay(values.company_phone));
+      formData.append("secondary_phone", normalizePhoneForDisplay(values.secondary_phone));
+      formData.append("email", values.company_email || "");
+      formData.append("address", values.company_address || "");
+      formData.append("city", values.city || "");
+
       if (logoFile) formData.append("logo", logoFile);
       if (nifFile) formData.append("nif_document", nifFile);
       if (statFile) formData.append("stat_document", statFile);
@@ -413,32 +455,72 @@ export const usePrestataireSettings = () => {
       if (cifFile) formData.append("cif_document", cifFile);
 
       await prestataireMutation.mutateAsync(formData);
-      return; // Stop here, don't update user
+      return;
     }
 
-    // SECURITY & PERSONAL (USER UPDATE)
     if (section === "security") {
-      payload = {
+      if (!values.old_password?.trim()) {
+        toast({
+          title: "Erreur",
+          description: "L'ancien mot de passe est obligatoire.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!values.new_password?.trim()) {
+        toast({
+          title: "Erreur",
+          description: "Le nouveau mot de passe est obligatoire.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!values.new_password_confirm?.trim()) {
+        toast({
+          title: "Erreur",
+          description: "La confirmation du mot de passe est obligatoire.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (values.new_password !== values.new_password_confirm) {
+        toast({
+          title: "Erreur",
+          description: "Les mots de passe ne correspondent pas.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await changePasswordMutation.mutateAsync({
         old_password: values.old_password,
         new_password: values.new_password,
-      };
+        new_password_confirm: values.new_password_confirm,
+      });
+      return;
     }
 
-    // ... (rest of user update logic)
+    const payload: Record<string, any> = {
+      first_name: values.first_name || "",
+      last_name: values.last_name || "",
+      phone: normalizePhoneForDisplay(values.phone),
+      address: values.address || "",
+      cin_number: values.cin_number || "",
+      date_of_birth: values.date_of_birth || "",
+    };
 
-    // 🔥 SI UNE IMAGE EXISTE → CONSTRUIRE FORM-DATA
-    // ✅ Si CIN recto/verso sont présents → FormData aussi
-    let finalData: any = payload;
+    let finalData: FormData | Record<string, any> = payload;
 
     if (imageFile || cinRectoFile || cinVersoFile) {
       const formData = new FormData();
 
-      // Ajout texte
-      Object.keys(payload).forEach((key) => {
-        formData.append(key, payload[key]);
+      Object.entries(payload).forEach(([key, value]) => {
+        formData.append(key, value ?? "");
       });
 
-      // Ajout du fichier attendu par le backend
       if (imageFile) formData.append("image", imageFile);
       if (cinRectoFile) formData.append("cin_photo_recto", cinRectoFile);
       if (cinVersoFile) formData.append("cin_photo_verso", cinVersoFile);
@@ -456,17 +538,20 @@ export const usePrestataireSettings = () => {
     user,
     section,
     setSection,
+
+    companyEnabled,
+    saveCompanyChoice,
+    isCompanyChoiceLoading: companyChoiceMutation.isPending,
+
     previewPhoto,
     handlePhotoUpload,
     handleDeletePhoto,
 
-    // ✅ CIN exports
     previewCinRecto,
     previewCinVerso,
     handleCinRectoUpload,
     handleCinVersoUpload,
 
-    // ✅ suppression backend
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
@@ -474,9 +559,13 @@ export const usePrestataireSettings = () => {
     register,
     onSubmit,
     errors,
-    isSubmitting: isSubmitting || prestataireMutation.isPending,
+    isSubmitting:
+      isSubmitting ||
+      updateMutation.isPending ||
+      prestataireMutation.isPending ||
+      changePasswordMutation.isPending ||
+      companyChoiceMutation.isPending,
 
-    // Exports Prestataire files
     previewLogo,
     handleLogoUpload,
     handleNifUpload,

@@ -1,8 +1,6 @@
-// src/components/prestataire/settings/PersonalInfoFormPrestataire.tsx
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Trash2, User as UserIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Camera, Trash2 } from "lucide-react";
 import AvatarPrestataire from "../AvatarPrestataire";
 
 import { UseFormRegister, FieldErrors } from "react-hook-form";
@@ -25,15 +23,16 @@ interface PersonalInfoFormPrestataireProps {
   deleteCinVerso: () => void;
 }
 
+const ACCEPTED_IMAGE_TYPES = ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff";
+
 export const PersonalInfoFormPrestataire = ({
   previewPhoto,
   register,
-  handlePhotoUpload,
-  handleDeletePhoto,
   errors,
   user,
   previewCinRecto,
   previewCinVerso,
+  handlePhotoUpload,
   handleCinRectoUpload,
   handleCinVersoUpload,
   deleteProfilePhoto,
@@ -42,13 +41,11 @@ export const PersonalInfoFormPrestataire = ({
 }: PersonalInfoFormPrestataireProps) => {
   return (
     <div className="space-y-8">
-      {/* --- SECTION AVATAR --- */}
       <div className="flex flex-col items-center sm:items-start gap-4">
         <div className="relative group">
-          {/* Avatar Grosse Taille avec Overlay au Survol */}
           <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
             <AvatarPrestataire user={user} previewPhoto={previewPhoto} size={128} />
-            
+
             <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
               <Camera className="w-8 h-8 mb-1" />
               <span className="text-[10px] font-medium uppercase tracking-wider text-center px-2">
@@ -56,16 +53,16 @@ export const PersonalInfoFormPrestataire = ({
               </span>
               <input
                 type="file"
-                accept="image/*"
+                accept={ACCEPTED_IMAGE_TYPES}
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
             </label>
           </div>
 
-          {/* Bouton supprimer déporté sous l'image si une photo existe */}
           {(previewPhoto || user?.image) && (
             <button
+              type="button"
               onClick={deleteProfilePhoto}
               className="absolute -top-1 -right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 shadow-sm transition-colors"
               title="Supprimer la photo"
@@ -74,13 +71,13 @@ export const PersonalInfoFormPrestataire = ({
             </button>
           )}
         </div>
+
         <div className="text-center sm:text-left">
           <h3 className="font-medium text-gray-900">Photo de profil</h3>
-          <p className="text-xs text-gray-500">JPG, PNG ou WebP. Max 2MB.</p>
+          <p className="text-xs text-gray-500">JPG, PNG, WebP, BMP ou TIFF. Max 10MB.</p>
         </div>
       </div>
 
-      {/* --- FORMULAIRE --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700">Prénom</label>
@@ -106,12 +103,18 @@ export const PersonalInfoFormPrestataire = ({
           <Input
             {...register("phone", {
               required: "Téléphone obligatoire",
-              minLength: { value: 8, message: "Au moins 8 chiffres" },
+              pattern: {
+                value: /^0\d{9}$/,
+                message: "Format attendu : 0341234567",
+              },
             })}
-            className={`rounded-xl ${errors?.phone ? 'border-red-500' : ''}`}
-            placeholder="06 00 00 00 00"
+            inputMode="numeric"
+            className={`rounded-xl ${errors?.phone ? "border-red-500" : ""}`}
+            placeholder="0341234567"
           />
-          {errors?.phone && <p className="text-red-600 text-xs mt-1">{errors.phone.message}</p>}
+          {errors?.phone && (
+            <p className="text-red-600 text-xs mt-1">{errors.phone.message}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -127,29 +130,40 @@ export const PersonalInfoFormPrestataire = ({
 
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-gray-700">Adresse complète</label>
-        <Textarea {...register("address")} className="rounded-xl min-h-[100px]" placeholder="Votre adresse de résidence..." />
+        <Textarea
+          {...register("address")}
+          className="rounded-xl min-h-[100px]"
+          placeholder="Votre adresse de résidence..."
+        />
       </div>
 
-      {/* --- SECTION CIN RECTO / VERSO --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-        {/* RECTO */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             Carte d'identité (Recto)
           </label>
-          
+
           <div className="relative aspect-video w-full max-w-[320px] group rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center overflow-hidden transition-all hover:border-blue-400">
             {previewCinRecto ? (
               <>
                 <img src={previewCinRecto} alt="Recto" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                   <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-gray-100 text-blue-600 shadow-lg">
-                      <Camera className="w-5 h-5" />
-                      <input type="file" accept="image/*" className="hidden" onChange={handleCinRectoUpload} />
-                   </label>
-                   <button onClick={deleteCinRecto} className="p-2 bg-white rounded-full hover:bg-red-50 text-red-600 shadow-lg">
-                      <Trash2 className="w-5 h-5" />
-                   </button>
+                  <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-gray-100 text-blue-600 shadow-lg">
+                    <Camera className="w-5 h-5" />
+                    <input
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES}
+                      className="hidden"
+                      onChange={handleCinRectoUpload}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={deleteCinRecto}
+                    className="p-2 bg-white rounded-full hover:bg-red-50 text-red-600 shadow-lg"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </>
             ) : (
@@ -159,30 +173,43 @@ export const PersonalInfoFormPrestataire = ({
                 </div>
                 <span className="text-sm font-medium text-gray-600">Ajouter le recto</span>
                 <span className="text-xs text-gray-400 mt-1">Cliquez ou glissez une image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleCinRectoUpload} />
+                <input
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES}
+                  className="hidden"
+                  onChange={handleCinRectoUpload}
+                />
               </label>
             )}
           </div>
         </div>
 
-        {/* VERSO */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             Carte d'identité (Verso)
           </label>
-          
+
           <div className="relative aspect-video w-full max-w-[320px] group rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center overflow-hidden transition-all hover:border-blue-400">
             {previewCinVerso ? (
               <>
                 <img src={previewCinVerso} alt="Verso" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                   <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-gray-100 text-blue-600 shadow-lg">
-                      <Camera className="w-5 h-5" />
-                      <input type="file" accept="image/*" className="hidden" onChange={handleCinVersoUpload} />
-                   </label>
-                   <button onClick={deleteCinVerso} className="p-2 bg-white rounded-full hover:bg-red-50 text-red-600 shadow-lg">
-                      <Trash2 className="w-5 h-5" />
-                   </button>
+                  <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-gray-100 text-blue-600 shadow-lg">
+                    <Camera className="w-5 h-5" />
+                    <input
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES}
+                      className="hidden"
+                      onChange={handleCinVersoUpload}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={deleteCinVerso}
+                    className="p-2 bg-white rounded-full hover:bg-red-50 text-red-600 shadow-lg"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </>
             ) : (
@@ -192,7 +219,12 @@ export const PersonalInfoFormPrestataire = ({
                 </div>
                 <span className="text-sm font-medium text-gray-600">Ajouter le verso</span>
                 <span className="text-xs text-gray-400 mt-1">Cliquez ou glissez une image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleCinVersoUpload} />
+                <input
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES}
+                  className="hidden"
+                  onChange={handleCinVersoUpload}
+                />
               </label>
             )}
           </div>

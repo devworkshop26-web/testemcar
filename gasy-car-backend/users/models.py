@@ -23,6 +23,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_active", False)
         extra_fields.setdefault("email_verified", False)
+        extra_fields.setdefault("is_company", False)
 
         user = self.model(email=email, **extra_fields)
         if password:
@@ -38,6 +39,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("email_verified", True)
+        extra_fields.setdefault("is_company", False)
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Le superuser doit avoir is_staff=True.")
@@ -64,6 +66,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=True)
     email_verified = models.BooleanField(default=False)
     phone_verified = models.BooleanField(default=False)
+
+    # mémorise le choix "Êtes-vous une entreprise ?"
+    is_company = models.BooleanField(default=False)
 
     first_name = models.CharField(max_length=50, blank=True)
     last_name = models.CharField(max_length=50, blank=True)
@@ -174,6 +179,7 @@ class RefreshToken(models.Model):
 
     def is_valid(self):
         return not self.is_blacklisted and timezone.now() < self.expires_at
+
 
 class PasswordResetSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -34,7 +34,6 @@ import { useCurrentUserQuery } from '@/useQuery/useCurrentUserQuery';
 const ReservationsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const handleBack = () => navigate(-1);
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = requestedTab === 'reviews' || requestedTab === 'info' ? requestedTab : 'availability';
@@ -64,7 +63,7 @@ const ReservationsPage: React.FC = () => {
   const [returnTime, setReturnTime] = useState('18:00');
   const [desableReservation, setDesableReservation] = useState(false);
 
-
+  
 
   // Date Range state for the DateSelector component
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -515,6 +514,12 @@ const ReservationsPage: React.FC = () => {
       <Header />
 
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="mb-4">
+          <Button variant="ghost" onClick={() => navigate('/allcars')} className="pl-0 hover:bg-transparent text-gray-500 hover:text-primary-600 transition-colors">
+            <ArrowLeft className="w-5 h-5 mr-2" /> Retour aux résultats finale
+          </Button>
+        </div>
+
         <VehicleHeader
           vehicleTitle={vehicleTitle}
           vehicleLocation={vehicleLocation}
@@ -523,7 +528,7 @@ const ReservationsPage: React.FC = () => {
           vehicleType={vehicleType}
           isCertified={isCertified}
           pricingRates={pricingRates}
-          onBack={handleBack}
+          onBack={() => navigate('/search')}
         />
 
         <VehicleGallery photos={vehicle.photos || [{ image: coverImage, is_primary: true }]} />
@@ -726,7 +731,7 @@ const ReservationsPage: React.FC = () => {
               isLoadingAddons={isLoadingEquipments}
               isLoading={createReservationMutation.isPending}
               availabilities={vehicle.availabilities || []}
-              desableReservation={desableReservation}
+                      desableReservation={desableReservation}
               // Missing props
               deposit={vehicle.montant_caution ? Number(vehicle.montant_caution) : (pricingRates.day ?? 0) * 10}
               travelZone={travelZone}
