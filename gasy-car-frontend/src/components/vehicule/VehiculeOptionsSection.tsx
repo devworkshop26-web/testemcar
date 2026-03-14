@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,12 +16,36 @@ export function VehiculeOptionsSection({ register, watch, setValue }: OptionsPro
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div>
+              <p className="text-base font-medium">Validation admin</p>
+              <p className="text-sm text-muted-foreground">Valider le véhicule pour publication.</p>
+            </div>
+            <Switch checked={watch("valide")} onCheckedChange={(checked) => setValue("valide", checked)} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
               <p className="text-base font-medium">Certification</p>
               <p className="text-sm text-muted-foreground">Marquez le véhicule comme certifié.</p>
             </div>
             <Switch checked={watch("est_certifie")} onCheckedChange={(checked) => setValue("est_certifie", checked)} />
           </div>
           <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <p className="text-base font-medium">Sponsoring</p>
+              <p className="text-sm text-muted-foreground">Mettre en avant le véhicule sponsorisé.</p>
+            </div>
+            <Switch checked={watch("est_sponsorise")} onCheckedChange={(checked) => setValue("est_sponsorise", checked)} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <p className="text-base font-medium">Coups de cœur</p>
+              <p className="text-sm text-muted-foreground">Afficher le véhicule dans les coups de cœur.</p>
+            </div>
+            <Switch
+              checked={watch("est_coup_de_coeur")}
+              onCheckedChange={(checked) => setValue("est_coup_de_coeur", checked)}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-4 md:col-span-2">
             <div>
               <p className="text-base font-medium">Disponibilité</p>
               <p className="text-sm text-muted-foreground">Afficher le véhicule comme disponible.</p>
@@ -48,4 +71,3 @@ export function VehiculeOptionsSection({ register, watch, setValue }: OptionsPro
     </Card>
   )
 }
-
