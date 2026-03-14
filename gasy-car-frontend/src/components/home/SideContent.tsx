@@ -23,10 +23,10 @@ export const SideContent = () => {
   const recentPosts = blogPosts?.slice(0, 3);
 
   return (
-    <div className="w-full lg:w-96 xl:w-1/4 lg:flex-shrink-0 lg:ml-8">
-      <div className="hidden lg:block sticky top-24 space-y-8 mt-10">
+    <div className="w-full lg:w-[21%] xl:w-[20%] lg:flex-shrink-0">
+      <div className="hidden lg:block sticky top-20 space-y-6 mt-6">
         {/* Essentiel */}
-        <div className="bg-white p-6 rounded-2xl shadow-xl border border-border/50">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-border/50">
           <h3 className="text-lg font-poppins font-semibold text-foreground mb-4 flex items-center">
             <Zap className="w-4 h-4 text-primary mr-2" />
             Essentiel & Aide Rapide
@@ -57,7 +57,7 @@ export const SideContent = () => {
         </div>
 
         {/* Blog */}
-        <div className="bg-white p-6 rounded-2xl shadow-xl border border-border/50">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-border/50">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-poppins font-semibold text-foreground flex items-center">
               <MessageCircle className="w-4 h-4 text-primary mr-2" />
@@ -126,7 +126,7 @@ export const SideContent = () => {
         {/* <NewsletterBlock /> */}
 
         {/* CTA Chauffeur */}
-        <div className="p-6 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl shadow-xl relative overflow-hidden group">
+        <div className="p-5 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl shadow-lg relative overflow-hidden group">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl group-hover:bg-white/20 transition-colors" />
           
           <h4 className="text-xl font-poppins font-semibold mb-3 relative z-10">
@@ -134,8 +134,7 @@ export const SideContent = () => {
           </h4>
 
           <p className="text-xs mb-5 opacity-90 leading-relaxed relative z-10">
-            Réservez nos chauffeurs certifiés pour une tranquillité d'esprit
-            totale lors de vos déplacements.
+            Réservez des chauffeurs certifiés pour une tranquillité d'esprit totale lors de vos déplacements.
           </p>
 
           <Link

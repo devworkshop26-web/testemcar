@@ -134,7 +134,6 @@ export function UpdateReservationDialog({
         with_chauffeur: withChauffeur,
         pickup_location: pickupLocation,
         dropoff_location: dropoffLocation,
-        status: status as any,
       };
 
       await updateMutation.mutateAsync({ id: reservation.id, payload });

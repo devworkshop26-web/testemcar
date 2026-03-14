@@ -1,7 +1,6 @@
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -10,17 +9,11 @@ from .serializers import PrestataireSerializer
 
 
 class PrestataireViewSet(viewsets.ModelViewSet):
-    """
-    API permettant de créer, gérer et valider les comptes prestataires.
-    """
     queryset = Prestataire.objects.select_related("user", "validated_by")
     serializer_class = PrestataireSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    # ===========================
-    # LIST
-    # ===========================
     @swagger_auto_schema(
         operation_summary="Lister tous les prestataires",
         operation_description="Retourne la liste de tous les prestataires, avec leurs informations légales et statut.",
@@ -28,9 +21,6 @@ class PrestataireViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    # ===========================
-    # RETRIEVE
-    # ===========================
     @swagger_auto_schema(
         operation_summary="Obtenir un prestataire",
         operation_description="Retourne les détails d'un prestataire spécifique.",
@@ -38,9 +28,6 @@ class PrestataireViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
-    # ===========================
-    # CREATE
-    # ===========================
     @swagger_auto_schema(
         operation_summary="Créer un compte prestataire",
         operation_description=(
@@ -52,11 +39,12 @@ class PrestataireViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        prestataire = serializer.save(user=self.request.user)
 
-    # ===========================
-    # UPDATE
-    # ===========================
+        if not prestataire.user.is_company:
+            prestataire.user.is_company = True
+            prestataire.user.save(update_fields=["is_company"])
+
     @swagger_auto_schema(
         operation_summary="Mettre à jour un prestataire",
         operation_description=(
@@ -80,15 +68,15 @@ class PrestataireViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         prestataire = serializer.save()
 
-        # Enregistrer l'admin support qui valide le prestataire
+        if not prestataire.user.is_company:
+            prestataire.user.is_company = True
+            prestataire.user.save(update_fields=["is_company"])
+
         if "status" in serializer.validated_data:
             if getattr(self.request.user, "role", None) in ["ADMIN", "SUPPORT"]:
                 prestataire.validated_by = self.request.user
                 prestataire.save(update_fields=["validated_by"])
 
-    # ===========================
-    # DELETE
-    # ===========================
     @swagger_auto_schema(
         operation_summary="Supprimer un prestataire",
         operation_description="Supprime définitivement un prestataire.",
@@ -96,38 +84,34 @@ class PrestataireViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
-    # ===========================
-    # ME (Current User)
-    # ===========================
     @swagger_auto_schema(
-        method='get',
+        method="get",
         operation_summary="Obtenir mon profil prestataire",
         operation_description="Retourne le profil prestataire de l'utilisateur connecté.",
-        responses={200: PrestataireSerializer()}
+        responses={200: PrestataireSerializer()},
     )
     @swagger_auto_schema(
-        methods=['put', 'patch'],
+        methods=["put", "patch"],
         operation_summary="Mettre à jour mon profil prestataire",
         operation_description="Met à jour les informations du prestataire lié à l'utilisateur connecté.",
-        responses={200: PrestataireSerializer()}
+        responses={200: PrestataireSerializer()},
     )
-    @action(detail=False, methods=['get', 'patch', 'put'], url_path='me')
+    @action(detail=False, methods=["get", "patch", "put"], url_path="me")
     def me(self, request):
         try:
             prestataire = Prestataire.objects.get(user=request.user)
         except Prestataire.DoesNotExist:
             return Response({"detail": "Aucun profil prestataire trouvé."}, status=404)
 
-        if request.method == 'GET':
+        if request.method == "GET":
             serializer = self.get_serializer(prestataire)
             return Response(serializer.data)
 
-        elif request.method in ['PUT', 'PATCH']:
-            serializer = self.get_serializer(
-                prestataire,
-                data=request.data,
-                partial=True
-            )
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data)
+        serializer = self.get_serializer(
+            prestataire,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)

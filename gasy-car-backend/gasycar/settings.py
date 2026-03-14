@@ -12,7 +12,7 @@ DEBUG = str(os.getenv("DEBUG", "False")).lower() in ("true", "1", "yes", "on")
 
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "127.0.0.1,localhost,madagasycar.com,www.madagasycar.com"
+    "127.0.0.1,localhost,madagasycar.com,www.madagasycar.com,192.168.30.197 "
 ).split(",")
 
 INSTALLED_APPS = [
@@ -52,8 +52,13 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
+    # access token court pour la sécurité
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=15),
+
+    # refresh token long pour permettre à l'utilisateur actif
+    # de rester connecté sans être déconnecté brutalement
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
@@ -107,11 +112,11 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "gasycar"),
-        "USER": os.getenv("DB_USER", "postgres"),
+        "NAME": os.getenv("DB_NAME", ""),
+        "USER": os.getenv("DB_USER", ""),
         "PASSWORD": os.getenv("DB_PASS", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
     }
 }
 
@@ -133,7 +138,13 @@ STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media") if DEBUG else "/app/media"
+
+# En local, on stocke toujours dans le dossier media du projet.
+# En prod, tu pourras surcharger avec MEDIA_ROOT dans les variables d'environnement.
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, "media"))
+
+# Création automatique du dossier si absent
+os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -144,6 +155,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:4200",
+    "http://localhost:8080",
     "http://127.0.0.1:4200",
     "https://gasy-car-backend.onrender.com",
     "https://madagasycar.com",
@@ -173,28 +185,17 @@ CSRF_TRUSTED_ORIGINS = [
 AUTH_USER_MODEL = "users.User"
 
 # ============================================================
-# EMAIL CONFIGURATION
-# - Production: SMTP (Brevo)
-# - Local dev fallback: console backend if SMTP credentials are missing
+# EMAIL CONFIGURATION - ENVOI RÉEL VIA BREVO SMTP
 # ============================================================
-EMAIL_BACKEND = os.getenv(
-    "EMAIL_BACKEND",
-    "django.core.mail.backends.smtp.EmailBackend",
-)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp-relay.brevo.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "9c6095001@smtp-brevo.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "xsmtpsib-b22943aa7454a84f8000a55cb1643e2894f90e8239db6a4cfd71ae814b25964c-jZNngpc03ZqQhBMV")
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "contact@madagasycar.com")
 EMAIL_TIMEOUT = 20
-
-if (
-    EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
-    and (not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD)
-):
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Configuration OTP
 OTP_VALIDITY_MINUTES = 10

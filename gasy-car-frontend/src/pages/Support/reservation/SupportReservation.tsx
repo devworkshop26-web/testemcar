@@ -1,11 +1,15 @@
-// src/pages/support/SupportReservation.tsx
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
-  User,
   Car,
   CreditCard,
   AlertCircle,
@@ -13,19 +17,15 @@ import {
   Eye,
   Settings2,
   Search,
-  ChevronLeft,
-  ChevronRight,
   ListTodo,
   FilterX,
   Wallet,
   CheckCircle2,
 } from "lucide-react";
 
-/* Composants UI Shadcn */
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -51,20 +51,23 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
 
-/* Types & Queries */
-import { Reservation } from "@/types/reservationsType";
+import type {
+  Reservation,
+  PaymentStatus,
+  ReservationTransitionAction,
+} from "@/types/reservationsType";
 import {
+  useReservationTransitionMutation,
   useReservationsQuery,
-  useUpdateReservationMutation,
   useUpdateReservationPaymentMutation,
 } from "@/useQuery/reservationsUseQuery";
 
-/* --- UTILS --- */
-
-const formatCurrency = (amount: any) => {
+const formatCurrency = (amount: unknown) => {
   const safeAmount = Number(amount);
-  if (isNaN(safeAmount)) return "0 Ar";
+  if (Number.isNaN(safeAmount)) return "0 Ar";
+
   return new Intl.NumberFormat("fr-MG", {
     style: "currency",
     currency: "MGA",
@@ -74,8 +77,10 @@ const formatCurrency = (amount: any) => {
 
 const formatDateTime = (dateString?: string | null) => {
   if (!dateString) return "—";
+
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "—";
+
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "2-digit",
@@ -85,53 +90,59 @@ const formatDateTime = (dateString?: string | null) => {
   }).format(date);
 };
 
-/* Config Badges & Statuts */
-const STATUS_CONFIG: Record<string, { label: string; style: string; icon: any }> =
-  {
-    PENDING: {
-      label: "En attente",
-      style: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      icon: AlertCircle,
-    },
-    CONFIRMED: {
-      label: "Confirmée",
-      style: "bg-blue-100 text-blue-800 border-blue-200",
-      icon: CheckCircle2,
-    },
-    IN_PROGRESS: {
-      label: "En cours",
-      style: "bg-purple-100 text-purple-800 border-purple-200",
-      icon: Car,
-    },
-    COMPLETED: {
-      label: "Terminée",
-      style: "bg-green-100 text-green-800 border-green-200",
-      icon: CheckCircle2,
-    },
-    CANCELLED: {
-      label: "Annulée",
-      style: "bg-red-100 text-red-800 border-red-200",
-      icon: AlertCircle,
-    },
-  };
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; style: string; icon: ComponentType<{ className?: string }> }
+> = {
+  PENDING: {
+    label: "En attente",
+    style: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    icon: AlertCircle,
+  },
+  CONFIRMED: {
+    label: "Confirmée",
+    style: "bg-blue-100 text-blue-800 border-blue-200",
+    icon: CheckCircle2,
+  },
+  IN_PROGRESS: {
+    label: "En cours",
+    style: "bg-purple-100 text-purple-800 border-purple-200",
+    icon: Car,
+  },
+  COMPLETED: {
+    label: "Terminée",
+    style: "bg-green-100 text-green-800 border-green-200",
+    icon: CheckCircle2,
+  },
+  CANCELLED: {
+    label: "Annulée",
+    style: "bg-red-100 text-red-800 border-red-200",
+    icon: AlertCircle,
+  },
+};
 
 const PAYMENT_CONFIG: Record<string, { label: string; className: string }> = {
   PENDING: {
-    label: "Non payé",
+    label: "En attente",
     className: "text-yellow-600 font-medium",
   },
-
   VALIDATED: {
-    label: "Payé",
+    label: "Validé",
     className: "text-green-700 font-bold",
+  },
+  REJECTED: {
+    label: "Refusé",
+    className: "text-red-600 font-bold",
+  },
+  REFUNDED: {
+    label: "Remboursé",
+    className: "text-slate-600 font-bold",
   },
 
   REFUSED: {
     label: "Refusé",
     className: "text-red-600 font-bold",
   },
-
-  // compatibilité si jamais
   SUCCESS: {
     label: "Payé",
     className: "text-green-700 font-bold",
@@ -146,31 +157,43 @@ const PAYMENT_CONFIG: Record<string, { label: string; className: string }> = {
   },
 };
 
-/** NEW: config statut paiement (modale select) */
-const PAYMENT_STATUS_CONFIG: Record<string, { label: string; style: string }> = {
+const PAYMENT_STATUS_CONFIG: Record<
+  PaymentStatus,
+  { label: string; style: string }
+> = {
   PENDING: { label: "En attente", style: "bg-yellow-100 text-yellow-800" },
   VALIDATED: { label: "Validé", style: "bg-green-100 text-green-800" },
   REJECTED: { label: "Refusé", style: "bg-red-100 text-red-800" },
+  REFUNDED: { label: "Remboursé", style: "bg-slate-100 text-slate-700" },
+};
+
+type SupportReservationAction = Extract<ReservationTransitionAction, "cancel">;
+
+type ReservationActionConfig = {
+  key: SupportReservationAction;
+  label: string;
 };
 
 export default function SupportReservationPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
-  // États
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [statusToEdit, setStatusToEdit] = useState<Reservation | null>(null);
-  const [newStatus, setNewStatus] = useState("");
 
-  /** NEW: états modale paiement */
-  const [paymentToEdit, setPaymentToEdit] = useState<any | null>(null);
-  const [newPaymentStatus, setNewPaymentStatus] = useState("");
+  const [paymentToEdit, setPaymentToEdit] = useState<Reservation["payment"] | null>(
+    null
+  );
+  const [newPaymentStatus, setNewPaymentStatus] =
+    useState<PaymentStatus>("PENDING");
 
-  /** ✅ NEW: filtre retrait (sans casser le reste) */
-  const getPickupFilterFromSearch = (search: string): "ALL" | "UPCOMING_24H" | "OTHER" => {
+  const getPickupFilterFromSearch = (
+    search: string
+  ): "ALL" | "UPCOMING_24H" | "OTHER" => {
     const queryParams = new URLSearchParams(search);
     const pickup = queryParams.get("pickup");
 
@@ -181,31 +204,26 @@ export default function SupportReservationPage() {
     return "ALL";
   };
 
-  const [pickupFilter, setPickupFilter] = useState<"ALL" | "UPCOMING_24H" | "OTHER">(
-    () => getPickupFilterFromSearch(location.search)
-  );
+  const [pickupFilter, setPickupFilter] = useState<
+    "ALL" | "UPCOMING_24H" | "OTHER"
+  >(() => getPickupFilterFromSearch(location.search));
 
   const {
     data: reservations = [],
     isLoading,
-    isError,
     refetch,
     isRefetching,
   } = useReservationsQuery();
 
-  const updateReservationMutation = useUpdateReservationMutation();
-
-  /** NEW: mutation update paiement (doit exister dans reservationsUseQuery) */
+  const reservationTransitionMutation = useReservationTransitionMutation();
   const updateReservationPaymentMutation = useUpdateReservationPaymentMutation();
 
-  // Urgence check
   const isUrgent = (dateString?: string | null) => {
     if (!dateString) return false;
     const diff = new Date(dateString).getTime() - Date.now();
     return diff > 0 && diff <= 24 * 60 * 60 * 1000;
   };
 
-  /** ✅ NEW: helper retrait prévu 24h */
   const isPickupUpcoming24h = (start?: string | null) => {
     if (!start) return false;
 
@@ -220,11 +238,31 @@ export default function SupportReservationPage() {
 
   const isCriticalReservation = (reservation: Reservation) => {
     const paymentStatus = reservation.payment?.status;
-    const unpaid = !paymentStatus || paymentStatus === "PENDING" || paymentStatus === "FAILED";
+    const unpaid = !paymentStatus || paymentStatus === "PENDING";
 
-    const active = reservation.status !== "CANCELLED" && reservation.status !== "COMPLETED";
+    const active =
+      reservation.status !== "CANCELLED" &&
+      reservation.status !== "COMPLETED";
 
     return unpaid && active;
+  };
+
+  const getAvailableReservationActions = (
+    reservation: Reservation
+  ): ReservationActionConfig[] => {
+    switch (reservation.status) {
+      case "PENDING":
+      case "CONFIRMED":
+        return [
+          {
+            key: "cancel",
+            label: "Annuler la réservation",
+          },
+        ];
+
+      default:
+        return [];
+    }
   };
 
   const isUrgentMode = useMemo(() => {
@@ -242,10 +280,10 @@ export default function SupportReservationPage() {
     }
   }, [isUrgentMode]);
 
-  // Filtrage
   const filteredData = useMemo(() => {
-    return reservations.filter((row: any) => {
+    return reservations.filter((row) => {
       const searchLower = searchQuery.toLowerCase();
+
       const matchesSearch =
         searchQuery === "" ||
         row.reference?.toLowerCase().includes(searchLower) ||
@@ -254,9 +292,9 @@ export default function SupportReservationPage() {
           ?.toLowerCase()
           .includes(searchLower);
 
-      const matchesStatus = statusFilter === "ALL" || row.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "ALL" || row.status === statusFilter;
 
-      /** ✅ NEW: filtre retrait */
       let matchesPickup = true;
 
       if (!isUrgentMode) {
@@ -280,44 +318,99 @@ export default function SupportReservationPage() {
   }, [searchQuery, statusFilter, pickupFilter, isUrgentMode]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
   const paginatedData = useMemo(() => {
     const start = (page - 1) * itemsPerPage;
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, page, itemsPerPage]);
 
   const stats = useMemo(() => {
-    const revenue = reservations.reduce(
-      (acc: number, curr: any) =>
-        curr.status !== "CANCELLED"
-          ? acc + (Number(curr.total_amount) || 0)
-          : acc,
-      0
-    );
+    const revenue = reservations.reduce((acc, curr) => {
+      if (curr.status === "CANCELLED") return acc;
+      return acc + (Number(curr.total_amount) || 0);
+    }, 0);
+
     return {
       total: reservations.length,
       revenue,
-      pendingDossier: reservations.filter((r: any) => r.status === "PENDING")
+      pendingDossier: reservations.filter((r) => r.status === "PENDING").length,
+      unpaid: reservations.filter((r) => !r.payment || r.payment.status === "PENDING")
         .length,
-      unpaid: reservations.filter(
-        (r: any) => !r.payment || r.payment.status === "PENDING"
-      ).length,
     };
   }, [reservations]);
 
-  if (isLoading) return <SupportReservationSkeleton />;
+  const handleReservationAction = (
+    reservationId: string,
+    action: SupportReservationAction
+  ) => {
+    reservationTransitionMutation.mutate(
+      { id: reservationId, action },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Réservation mise à jour",
+            description: "La réservation a été annulée avec succès.",
+          });
+          setStatusToEdit(null);
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Erreur",
+            description:
+              error?.response?.data?.detail ||
+              "Impossible de mettre à jour la réservation.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handlePaymentUpdate = () => {
+    if (!paymentToEdit) return;
+
+    updateReservationPaymentMutation.mutate(
+      {
+        id: paymentToEdit.id,
+        payload: { status: newPaymentStatus },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Paiement mis à jour",
+            description: "Le statut du paiement a été mis à jour avec succès.",
+          });
+          setPaymentToEdit(null);
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Erreur",
+            description:
+              error?.response?.data?.detail ||
+              "Impossible de mettre à jour le paiement.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  if (isLoading) {
+    return <SupportReservationSkeleton />;
+  }
 
   return (
     <div className="w-full p-4 sm:p-6 space-y-6 animate-in fade-in duration-500">
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
             Pilotage Réservations
           </h1>
           <p className="text-slate-500 text-sm">
-            Contrôle des flux financiers et logistiques.
+            Contrôle des paiements et suivi des dossiers.
           </p>
         </div>
+
         <Button
           variant="outline"
           size="sm"
@@ -331,7 +424,6 @@ export default function SupportReservationPage() {
         </Button>
       </div>
 
-      {/* KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Volume d'affaires"
@@ -346,20 +438,19 @@ export default function SupportReservationPage() {
           className="border-l-4 border-l-blue-500"
         />
         <StatCard
-          title="À Valider"
+          title="À traiter"
           value={stats.pendingDossier}
           icon={<AlertCircle className="text-orange-600" />}
           className="border-l-4 border-l-orange-500"
         />
         <StatCard
-          title="Impayés"
+          title="Paiements en attente"
           value={stats.unpaid}
           icon={<Wallet className="text-red-600" />}
           className="border-l-4 border-l-red-500"
         />
       </div>
 
-      {/* FILTRES AVANCÉS */}
       <Card className="bg-slate-50/50">
         <CardContent className="p-4 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
@@ -371,6 +462,7 @@ export default function SupportReservationPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full md:w-[200px] bg-white">
               <SelectValue placeholder="Tous les statuts" />
@@ -385,7 +477,6 @@ export default function SupportReservationPage() {
             </SelectContent>
           </Select>
 
-          {/* ✅ NEW: Filtre retrait prévu / autres */}
           {isUrgentMode && (
             <Badge className="bg-red-100 text-red-700 border border-red-200">
               Filtre urgences actif
@@ -394,7 +485,9 @@ export default function SupportReservationPage() {
 
           <Select
             value={pickupFilter}
-            onValueChange={(v: any) => setPickupFilter(v)}
+            onValueChange={(v: "ALL" | "UPCOMING_24H" | "OTHER") =>
+              setPickupFilter(v)
+            }
             disabled={isUrgentMode}
           >
             <SelectTrigger className="w-full md:w-[220px] bg-white">
@@ -407,7 +500,10 @@ export default function SupportReservationPage() {
             </SelectContent>
           </Select>
 
-          {(searchQuery || statusFilter !== "ALL" || pickupFilter !== "ALL" || isUrgentMode) && (
+          {(searchQuery ||
+            statusFilter !== "ALL" ||
+            pickupFilter !== "ALL" ||
+            isUrgentMode) && (
             <Button
               variant="ghost"
               onClick={() => {
@@ -416,7 +512,6 @@ export default function SupportReservationPage() {
                 setPickupFilter("ALL");
 
                 const queryParams = new URLSearchParams(location.search);
-
                 if (isUrgentMode || queryParams.has("pickup")) {
                   navigate("/support/reservations", { replace: true });
                 }
@@ -429,29 +524,25 @@ export default function SupportReservationPage() {
         </CardContent>
       </Card>
 
-      {/* TABLEAU */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-slate-50">
             <TableRow>
-              <TableHead className="font-bold text-slate-700">
-                Référence
-              </TableHead>
+              <TableHead className="font-bold text-slate-700">Référence</TableHead>
               <TableHead className="font-bold text-slate-700">
                 Client / Véhicule
               </TableHead>
               <TableHead className="font-bold text-slate-700">Période</TableHead>
-              <TableHead className="font-bold text-slate-700">
-                Paiement
-              </TableHead>
+              <TableHead className="font-bold text-slate-700">Paiement</TableHead>
               <TableHead className="font-bold text-slate-700">
                 Statut Dossier
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {paginatedData.map((row: any) => (
+            {paginatedData.map((row) => (
               <TableRow
                 key={row.id}
                 className="hover:bg-slate-50/50 transition-colors"
@@ -459,18 +550,19 @@ export default function SupportReservationPage() {
                 <TableCell className="font-mono text-blue-600 font-bold">
                   #{row.reference}
                 </TableCell>
+
                 <TableCell>
                   <div className="space-y-1">
                     <p className="text-sm font-medium">
                       {row.client_data?.full_name || row.client_data?.email}
                     </p>
+
                     <div className="flex items-center text-[11px] text-slate-500">
-                      <Car className="h-3 w-3 mr-1" />{" "}
+                      <Car className="h-3 w-3 mr-1" />
                       {row.vehicle_data?.marque_data?.nom} -{" "}
                       {row.vehicle_data?.numero_immatriculation}
                     </div>
 
-                    {/* NEW: Avec / Sans chauffeur (sans supprimer le reste) */}
                     {row.vehicle_data?.driver_data ? (
                       <Badge className="mt-1 bg-green-100 text-green-700 text-[10px]">
                         Avec chauffeur
@@ -482,6 +574,7 @@ export default function SupportReservationPage() {
                     )}
                   </div>
                 </TableCell>
+
                 <TableCell>
                   <div
                     className={`text-[11px] p-2 rounded-lg border ${
@@ -491,19 +584,20 @@ export default function SupportReservationPage() {
                     }`}
                   >
                     <p className="flex justify-between">
-                      <span>Départ:</span>{" "}
+                      <span>Départ:</span>
                       <span className="font-semibold text-slate-700">
                         {formatDateTime(row.start_datetime)}
                       </span>
                     </p>
                     <p className="flex justify-between mt-1">
-                      <span>Retour:</span>{" "}
+                      <span>Retour:</span>
                       <span className="font-semibold text-slate-700">
                         {formatDateTime(row.end_datetime)}
                       </span>
                     </p>
                   </div>
                 </TableCell>
+
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-bold text-slate-900">
@@ -524,30 +618,30 @@ export default function SupportReservationPage() {
                     </span>
                   </div>
                 </TableCell>
+
                 <TableCell>
                   <Badge
                     variant="outline"
                     className={`${STATUS_CONFIG[row.status]?.style} border-none shadow-sm`}
                   >
-                    {row.status}
+                    {STATUS_CONFIG[row.status]?.label || row.status}
                   </Badge>
                 </TableCell>
+
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    {/* EXISTING: edit dossier status */}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                       onClick={() => {
                         setStatusToEdit(row);
-                        setNewStatus(row.status);
                       }}
+                      title="Action support"
                     >
                       <Settings2 className="h-4 w-4" />
                     </Button>
 
-                    {/* NEW: edit payment status (dynamic, no static) */}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -564,7 +658,6 @@ export default function SupportReservationPage() {
                       <CreditCard className="h-4 w-4" />
                     </Button>
 
-                    {/* EXISTING: details */}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -577,11 +670,49 @@ export default function SupportReservationPage() {
                 </TableCell>
               </TableRow>
             ))}
+
+            {paginatedData.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="py-10 text-center text-slate-500"
+                >
+                  Aucune réservation trouvée.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+
+        {filteredData.length > itemsPerPage && (
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50">
+            <p className="text-sm text-slate-500">
+              Page {page} sur {Math.max(1, totalPages)}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              >
+                Précédent
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() =>
+                  setPage((prev) => Math.min(totalPages, prev + 1))
+                }
+              >
+                Suivant
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* MODALE DE CHANGEMENT DE STATUT (FIXED TRANSPARENCY) */}
       <Dialog
         open={!!statusToEdit}
         onOpenChange={(open) => !open && setStatusToEdit(null)}
@@ -590,76 +721,63 @@ export default function SupportReservationPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="h-5 w-5 text-blue-600" />
-              Mettre à jour le dossier
+              Action support
             </DialogTitle>
             <DialogDescription>
-              Modification du statut pour la réservation{" "}
+              Réservation{" "}
               <span className="font-bold text-slate-900">
                 #{statusToEdit?.reference}
               </span>
-              .
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-6">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">
-              Nouveau Statut Logistique
-            </label>
-            <Select value={newStatus} onValueChange={setNewStatus}>
-              <SelectTrigger className="w-full h-12 bg-slate-50 border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                <SelectValue placeholder="Sélectionner un statut" />
-              </SelectTrigger>
-              {/* Force le fond blanc et l'opacité ici */}
-              <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[100] min-w-[200px]">
-                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                  <SelectItem
-                    key={key}
-                    value={key}
-                    className="focus:bg-blue-50 focus:text-blue-700 cursor-pointer py-3 text-slate-700 border-b border-slate-50 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          cfg.style.split(" ")[0]
-                        }`}
-                      />
-                      <span className="font-medium text-slate-900">
-                        {cfg.label}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-slate-400 mt-4 italic">
-              * Ce changement affectera uniquement l'état logistique, pas le
-              paiement bancaire.
-            </p>
+          <div className="py-6 space-y-3">
+            {statusToEdit?.status === "PENDING" &&
+              statusToEdit.payment?.status === "VALIDATED" && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                  Paiement validé. La confirmation de la réservation doit être faite par le prestataire.
+                </div>
+              )}
+
+            {statusToEdit?.status === "PENDING" &&
+              (!statusToEdit.payment ||
+                statusToEdit.payment.status === "PENDING") && (
+                <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
+                  Le paiement doit être traité par le support ou l’administrateur avant toute confirmation par le prestataire.
+                </div>
+              )}
+
+            {statusToEdit &&
+              getAvailableReservationActions(statusToEdit).map((action) => (
+                <Button
+                  key={action.key}
+                  className="w-full justify-start"
+                  variant="outline"
+                  disabled={reservationTransitionMutation.isPending}
+                  onClick={() =>
+                    handleReservationAction(statusToEdit.id, action.key)
+                  }
+                >
+                  {action.label}
+                </Button>
+              ))}
+
+            {statusToEdit &&
+              getAvailableReservationActions(statusToEdit).length === 0 && (
+                <p className="text-sm text-slate-500">
+                  Aucune action support disponible pour ce statut.
+                </p>
+              )}
           </div>
 
           <DialogFooter className="bg-slate-50 p-4 -m-6 mt-2 rounded-b-xl flex gap-2">
             <Button variant="ghost" onClick={() => setStatusToEdit(null)}>
-              Annuler
-            </Button>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8"
-              disabled={updateReservationMutation.isPending}
-              onClick={() => {
-                if (statusToEdit) {
-                  updateReservationMutation.mutate(
-                    { id: statusToEdit.id, payload: { status: newStatus } },
-                    { onSuccess: () => setStatusToEdit(null) }
-                  );
-                }
-              }}
-            >
-              {updateReservationMutation.isPending ? "Mise à jour..." : "Confirmer"}
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* NEW: MODALE DE CHANGEMENT DE STATUT PAIEMENT (CHOIX COMME STATUT DOSSIER) */}
       <Dialog
         open={!!paymentToEdit}
         onOpenChange={(open) => !open && setPaymentToEdit(null)}
@@ -681,10 +799,13 @@ export default function SupportReservationPage() {
 
           <div className="py-6">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">
-              Nouveau Statut Paiement
+              Nouveau statut paiement
             </label>
 
-            <Select value={newPaymentStatus} onValueChange={setNewPaymentStatus}>
+            <Select
+              value={newPaymentStatus}
+              onValueChange={(value: PaymentStatus) => setNewPaymentStatus(value)}
+            >
               <SelectTrigger className="w-full h-12 bg-slate-50 border-slate-200 text-slate-900 focus:ring-2 focus:ring-emerald-500 shadow-sm">
                 <SelectValue placeholder="Sélectionner un statut" />
               </SelectTrigger>
@@ -710,7 +831,7 @@ export default function SupportReservationPage() {
             </Select>
 
             <p className="text-[11px] text-slate-400 mt-4 italic">
-              * Ce changement met à jour uniquement le paiement, pas le statut du dossier.
+              * Ce changement met à jour uniquement le paiement. La confirmation de la réservation appartient au prestataire.
             </p>
           </div>
 
@@ -721,16 +842,11 @@ export default function SupportReservationPage() {
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-8"
               disabled={updateReservationPaymentMutation.isPending}
-              onClick={() => {
-                if (paymentToEdit) {
-                  updateReservationPaymentMutation.mutate(
-                    { id: paymentToEdit.id, payload: { status: newPaymentStatus } },
-                    { onSuccess: () => setPaymentToEdit(null) }
-                  );
-                }
-              }}
+              onClick={handlePaymentUpdate}
             >
-              {updateReservationPaymentMutation.isPending ? "Mise à jour..." : "Confirmer"}
+              {updateReservationPaymentMutation.isPending
+                ? "Mise à jour..."
+                : "Confirmer"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -739,9 +855,23 @@ export default function SupportReservationPage() {
   );
 }
 
-function StatCard({ title, value, icon, className }: any) {
+function StatCard({
+  title,
+  value,
+  icon,
+  className,
+}: {
+  title: string;
+  value: string | number;
+  icon: ReactNode;
+  className?: string;
+}) {
   return (
-    <Card className={`overflow-hidden transition-all hover:shadow-md bg-white ${className}`}>
+    <Card
+      className={`overflow-hidden transition-all hover:shadow-md bg-white ${
+        className ?? ""
+      }`}
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
         <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           {title}

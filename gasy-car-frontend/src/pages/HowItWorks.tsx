@@ -6,20 +6,16 @@ import { HeroSection } from "./commentcamarche/HeroSection";
 import { StepsOwnerSection } from "./commentcamarche/StepsOwnerSection";
 
 const HowItWorksPage = () => {
-
   return (
-    <div className="bg-white font-sans">
-
+    <div className="font-sans text-slate-900">
       <HeroSection />
       <ComparisonSection />
       <StepsRenterSection />
       <StepsOwnerSection />
       <B2BSection />
-      <FAQSection />  
-
+      {/* <FAQSection /> */}
     </div>
   );
 };
 
 export default HowItWorksPage;
-

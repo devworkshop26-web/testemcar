@@ -1,7 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { AvatarClient } from "@/components/client/AvatarClient";
 
 import { UseFormRegister, FieldErrors } from "react-hook-form";
@@ -14,13 +13,11 @@ interface ProfileFormProps {
   handlePhotoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleDeletePhoto: () => void;
 
-  // ✅ CIN
   previewCinRecto: string | null;
   previewCinVerso: string | null;
   handleCinRectoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleCinVersoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 
-  // ✅ suppression backend
   deleteProfilePhoto: () => void;
   deleteCinRecto: () => void;
   deleteCinVerso: () => void;
@@ -34,29 +31,24 @@ export const ProfileForm = ({
   register,
   handlePhotoUpload,
   handleDeletePhoto,
-
-  // ✅ CIN
   previewCinRecto,
   previewCinVerso,
   handleCinRectoUpload,
   handleCinVersoUpload,
-
-  // ✅ suppression backend
   deleteProfilePhoto,
   deleteCinRecto,
   deleteCinVerso,
-
   errors,
   user,
 }: ProfileFormProps) => {
   return (
     <div className="space-y-8">
-      {/* --- SECTION AVATAR (style prestataire) --- */}
       <div className="flex flex-col items-center sm:items-start gap-4">
         <div className="relative group">
-          {/* Avatar avec overlay au survol */}
-          <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-100">
-            <AvatarClient user={user} previewPhoto={previewPhoto} size={128} />
+          <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center">
+            <div className="w-[104px] h-[104px] rounded-full overflow-hidden flex items-center justify-center">
+              <AvatarClient user={user} previewPhoto={previewPhoto} size={104} />
+            </div>
 
             <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
               <Camera className="w-8 h-8 mb-1" />
@@ -65,14 +57,13 @@ export const ProfileForm = ({
               </span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg"
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
             </label>
           </div>
 
-          {/* Supprimer photo */}
           {(user?.image || previewPhoto) && (
             <button
               type="button"
@@ -87,16 +78,11 @@ export const ProfileForm = ({
 
         <div className="text-center sm:text-left">
           <h3 className="font-medium text-slate-900">Photo de profil</h3>
-          <p className="text-xs text-slate-500">JPG, PNG ou WebP. Max 2MB.</p>
+          <p className="text-xs text-slate-500">JPG ou PNG. Max 3MB.</p>
         </div>
-
-        {/* (Optionnel) On garde ton handleDeletePhoto existant sans changer la logique */}
-        {/* Si tu veux l'utiliser pour reset uniquement côté UI, tu peux le brancher ailleurs. */}
       </div>
 
-      {/* --- FORMULAIRE --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Prénom */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Prénom</label>
           <Input
@@ -106,7 +92,6 @@ export const ProfileForm = ({
           />
         </div>
 
-        {/* Nom */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Nom</label>
           <Input
@@ -116,7 +101,6 @@ export const ProfileForm = ({
           />
         </div>
 
-        {/* Téléphone */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Téléphone *</label>
           <Input
@@ -139,7 +123,6 @@ export const ProfileForm = ({
           )}
         </div>
 
-        {/* Email */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700 italic">
             Email (non modifiable)
@@ -151,7 +134,6 @@ export const ProfileForm = ({
           />
         </div>
 
-        {/* CIN */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Numéro CIN *</label>
           <Input
@@ -170,14 +152,12 @@ export const ProfileForm = ({
           )}
         </div>
 
-        {/* Date de naissance */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Date de naissance</label>
           <Input type="date" {...register("date_of_birth")} className="rounded-xl" />
         </div>
       </div>
 
-      {/* Adresse */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-slate-700">Adresse complète</label>
         <Textarea
@@ -187,9 +167,7 @@ export const ProfileForm = ({
         />
       </div>
 
-      {/* --- SECTION CIN RECTO / VERSO (style prestataire) --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-        {/* RECTO */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-slate-700">
             Carte d'identité (Recto)
@@ -209,7 +187,7 @@ export const ProfileForm = ({
                     <Camera className="w-5 h-5" />
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/jpeg"
                       className="hidden"
                       onChange={handleCinRectoUpload}
                     />
@@ -236,7 +214,7 @@ export const ProfileForm = ({
                 </span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg"
                   className="hidden"
                   onChange={handleCinRectoUpload}
                 />
@@ -245,7 +223,6 @@ export const ProfileForm = ({
           </div>
         </div>
 
-        {/* VERSO */}
         <div className="space-y-3">
           <label className="text-sm font-semibold text-slate-700">
             Carte d'identité (Verso)
@@ -265,7 +242,7 @@ export const ProfileForm = ({
                     <Camera className="w-5 h-5" />
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/jpeg"
                       className="hidden"
                       onChange={handleCinVersoUpload}
                     />
@@ -292,7 +269,7 @@ export const ProfileForm = ({
                 </span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg"
                   className="hidden"
                   onChange={handleCinVersoUpload}
                 />
@@ -301,11 +278,6 @@ export const ProfileForm = ({
           </div>
         </div>
       </div>
-
-      {/* NOTE :
-        handleDeletePhoto est gardé (ton code existant),
-        mais maintenant la suppression réelle en base se fait via deleteProfilePhoto.
-      */}
     </div>
   );
 };

@@ -3,51 +3,53 @@ import { Link } from "react-router-dom";
 
 export const B2BSection = () => {
   return (
-    <section className="pb-24 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="py-14 sm:py-16 bg-slate-50/70">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+        <div className="rounded-[2rem] border border-slate-200 bg-white shadow-xl p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row items-start lg:items-center gap-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full" />
 
-        <div className="mt-12 bg-white border border-gray-200 shadow-xl p-10 rounded-3xl flex flex-col md:flex-row items-center gap-10 relative">
-
-          {/* Icône principale */}
-          <div className="p-5 bg-primary-50 rounded-2xl border border-primary-200">
-            <Briefcase size={48} className="text-primary-600" />
+          <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <Briefcase size={38} className="text-primary" />
           </div>
 
-          {/* Texte */}
-          <div className="flex-1">
-            <h3 className="text-3xl font-extrabold text-black mb-3">
-              Offre B2B & Gestion de Flotte
+          <div className="relative z-10 flex-1">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+              Solution professionnelle
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 mb-3 tracking-tight">
+              Offre B2B & gestion de flotte
             </h3>
 
-            <p className="text-gray-700 mb-6 text-lg">
-              Vous gérez plus de 5 véhicules ? Passez au Dashboard Pro.
+            <p className="text-slate-600 mb-6 text-base sm:text-lg max-w-2xl leading-relaxed">
+              Vous gérez plusieurs véhicules ? Passez à un espace pensé pour les professionnels et gagnez en clarté au quotidien.
             </p>
 
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-base text-black">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm sm:text-base text-slate-800">
               {[
                 "Facturation centralisée",
                 "Suivi de maintenance",
                 "Rotation optimisée",
                 "Manager dédié",
               ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3">
-                  <CheckCircle size={18} className="text-green-600" />
+                <li
+                  key={i}
+                  className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3"
+                >
+                  <CheckCircle size={18} className="text-emerald-600 shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Bouton */}
           <Link
             to="/prestataire/dashboard"
-            className="bg-green-600 text-white hover:bg-primary-500 px-7 py-4 rounded-xl font-semibold shadow-md transition flex items-center gap-2"
+            className="relative z-10 inline-flex items-center gap-2 rounded-full bg-primary text-white px-6 py-3.5 font-semibold shadow-lg hover:bg-primary/90 hover:scale-[1.02] transition-all duration-300"
           >
-            <BarChart3 size={20} />
-            Espace Gestionnaire
+            <BarChart3 size={18} />
+            Espace gestionnaire
           </Link>
         </div>
-
       </div>
     </section>
   );

@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { ModePayment } from "@/types/modePayment";
 import { useAuthContext } from "@/contexts/AuthContext";
 
-// Generate payment reference
 const generatePaymentRef = (methodName: string) => {
   const prefix = methodName.toUpperCase().substring(0, 4);
   const rand = Math.floor(100000 + Math.random() * 900000);
@@ -33,29 +32,25 @@ const ReservationPaymentPage = () => {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Payment selection state
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<ModePayment | null>(null);
   const [paymentRef, setPaymentRef] = useState<string>("");
 
-  // Payment method choice: "web" or "phone"
   const [paymentChoice, setPaymentChoice] = useState<"web" | "phone" | null>(null);
   const [linkSent, setLinkSent] = useState(false);
 
-  // Generate reference when payment mode is selected
   useEffect(() => {
     if (selectedPaymentMode) {
       setPaymentRef(generatePaymentRef(selectedPaymentMode.name));
     }
   }, [selectedPaymentMode]);
 
-  // Calculate time left (disabled if phone option selected)
   useEffect(() => {
     if (!reservation?.created_at || paymentChoice === "phone") return;
 
     const calculateTimeLeft = () => {
       const created = new Date(reservation.created_at!).getTime();
       const now = new Date().getTime();
-      const expiresAt = created + 15 * 60 * 1000; // 15 minutes
+      const expiresAt = created + 15 * 60 * 1000;
       const diff = expiresAt - now;
 
       if (diff <= 0) {
@@ -74,7 +69,6 @@ const ReservationPaymentPage = () => {
     return () => clearInterval(timer);
   }, [reservation?.created_at, paymentChoice]);
 
-  // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -83,7 +77,6 @@ const ReservationPaymentPage = () => {
     }
   };
 
-  // Submit payment
   const handleSubmit = () => {
     if (!reservation || !proofFile || !selectedPaymentMode) {
       toast.error("Veuillez sélectionner un mode de paiement et télécharger une preuve.");
@@ -107,7 +100,6 @@ const ReservationPaymentPage = () => {
           navigate(`${destination}#payment-details`);
         },
         onError: (error: any) => {
-          // Handle backend error response
           let errorMessage = "Erreur lors de l'envoi du paiement.";
 
           if (error?.response?.data) {
@@ -131,7 +123,6 @@ const ReservationPaymentPage = () => {
     );
   };
 
-  // Cancel reservation
   const handleCancel = () => {
     if (!reservation) return;
     updateReservation.mutate(
@@ -148,7 +139,6 @@ const ReservationPaymentPage = () => {
     );
   };
 
-  // Send payment link to phone
   const handleSendLink = () => {
     if (!selectedPaymentMode || !reservationId) {
       toast.error("Veuillez sélectionner un mode de paiement.");
@@ -166,17 +156,13 @@ const ReservationPaymentPage = () => {
           setLinkSent(true);
         },
         onError: (error: any) => {
-          // Handle backend error response
           let errorMessage = "Erreur lors de l'envoi.";
 
           if (error?.response?.data) {
             const errorData = error.response.data;
 
-            // Check for detail field
             if (errorData.detail) {
               errorMessage = errorData.detail;
-
-              // If there's also an error field, append it
               if (errorData.error) {
                 errorMessage += ` - ${errorData.error}`;
               }
@@ -193,7 +179,6 @@ const ReservationPaymentPage = () => {
     );
   };
 
-  // Request more time
   const handleExtend = () => {
     setIsExpired(false);
     toast.success("Temps prolongé de 15 minutes.");
@@ -206,8 +191,7 @@ const ReservationPaymentPage = () => {
         optionsAmount: 0,
         serviceFee: 0,
         cautionAmount: 0,
-        subtotalWithoutCaution: 0,
-        totalToPay: 0,
+        totalToPayNow: 0,
       };
     }
 
@@ -225,7 +209,7 @@ const ReservationPaymentPage = () => {
     const configuredServiceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
     const computedWithoutCaution = baseAmount + optionsAmount + configuredServiceFee;
 
-    const subtotalWithoutCaution = Math.max(
+    const totalToPayNow = Math.max(
       apiTotalAmount,
       computedWithoutCaution,
       baseAmount + optionsAmount
@@ -234,14 +218,12 @@ const ReservationPaymentPage = () => {
     return {
       baseAmount,
       optionsAmount,
-      serviceFee: Math.max(0, subtotalWithoutCaution - baseAmount - optionsAmount),
+      serviceFee: Math.max(0, totalToPayNow - baseAmount - optionsAmount),
       cautionAmount,
-      subtotalWithoutCaution,
-      totalToPay: subtotalWithoutCaution + cautionAmount,
+      totalToPayNow,
     };
   }, [reservation, pricingConfig?.service_fee]);
 
-  // Format timer
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
     const m = Math.floor(totalSeconds / 60);
@@ -259,8 +241,6 @@ const ReservationPaymentPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 relative">
-
-      {/* TIMER OVERLAY */}
       {isExpired && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center space-y-6 animate-in fade-in zoom-in duration-300">
@@ -296,8 +276,6 @@ const ReservationPaymentPage = () => {
       )}
 
       <div className="max-w-3xl mx-auto px-4 space-y-8">
-
-        {/* HEADER */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-slate-900">Paiement Sécurisé</h1>
           <p className="text-slate-600">
@@ -305,7 +283,6 @@ const ReservationPaymentPage = () => {
           </p>
         </div>
 
-        {/* TIMER CARD */}
         <div className={`bg-white rounded-3xl p-6 shadow-xl border border-slate-100 flex items-center justify-between ${paymentChoice === "phone" ? "opacity-50" : ""}`}>
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${paymentChoice === "phone" ? "bg-slate-100" : "bg-blue-50"}`}>
@@ -325,7 +302,6 @@ const ReservationPaymentPage = () => {
           </div>
         </div>
 
-        {/* PAYMENT METHOD SELECTION */}
         <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 space-y-6">
           <h2 className="text-xl font-bold">Sélectionnez votre mode de paiement</h2>
 
@@ -357,7 +333,6 @@ const ReservationPaymentPage = () => {
           </div>
         </div>
 
-        {/* PAYMENT CHOICE (shown after payment mode selection) */}
         {selectedPaymentMode && !paymentChoice && (
           <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 space-y-6">
             <h2 className="text-xl font-bold">Comment souhaitez-vous payer ?</h2>
@@ -403,7 +378,6 @@ const ReservationPaymentPage = () => {
           </div>
         )}
 
-        {/* PHONE PAYMENT OPTION */}
         {selectedPaymentMode && paymentChoice === "phone" && (
           <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 space-y-6">
             <div className="flex items-center gap-3">
@@ -483,17 +457,14 @@ const ReservationPaymentPage = () => {
           </div>
         )}
 
-        {/* PAYMENT DETAILS (shown after web choice) */}
         {selectedPaymentMode && paymentChoice === "web" && (
           <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 space-y-8">
-
             <div className="space-y-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <FileText className="w-5 h-5 text-slate-400" />
                 Détails du paiement
               </h2>
 
-              {/* INSTRUCTIONS ALERT */}
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-4 items-start">
                 <div className="bg-amber-100 p-2 rounded-full shrink-0">
                   <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -527,16 +498,26 @@ const ReservationPaymentPage = () => {
                   )}
                   {paymentAmounts.cautionAmount > 0 && (
                     <div className="flex justify-between items-center text-sm text-emerald-700">
-                      <span>Caution remboursable</span>
-                      <span>+{paymentAmounts.cautionAmount.toLocaleString()} Ar</span>
+                      <span>Caution à déposer séparément</span>
+                      <span>{paymentAmounts.cautionAmount.toLocaleString()} Ar</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-200">
-                    <span className="text-slate-600 font-semibold">Montant à payer</span>
+                    <span className="text-slate-600 font-semibold">Montant à payer maintenant</span>
                     <span className="text-2xl font-bold text-slate-900">
-                      {paymentAmounts.totalToPay.toLocaleString()} Ar
+                      {paymentAmounts.totalToPayNow.toLocaleString()} Ar
                     </span>
                   </div>
+                  {paymentAmounts.cautionAmount > 0 && (
+                    <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <p className="text-sm text-emerald-800 font-medium">
+                        La caution de {paymentAmounts.cautionAmount.toLocaleString()} Ar n’est pas incluse dans ce paiement.
+                      </p>
+                      <p className="text-xs text-emerald-700 mt-1">
+                        Elle sera déposée séparément lors de la remise du véhicule.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -588,7 +569,6 @@ const ReservationPaymentPage = () => {
               </div>
             </div>
 
-            {/* UPLOAD */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Upload className="w-5 h-5 text-slate-400" />
@@ -614,11 +594,14 @@ const ReservationPaymentPage = () => {
                       alt="Preuve"
                       className="max-h-64 mx-auto rounded-xl shadow-md"
                     />
-                    <div className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-lg cursor-pointer hover:bg-slate-100" onClick={(e) => {
-                      e.stopPropagation();
-                      setProofFile(null);
-                      setPreviewUrl(null);
-                    }}>
+                    <div
+                      className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-lg cursor-pointer hover:bg-slate-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProofFile(null);
+                        setPreviewUrl(null);
+                      }}
+                    >
                       <RefreshCw className="w-4 h-4 text-slate-600" />
                     </div>
                   </div>
@@ -634,7 +617,6 @@ const ReservationPaymentPage = () => {
               </div>
             </div>
 
-            {/* ACTIONS */}
             <Button
               onClick={handleSubmit}
               disabled={createPayment.isPending || !proofFile || !selectedPaymentMode}

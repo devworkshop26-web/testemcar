@@ -12,11 +12,9 @@ class ModePaymentViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         old_image = instance.image.path if instance.image else None
 
-        # exécute la mise à jour (peut contenir une nouvelle image)
         updated_instance = serializer.save()
 
-        # supprime l'ancienne image si une nouvelle est uploadée
-        if old_image and instance.image.path != old_image:
+        if old_image and updated_instance.image and updated_instance.image.path != old_image:
             delete_file(old_image)
 
         return updated_instance
@@ -24,7 +22,6 @@ class ModePaymentViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        # supprimer l'image physique
         if instance.image:
             delete_file(instance.image.path)
 

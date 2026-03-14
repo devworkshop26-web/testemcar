@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.files.storage import default_storage
-from django.db import OperationalError, ProgrammingError, transaction
+from django.db import transaction
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -19,10 +19,12 @@ from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .serializers import validate_uploaded_image_file
+from gasycar.utils import delete_file
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -69,20 +71,6 @@ class UserRegistrationView(APIView):
             return Response(
                 {"email": [str(e)]},
                 status=status.HTTP_400_BAD_REQUEST,
-            )
-        except (ProgrammingError, OperationalError):
-            logger.exception(
-                "Inscription OTP impossible: tables DB manquantes ou indisponibles."
-            )
-            return Response(
-                {
-                    "detail": (
-                        "Service d'inscription temporairement indisponible. "
-                        "Exécutez les migrations backend (python manage.py migrate)."
-                    ),
-                    "error_code": "db_schema_not_ready",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
             logger.exception(
@@ -198,18 +186,6 @@ class OTPRequestView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        except (ProgrammingError, OperationalError):
-            logger.exception("Envoi OTP impossible: tables DB manquantes ou indisponibles.")
-            return Response(
-                {
-                    "detail": (
-                        "Service OTP temporairement indisponible. "
-                        "Exécutez les migrations backend (python manage.py migrate)."
-                    ),
-                    "error_code": "db_schema_not_ready",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
         except Exception as e:
             logger.exception("Erreur lors de l'envoi OTP pour email=%s", email)
             return Response(
@@ -234,18 +210,15 @@ class OTPVerifyView(APIView):
         try:
             if purpose == "email_verification":
                 user = OTPService.verify_registration_otp(email=email, code=code)
-            else:
-                user = OTPService.verify_otp(email=email, code=code, purpose=purpose)
 
-            response_data = {
-                "message": "Vérification réussie.",
-                "verified": True,
-                "email": user.email,
-                "role": user.role,
-                "user_id": str(user.id),
-            }
+                response_data = {
+                    "message": "Vérification réussie.",
+                    "verified": True,
+                    "email": user.email,
+                    "role": user.role,
+                    "user_id": str(user.id),
+                }
 
-            if purpose == "email_verification":
                 refresh = RefreshToken.for_user(user)
                 response_data.update(
                     {
@@ -254,7 +227,26 @@ class OTPVerifyView(APIView):
                     }
                 )
 
-            return Response(response_data, status=status.HTTP_200_OK)
+                return Response(response_data, status=status.HTTP_200_OK)
+
+            if purpose == "password_reset":
+                user = OTPService.verify_otp(email=email, code=code, purpose=purpose)
+                reset_session = OTPService.create_password_reset_session(user)
+
+                return Response(
+                    {
+                        "message": "Code vérifié avec succès.",
+                        "verified": True,
+                        "email": user.email,
+                        "reset_token": reset_session.token,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            return Response(
+                {"error": "Purpose OTP invalide.", "verified": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         except ValueError as e:
             return Response(
@@ -270,20 +262,23 @@ class OTPVerifyView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 class PasswordResetView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         email = serializer.validated_data["email"]
-        code = serializer.validated_data["code"]
+        reset_token = serializer.validated_data["reset_token"]
         new_password = serializer.validated_data["new_password"]
 
         try:
-            user = OTPService.verify_otp(email, code, "password_reset")
-        except Exception as e:
+            user = OTPService.consume_password_reset_session(email, reset_token)
+        except ValueError as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -296,7 +291,6 @@ class PasswordResetView(APIView):
             {"message": "Mot de passe réinitialisé avec succès."},
             status=status.HTTP_200_OK,
         )
-
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -510,15 +504,14 @@ def get_support_users(request):
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_user(self, request, user_id=None):
-        # profile/ -> utilisateur connecté
         if user_id is None:
             return request.user
 
         user = get_object_or_404(User, id=user_id)
 
-        # seul le propriétaire ou un admin peut accéder à un autre profil
         if (
             str(request.user.id) != str(user.id)
             and request.user.role != "ADMIN"
@@ -527,6 +520,49 @@ class UserProfileView(APIView):
             return None
 
         return user
+
+    def _apply_uploaded_files(self, user, request):
+        file_fields = [
+            "image",
+            "cin_photo_recto",
+            "cin_photo_verso",
+            "permis_conduire",
+        ]
+
+        changed = False
+
+        for field_name in file_fields:
+            uploaded_file = request.FILES.get(field_name)
+
+            if uploaded_file:
+                validate_uploaded_image_file(uploaded_file, field_name)
+
+                old_file = getattr(user, field_name, None)
+                if old_file and getattr(old_file, "name", None):
+                    try:
+                        delete_file(old_file.path)
+                    except Exception:
+                        pass
+
+                setattr(user, field_name, uploaded_file)
+                changed = True
+                continue
+
+            # possibilité d'effacer le champ avec null / ""
+            if field_name in request.data:
+                raw_value = str(request.data.get(field_name)).strip().lower()
+                if raw_value in ("", "null", "none"):
+                    old_file = getattr(user, field_name, None)
+                    if old_file and getattr(old_file, "name", None):
+                        try:
+                            delete_file(old_file.path)
+                        except Exception:
+                            pass
+                    setattr(user, field_name, None)
+                    changed = True
+
+        if changed:
+            user.save()
 
     def get(self, request, user_id=None):
         user = self.get_user(request, user_id)
@@ -559,6 +595,7 @@ class UserProfileView(APIView):
         serializer_class = (
             AdminUserUpdateSerializer if is_admin_edit else UserUpdateSerializer
         )
+
         serializer = serializer_class(
             user,
             data=request.data,
@@ -567,6 +604,14 @@ class UserProfileView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        try:
+            self._apply_uploaded_files(user, request)
+        except Exception as exc:
+            return Response(
+                {"image": [str(exc)]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             UserProfileSerializer(user, context={"request": request}).data,
@@ -612,7 +657,6 @@ class UserProfileView(APIView):
             {"message": "User deleted successfully"},
             status=status.HTTP_204_NO_CONTENT,
         )
-
 
 class UserInfoView(APIView):
     permission_classes = [permissions.IsAuthenticated]

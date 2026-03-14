@@ -74,10 +74,10 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showRates, setShowRates] = useState(false);
+
   const finalTotal = Math.max(0, Math.round(basePrice + driverFee + totalAddOns + serviceFee));
   const cautionAmount = Math.max(0, Math.round(deposit));
-  const totalWithCaution = finalTotal + cautionAmount;
-  const estimatedWithoutCaution = finalTotal;
+
   const pricingBreakdown = [
     { key: 'location', label: `Location (${durationLabel})`, value: basePrice, show: true },
     { key: 'driver', label: 'Chauffeur', value: driverFee, show: driverFee > 0 },
@@ -93,7 +93,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
     .map((item) => item.value.toLocaleString())
     .join(' + ');
 
-  // Check which zones are available based on pricing_grid and fallback prices
   const availableZones = useMemo(() => {
     const pricingGrid = vehicle.pricing_grid || [];
     const normalizeZoneType = (zoneType: unknown) => String(zoneType ?? '').toUpperCase();
@@ -108,7 +107,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
     };
   }, [vehicle.pricing_grid, vehicle.pricePerDay, vehicle.prix_jour, vehicle.province_prix_jour]);
 
-  // Auto-select available zone if current selection is not available
   React.useEffect(() => {
     if (travelZone === 'TANA' && !availableZones.urbain && availableZones.province) {
       onTravelZoneChange('PROVINCE');
@@ -119,18 +117,15 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 
   const [dateWarning, setDateWarning] = useState('');
 
-  // Filtrage des addons
   const filteredAddons = useMemo(() => {
     if (!addons) return [];
 
-    // Si recherche active, on filtre par nom
     if (searchTerm.trim()) {
       return addons.filter(addon =>
         addon.label.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Sinon on retourne les 3 premiers
     return addons.slice(0, 3);
   }, [addons, searchTerm]);
 
@@ -151,7 +146,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
     return addons.filter((addon) => !displayedAddonIds.has(addon.id)).slice(0, 6);
   }, [addons, displayedAddons]);
 
-
   const renderAddon = (addon: ReservationAddon) => {
     const Icon = ICON_MAP[addon.iconKey] || LayoutList;
     const isSelected = selectedAddons.includes(addon.id);
@@ -170,7 +164,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected ? 'bg-primary-100 text-gray-900 shadow-sm scale-105 ring-2 ring-primary-300/70' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isSelected
+            ? 'bg-primary-100 text-gray-900 shadow-sm scale-105 ring-2 ring-primary-300/70'
+            : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-primary-500 group-hover:shadow-sm'
             }`}>
             <Icon size={18} strokeWidth={2.5} />
             {isSelected && (
@@ -184,12 +180,19 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
               {addon.label}
             </span>
             {addon.description && (
-              <span className={`text-[10px] line-clamp-1 ${isSelected ? 'text-gray-700' : 'text-gray-500'}`}>{addon.description}</span>
+              <span className={`text-[10px] line-clamp-1 ${isSelected ? 'text-gray-700' : 'text-gray-500'}`}>
+                {addon.description}
+              </span>
             )}
           </div>
         </div>
-        <Badge variant="secondary" className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected ? 'bg-primary-100 text-gray-900 border-primary-300 hover:bg-primary-200' : 'bg-gray-100 text-gray-500 border-gray-200'
-          }`}>
+        <Badge
+          variant="secondary"
+          className={`text-xs font-bold px-2 py-0.5 transition-colors border ${isSelected
+            ? 'bg-primary-100 text-gray-900 border-primary-300 hover:bg-primary-200'
+            : 'bg-gray-100 text-gray-500 border-gray-200'
+            }`}
+        >
           +{price.toLocaleString()} Ar
         </Badge>
       </div>
@@ -198,16 +201,12 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
 
   return (
     <div className="bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] border border-white/50 p-6 md:p-8 sticky top-24 transition-all duration-300">
-
-
-
-      {/* Header Prix */}
       <div className="flex flex-col gap-2 mb-8 bg-gray-50/50 p-5 rounded-3xl border border-gray-100/50 relative overflow-hidden group/price">
         <div className="absolute top-0 right-0 p-3 opacity-10">
           <Info size={40} />
         </div>
         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 z-10">
-          Total estimé (hors caution)
+          Total à payer maintenant
           <Popover open={showRates} onOpenChange={setShowRates}>
             <PopoverTrigger asChild>
               <button className="bg-white rounded-full p-1 text-gray-300 hover:text-primary-500 hover:shadow-sm transition-all shadow-none">
@@ -228,29 +227,24 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                   </div>
                 ))}
                 <Separator className="my-2" />
-                <div className="flex justify-between items-center text-gray-800 text-xs">
-                  <span className="font-semibold">Total estimé (hors caution)</span>
-                  <span className="font-bold">{estimatedWithoutCaution.toLocaleString()} Ar</span>
+                <div className="flex justify-between items-center text-gray-900 text-xs">
+                  <span className="font-semibold">Total à payer maintenant</span>
+                  <span className="font-bold">{finalTotal.toLocaleString()} Ar</span>
                 </div>
                 {cautionAmount > 0 && (
-                  <>
-                    <div className="flex justify-between items-center text-emerald-700 text-xs">
-                      <span>Caution remboursable</span>
-                      <span className="font-bold">+{cautionAmount.toLocaleString()} Ar</span>
-                    </div>
-                    <div className="flex justify-between items-center text-gray-900 text-xs">
-                      <span className="font-semibold">Total à payer (avec caution)</span>
-                      <span className="font-bold">{totalWithCaution.toLocaleString()} Ar</span>
-                    </div>
-                  </>
+                  <div className="flex justify-between text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                    <span>Caution à déposer séparément</span>
+                    <span className="font-bold">{cautionAmount.toLocaleString()} Ar</span>
+                  </div>
                 )}
               </div>
             </PopoverContent>
           </Popover>
         </span>
+
         <div className="flex items-baseline gap-2 z-10">
           <span className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">
-            {estimatedWithoutCaution.toLocaleString()}
+            {finalTotal.toLocaleString()}
           </span>
           <span className="text-xl font-bold text-gray-400">Ar</span>
         </div>
@@ -259,12 +253,12 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           <p className="font-semibold text-gray-700">Calcul: {breakdownLabelText}</p>
           <p className="mt-1">
             {breakdownValueText} =
-            <span className="font-bold text-gray-900"> {estimatedWithoutCaution.toLocaleString()} Ar</span>
+            <span className="font-bold text-gray-900"> {finalTotal.toLocaleString()} Ar</span>
           </p>
           {cautionAmount > 0 && (
             <p className="mt-1 text-emerald-700">
-              Avec caution remboursable: {estimatedWithoutCaution.toLocaleString()} + {cautionAmount.toLocaleString()} =
-              <span className="font-bold"> {totalWithCaution.toLocaleString()} Ar</span>
+              Caution à déposer séparément lors de la remise du véhicule :
+              <span className="font-bold"> {cautionAmount.toLocaleString()} Ar</span>
             </p>
           )}
         </div>
@@ -272,13 +266,12 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         {deposit > 0 && (
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50/80 backdrop-blur-sm w-fit px-2.5 py-1 rounded-full border border-emerald-100/50 z-10 mt-1">
             <ShieldCheck size={12} />
-            Caution remboursable: +{cautionAmount.toLocaleString()} Ar
+            Caution à déposer séparément: {cautionAmount.toLocaleString()} Ar
           </div>
         )}
       </div>
 
       <div className="space-y-8">
-        {/* Zone Selector */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Zone de déplacement</label>
           <div className="grid grid-cols-2 p-1.5 bg-gray-100/80 rounded-2xl border border-gray-200/50">
@@ -316,7 +309,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             </button>
           </div>
 
-          {/* Info message if a zone is unavailable */}
           {(!availableZones.urbain || !availableZones.province) && (
             <div className="p-2.5 bg-amber-50/50 border border-amber-100 rounded-xl">
               <p className="text-[10px] text-amber-700 flex items-center gap-1.5">
@@ -333,7 +325,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           )}
         </div>
 
-        {/* Date Time Picker - Redesigned */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Dates & Horaires</label>
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden divide-y divide-gray-100 ring-1 ring-gray-100 group focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500 transition-all">
@@ -347,7 +338,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             )}
             <div className="grid grid-cols-[1fr,auto] relative">
               <div className="p-3 pl-4 bg-gray-50/50 transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Calendar size={10} /> Début</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <Calendar size={10} /> Début
+                </label>
                 <input
                   type="date"
                   value={pickupDate}
@@ -357,7 +350,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                 />
               </div>
               <div className="border-l border-gray-100 p-3 w-28 bg-gray-50/50 transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block text-center"><Clock size={10} className="inline mr-1" />Heure</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block text-center">
+                  <Clock size={10} className="inline mr-1" />Heure
+                </label>
                 <input
                   type="time"
                   value={pickupTime}
@@ -369,7 +364,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
             </div>
             <div className="grid grid-cols-[1fr,auto] relative">
               <div className="p-3 pl-4 bg-gray-50/50 transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Calendar size={10} /> Fin</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <Calendar size={10} /> Fin
+                </label>
                 <input
                   type="date"
                   value={returnDate}
@@ -379,7 +376,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                 />
               </div>
               <div className="border-l border-gray-100 p-3 w-28 bg-gray-50/50 transition-colors">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block text-center"><Clock size={10} className="inline mr-1" />Heure</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block text-center">
+                  <Clock size={10} className="inline mr-1" />Heure
+                </label>
                 <input
                   type="time"
                   value={returnTime}
@@ -390,7 +389,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
               </div>
             </div>
 
-            {/* Info message */}
             <div className="mt-3 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
               <p className="text-xs text-blue-700 flex items-center gap-2">
                 <Info size={12} className="flex-shrink-0" />
@@ -400,7 +398,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           </div>
         </div>
 
-        {/* Duration Info */}
         <div className="flex justify-between items-center bg-blue-50/50 text-blue-900 px-5 py-4 rounded-xl text-xs font-bold border border-blue-100/50">
           <span className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
@@ -414,7 +411,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           </Badge>
         </div>
 
-        {/* Driver Option */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Conducteur</label>
           <div className="grid grid-cols-2 gap-3">
@@ -427,10 +423,13 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                   }`}
               >
                 <div className="font-bold text-sm mb-1 z-10 relative">Je conduis</div>
-                <div className={`text-[10px] z-10 relative ${selectedDriverOption === 'SANS_CHAUFFEUR' ? 'text-gray-300' : 'text-gray-400'}`}>
+                <div className={`text-[10px] z-10 relative ${selectedDriverOption === 'SANS_CHAUFFEUR' ? 'text-gray-300' : 'text-gray-400'
+                  }`}>
                   Carburant non inclus
                 </div>
-                {selectedDriverOption === 'SANS_CHAUFFEUR' && <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>}
+                {selectedDriverOption === 'SANS_CHAUFFEUR' && (
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none"></div>
+                )}
               </button>
             )}
 
@@ -443,11 +442,15 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                 }`}
             >
               <div className="font-bold text-sm mb-1 relative z-10">Avec Chauffeur</div>
-              <div className={`text-[10px] relative z-10 ${selectedDriverOption === 'AVEC_CHAUFFEUR' || driverOption === DriverOption.REQUIRED ? 'text-primary-100' : 'text-gray-400'
+              <div className={`text-[10px] relative z-10 ${selectedDriverOption === 'AVEC_CHAUFFEUR' || driverOption === DriverOption.REQUIRED
+                ? 'text-primary-100'
+                : 'text-gray-400'
                 }`}>
                 (recommandé)
               </div>
-              {(selectedDriverOption === 'AVEC_CHAUFFEUR' || driverOption === DriverOption.REQUIRED) && <div className="absolute bottom-0 left-0 w-20 h-20 bg-black/10 rounded-full blur-xl -ml-10 -mb-10 pointer-events-none"></div>}
+              {(selectedDriverOption === 'AVEC_CHAUFFEUR' || driverOption === DriverOption.REQUIRED) && (
+                <div className="absolute bottom-0 left-0 w-20 h-20 bg-black/10 rounded-full blur-xl -ml-10 -mb-10 pointer-events-none"></div>
+              )}
             </button>
           </div>
 
@@ -493,11 +496,9 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
               )}
             </div>
           )}
-
         </div>
       </div>
 
-      {/* Options Extras with Search */}
       <div className="space-y-3 mt-8">
         <div className="flex justify-between items-end mb-2">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Options supplémentaires</label>
@@ -568,7 +569,6 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         </div>
       </div>
 
-      {/* Summary Footer */}
       <div className="mt-8 pt-6 border-t border-dashed border-gray-200 space-y-3">
         <div className="flex justify-between text-xs font-medium text-gray-500">
           <span>Location ({durationLabel})</span>
@@ -591,14 +591,14 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
           <span className="text-gray-900">+{serviceFee.toLocaleString()} Ar</span>
         </div>
         {cautionAmount > 0 && (
-          <div className="flex justify-between text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
-            <span>Caution remboursable</span>
-            <span className="font-bold">+{cautionAmount.toLocaleString()} Ar</span>
+          <div className="flex justify-between items-center text-emerald-700 text-xs">
+            <span>Caution à déposer séparément</span>
+            <span className="font-bold">{cautionAmount.toLocaleString()} Ar</span>
           </div>
         )}
         <div className="flex justify-between items-center rounded-xl bg-gray-900 px-3 py-2 text-sm font-bold text-white">
-          <span>Total à payer{cautionAmount > 0 ? ' (avec caution)' : ''}</span>
-          <span>{(cautionAmount > 0 ? totalWithCaution : finalTotal).toLocaleString()} Ar</span>
+          <span>Total à payer maintenant</span>
+          <span>{finalTotal.toLocaleString()} Ar</span>
         </div>
       </div>
 

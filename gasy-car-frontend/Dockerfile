@@ -1,5 +1,5 @@
 # Étape de construction
-FROM node:18-alpine as builder
+FROM node:18-alpine as builder 
 
 # Mettre à jour les dépôts et installer les dépendances
 RUN apk update && \

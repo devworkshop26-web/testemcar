@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,8 +16,6 @@ import {
 } from "@/components/ui/input-otp";
 import { Mail, Clock, ArrowLeft, CheckCircle, RotateCcw } from "lucide-react";
 
-// Assurez-vous que ces importations sont disponibles dans votre environnement
-import { useOtp } from "@/useQuery/otpUseQuery";
 import { useToast } from "@/hooks/use-toast";
 import { otpAPI } from "@/Actions/otpApi";
 import { authAPI } from "@/Actions/authApi";
@@ -26,110 +24,141 @@ import { queryClient } from "@/lib/queryClient";
 import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
 import { getDashboardPath } from "@/helper/routeUtils";
 
+interface LocationState {
+  email?: string;
+}
+
 const OtpVerification = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { verifyOtp, resendOtp } = useOtp(); // Gardé pour référence, mais les appels sont simulés
 
-  const { data: currentUser } = useCurrentUserQuery()
+  const { data: currentUser } = useCurrentUserQuery();
 
-  if (currentUser) {
-    const destination = getDashboardPath(currentUser.role);
-    navigate(destination, { replace: true });
-    return null;
-  }
-
-  // --- États ---
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(600);
   const [canResend, setCanResend] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false); // État de chargement simulé
-  const [isResending, setIsResending] = useState(false); // État de chargement simulé
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
-  // --- Récupération de l'email et Nettoyage ---
+  // Redirection si déjà connecté
   useEffect(() => {
-    // Récupérer l'email depuis l'URL ou le state de navigation
-    const emailstorage = localStorage.getItem("user_email");
-    const emailFromParams = emailstorage ? emailstorage : "";
-
-    interface LocationState {
-      email?: string;
+    if (currentUser) {
+      const destination = getDashboardPath(currentUser.role);
+      navigate(destination, { replace: true });
     }
-    const state = location.state as LocationState;
+  }, [currentUser, navigate]);
 
-    if (emailFromParams) {
-      setEmail(emailFromParams);
-    } else if (state && state.email) {
+  // Charger l'email
+  useEffect(() => {
+    const emailFromStorage = localStorage.getItem("user_email") || "";
+    const state = location.state as LocationState | null;
+
+    if (emailFromStorage) {
+      setEmail(emailFromStorage);
+      return;
+    }
+
+    if (state?.email) {
       setEmail(state.email);
+      localStorage.setItem("user_email", state.email);
+      return;
     }
-  }, [location.state]);
 
+    toast({
+      title: "Email introuvable",
+      description: "Veuillez recommencer l'inscription.",
+      variant: "destructive",
+    });
+    navigate("/register", { replace: true });
+  }, [location.state, navigate, toast]);
 
-  // --- Compte à Rebours ---
+  // Compte à rebours
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
+
     if (countdown > 0 && !canResend) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     } else if (countdown === 0 && !canResend) {
       setCanResend(true);
     }
-    return () => clearTimeout(timer);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [countdown, canResend]);
 
-  // --- Formatage du Compte à Rebours ---
   const formatCountdown = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // --- Vérification OTP (Simulée) ---
   const handleVerifyOtp = async () => {
+    if (isVerifying) return;
+
+    if (!email) {
+      toast({
+        title: "Email manquant",
+        description: "Veuillez recommencer l'inscription.",
+        variant: "destructive",
+      });
+      navigate("/register", { replace: true });
+      return;
+    }
 
     if (otp.length !== 6) {
       toast({
         title: "Code incomplet",
-        description: "Veuillez saisir les 6 chiffres du code OTP",
+        description: "Veuillez saisir les 6 chiffres du code OTP.",
         variant: "destructive",
       });
       return;
     }
 
     setIsVerifying(true);
-    try {
-      const response = await otpAPI.verifyOtp({ email, code: otp, purpose: "email_verification" });
 
-      toast({
-        title: "✅ Succès",
-        description: "Le code est correct. Redirection vers la connexion...",
+    try {
+      const response = await otpAPI.verifyOtp({
+        email,
+        code: otp,
+        purpose: "email_verification",
       });
 
+      console.log("OTP verify response:", response.data);
+
+      if (!response.data.verified) {
+        throw new Error(response.data.error || "Code OTP invalide.");
+      }
 
       if (response.data.access_token && response.data.refresh_token) {
         localStorage.setItem(accessTokenKey, response.data.access_token);
         localStorage.setItem(refreshTokenKey, response.data.refresh_token);
       }
 
-      // 🔥 Fetch and sync user data immediately to avoid UI latency
+      localStorage.removeItem("user_email");
+
       try {
         const userRes = await authAPI.getCurrentUser();
         if (userRes?.data) {
-          await queryClient.setQueryData(["currentUser"], userRes.data);
+          queryClient.setQueryData(["currentUser"], userRes.data);
         }
       } catch (e) {
         console.error("Failed to sync user data after OTP verification:", e);
       }
 
-      const role = response.data.role;
-      const successState = { state: { message: "Votre compte a été activé avec succès." } };
+      toast({
+        title: "✅ Succès",
+        description: response.data.message || "Votre compte a été activé avec succès.",
+      });
 
-      // Redirection based on role
+      const role = response.data.role;
+      const successState = {
+        state: { message: "Votre compte a été activé avec succès." },
+      };
+
       switch (role) {
-        case "CHAUFFEUR":
-          navigate("/chauffeur", successState);
-          break;
         case "ADMIN":
           navigate("/admin", successState);
           break;
@@ -145,12 +174,20 @@ const OtpVerification = () => {
         default:
           navigate("/client", successState);
       }
+    } catch (error: any) {
+      console.error("OTP verification failed:", error);
+      console.error("OTP response data:", error?.response?.data);
+      console.error("OTP status:", error?.response?.status);
 
-    } catch (error) {
+      const backendMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        "Le code OTP est invalide ou a expiré. Veuillez réessayer.";
+
       toast({
-        title: "⚠️ Code Invalide",
-        description:
-          "Le code OTP est invalide ou a expiré. Veuillez réessayer.",
+        title: "⚠️ Vérification impossible",
+        description: backendMessage,
         variant: "destructive",
       });
     } finally {
@@ -158,25 +195,38 @@ const OtpVerification = () => {
     }
   };
 
-  // --- Renvoyer OTP (Simulé) ---
   const handleResendOtp = async () => {
-    if (isResending) return;
+    if (isResending || !email) return;
 
     setIsResending(true);
 
     try {
-      await otpAPI.resendOtp({ email, purpose: "email_verification" });
-      toast({
-        title: "✅ Code Renvoyé",
-        description: "Un nouveau code OTP a été envoyé à votre email.",
+      const response = await otpAPI.resendOtp({
+        email,
+        purpose: "email_verification",
       });
+
+      toast({
+        title: "✅ Code renvoyé",
+        description:
+          response.data.message || "Un nouveau code OTP a été envoyé à votre email.",
+      });
+
+      setOtp("");
       setCountdown(600);
       setCanResend(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("OTP resend failed:", error);
+      console.error("OTP resend response:", error?.response?.data);
+
+      const backendMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.detail ||
+        "Une erreur est survenue lors de l'envoi du code.";
+
       toast({
         title: "⚠️ Erreur",
-        description:
-          "Une erreur est survenue lors de l'envoi du code. Veuillez réessayer plus tard.",
+        description: backendMessage,
         variant: "destructive",
       });
     } finally {
@@ -184,28 +234,24 @@ const OtpVerification = () => {
     }
   };
 
-  // --- Rendu Minimaliste et Moderne ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-blue-50">
       <Header />
 
       <div className="flex items-center justify-center min-h-screen py-10 pt-24 fade-in">
         <div className="container mx-auto px-4 max-w-sm">
-          {/* Utilisation de glass-surface pour l'effet moderne */}
           <Card className="border-0 shadow-xl rounded-3xl glass-surface">
             <CardHeader className="text-center space-y-4 pb-6 pt-8 px-8">
-              {/* Icône et Titre Centrés et Raffinés */}
               <div className="space-y-3">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Mail className="w-7 h-7 text-primary" />
                 </div>
                 <CardTitle className="text-3xl font-bold text-foreground">
-                  Vérification Requise
+                  Vérification requise
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-base leading-relaxed">
                   Un code de vérification à 6 chiffres a été envoyé à
                   <br />
-                  {/* Mise en évidence de l'email avec la couleur primary pour l'information */}
                   <span className="font-medium font-poppins text-primary">
                     {email}
                   </span>
@@ -214,19 +260,16 @@ const OtpVerification = () => {
             </CardHeader>
 
             <CardContent className="space-y-6 px-8 pb-8">
-              {/* OTP Input */}
               <div className="space-y-2">
                 <div className="flex justify-center">
                   <InputOTP
                     maxLength={6}
                     value={otp}
-                    onChange={setOtp}
-                    onComplete={handleVerifyOtp}
+                    onChange={(value) => setOtp(value)}
                     disabled={isVerifying}
                   >
                     <InputOTPGroup className="gap-2">
                       {[...Array(6)].map((_, index) => (
-                        // Ajustement pour un style plus épuré si possible via votre InputOTPSlot
                         <InputOTPSlot
                           key={index}
                           index={index}
@@ -237,11 +280,11 @@ const OtpVerification = () => {
                   </InputOTP>
                 </div>
 
-                {/* Countdown */}
                 <div className="text-center pt-2">
                   <div
-                    className={`flex items-center justify-center gap-2 text-sm font-medium transition-colors ${canResend ? "text-destructive" : "text-primary"
-                      }`}
+                    className={`flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+                      canResend ? "text-destructive" : "text-primary"
+                    }`}
                   >
                     <Clock className="w-4 h-4" />
                     <span>
@@ -253,7 +296,6 @@ const OtpVerification = () => {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="space-y-3">
                 <Button
                   onClick={handleVerifyOtp}
@@ -275,7 +317,7 @@ const OtpVerification = () => {
 
                 <Button
                   onClick={handleResendOtp}
-                  disabled={isResending || isVerifying}
+                  disabled={!canResend || isResending || isVerifying}
                   variant="outline"
                   className="w-full h-11 text-sm font-medium rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-secondary/10 transition-all duration-300 text-muted-foreground hover:text-primary"
                 >
@@ -290,15 +332,12 @@ const OtpVerification = () => {
                 </Button>
               </div>
 
-              {/* Informations - Bloc minimaliste */}
               <div className="bg-muted/50 border border-muted rounded-xl p-3 mt-4">
                 <p className="text-xs text-muted-foreground text-center">
-                  Vous ne recevez pas l'email ? Vérifiez votre dossier de spams
-                  ou indésirables.
+                  Vous ne recevez pas l'email ? Vérifiez vos spams ou renvoyez un nouveau code.
                 </p>
               </div>
 
-              {/* Retour à l'inscription */}
               <Button
                 onClick={() => navigate("/register")}
                 variant="ghost"

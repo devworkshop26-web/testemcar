@@ -9,62 +9,71 @@ export const WhyGasyCarSection = () => {
   const advantages = [
     { 
       icon: Shield, 
-      title: "100% Sécurisé", 
-      desc: "Tous nos hôtes et véhicules sont vérifiés. Assurance complète incluse pour une location en toute tranquillité.", 
+      title: " Utilsateurs vérifié ", 
+      desc: "Pour votre sécurité, Tous les propriétaires et leurs véhicules sont vérifiés. Documents contrôlés, contrats standardisés et paiements protégés.", 
       delay: 100 
     },
     { 
       icon: Zap, 
-      title: "Réservation Rapide", 
-      desc: "Réservez votre véhicule en quelques clics. Confirmation instantanée et processus simplifié.", 
+      title: " Réservation Intuitive", 
+      desc: "Trouvez le véhicule idéal en quelques clics, près de chez vous ou de votre destination. Un parcours fluide, rapide et pensé pour votre confort.", 
       delay: 200 
     },
     { 
       icon: Headset, 
-      title: "Support Local 24/7", 
-      desc: "Notre équipe locale dédiée est disponible à tout moment pour vous accompagner pendant votre location.", 
+      title: " Choix personnalisé", 
+      desc: "Chaque déplacement mérite le véhicule qui vous correspond, adapté à votre budget et à vos besoins (marriage, vacances, officiel, etc.) ", 
       delay: 300 
     },
-    { 
-      icon: MapPin, 
-      title: "Livraison Partout", 
-      desc: "Des véhicules disponibles dans toutes les grandes villes et régions de Madagascar.", 
-      delay: 400 
+    {
+      icon: MapPin,
+      title: "Livraison Partout",
+      desc: "Des véhicules disponibles dans toutes les grandes villes et régions de Madagascar.",
+      delay: 400,
     },
   ];
 
   return (
-    <AnimatedSection className="py-16 bg-muted/50 rounded-3xl mb-10 overflow-hidden" delay={0}>
-      <div className="text-center mb-16">
+    <AnimatedSection className="py-12 bg-muted/40 rounded-3xl mb-8 overflow-hidden border border-border/40" delay={0}>
+      <div className="text-center mb-10">
         <span className="text-sm font-semibold uppercase text-secondary tracking-widest">
-          Notre Engagement Qualité
+           Trouver une voiture rapidement et intuitivement
         </span>
-        <h2 className="text-4xl md:text-5xl font-poppins font-extrabold text-foreground mt-2 mb-4">
+        <h2 className="text-3xl md:text-4xl font-poppins font-bold text-foreground mt-2 mb-3">
           Pourquoi choisir <span className="text-primary">Madagasycar</span> ?
         </h2>
-        <p className="text-lg text-muted-foreground max-w-3xl mx-auto px-4">
-          La plateforme de location entre particuliers conçue pour votre <span className="text-primary font-medium">confort</span> et votre <span className="text-primary font-medium">sécurité</span> à Madagascar.
+        <p className="text-base text-muted-foreground max-w-2xl mx-auto px-4">
+          Première plateforme de mise en relation entre particuliers, sécurisée, pour votre confort 
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto px-4">
-        {advantages?.map((item, index) => (
-          <AnimatedItem key={index} delay={item.delay}>
-            <div className="text-center p-6 bg-white border border-border/50 rounded-xl shadow-lg hover:shadow-primary/30 hover:shadow-2xl transition-all duration-300 h-full group transform hover:-translate-y-1">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/10 to-secondary/5 flex items-center justify-center mx-auto mb-4 group-hover:scale-105 group-hover:bg-primary/20 transition-all duration-300">
-                <item.icon className="w-8 h-8 text-primary" />
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {advantages.map((item, index) => (
+            <AnimatedItem key={index} delay={item.delay}>
+              <div className="group relative h-full overflow-hidden rounded-3xl border border-border/50 bg-background/90 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-primary/30 hover:shadow-2xl">
+                {/* Accent top */}
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/80 via-secondary/70 to-primary/80 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+                <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-secondary/10 ring-1 ring-primary/10 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:from-primary/20 group-hover:to-secondary/20">
+                  <item.icon className="h-7 w-7 text-primary" />
+                </div>
+
+                <h3 className="mb-3 text-xl font-bold leading-snug text-foreground">
+                  {item.title}
+                </h3>
+
+                <p className="text-sm leading-7 text-muted-foreground">
+                  {item.desc}
+                </p>
+
+                <div className="mt-6 h-px w-full bg-gradient-to-r from-primary/20 via-border to-transparent" />
               </div>
-
-              <h3 className="text-xl font-poppins font-bold text-foreground mb-3 leading-snug">
-                {item.title}
-              </h3>
-
-              <p className="text-sm text-muted-foreground leading-normal">
-                {item.desc}
-              </p>
-            </div>
-          </AnimatedItem>
-        ))}
+            </AnimatedItem>
+          ))}
+        </div>
       </div>
     </AnimatedSection>
   );

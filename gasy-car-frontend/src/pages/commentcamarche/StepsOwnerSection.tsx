@@ -1,99 +1,64 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Key, Wallet } from "lucide-react";
-
-// ICON CUSTOM
-const CarIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 24 24"
-    fill="white"
-    className="animate-[soft-bounce_2s_ease-in-out_infinite]"
-  >
-    <path d="M3 13L5 7H19L21 13V20H19V18H5V20H3V13ZM6.5 9L5.5 12H18.5L17.5 9H6.5Z" />
-  </svg>
-);
+import { Key, Wallet, CarFront } from "lucide-react";
 
 export const StepsOwnerSection = () => {
   const steps = [
     {
-      icon: <CarIcon />,
-      title: "Listez votre véhicule",
-      desc: "Ajoutez votre voiture sur la plateforme et définissez le tarif.",
-      color: "from-yellow-500 to-yellow-600",
+      icon: <CarFront size={28} className="text-white" />,
+      title: "Publiez votre véhicule",
+      desc: "Ajoutez votre voiture, définissez vos conditions et présentez votre offre proprement.",
+      color: "from-amber-500 to-orange-500",
     },
     {
-      icon: (
-        <Key
-          size={28}
-          className="text-white animate-[soft-bounce_2s_ease-in-out_infinite]"
-        />
-      ),
-      title: "Validez & Louez",
-      desc: "Acceptez les demandes des clients vérifiés.",
-      color: "from-blue-600 to-blue-700",
+      icon: <Key size={28} className="text-white" />,
+      title: "Acceptez les réservations",
+      desc: "Recevez les demandes et louez à des clients avec un cadre plus clair.",
+      color: "from-sky-500 to-blue-600",
     },
     {
-      icon: (
-        <Wallet
-          size={28}
-          className="text-white animate-[soft-bounce_2s_ease-in-out_infinite]"
-        />
-      ),
-      title: "Recevez vos gains",
-      desc: "Paiement sécurisé 48h après chaque location.",
-      color: "from-green-700 to-green-800",
+      icon: <Wallet size={28} className="text-white" />,
+      title: "Recevez vos revenus",
+      desc: "Monétisez votre véhicule quand vous ne l'utilisez pas avec une gestion plus simple.",
+      color: "from-emerald-500 to-green-600",
     },
   ];
 
   return (
-    <section className="py-12 bg-secondary-950 text-white">
-      <div className="max-w-7xl mx-auto px-6">
-
-        {/* TITRE */}
-        <div className="mb-8">
-          <span className="text-black font-semibold uppercase tracking-wide">
-            Investissement & Revenus
+    <section className="py-14 sm:py-16 lg:py-20 bg-[linear-gradient(135deg,rgba(13,27,42,0.98),rgba(8,47,73,0.95))] text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+        <div className="text-center mb-10 sm:mb-12">
+          <span className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            Hôtes & revenus
           </span>
-          <h2 className="text-3xl md:text-4xl font-extrabold mt-1 text-black">
+          <h2 className="text-3xl md:text-4xl font-bold mt-2 tracking-tight">
             Rentabilisez votre véhicule
           </h2>
+          <p className="text-white/75 text-base md:text-lg mt-3 max-w-2xl mx-auto">
+            Une manière plus moderne et plus professionnelle de proposer votre voiture à la location.
+          </p>
         </div>
 
-        {/* GRID */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-5 lg:gap-6">
           {steps.map((step, i) => (
             <Card
               key={i}
-              className="
-                bg-white rounded-2xl shadow-md border border-gray-200 
-                hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02]
-                transition-all duration-300
-                cursor-pointer group
-              "
+              className="group bg-white/95 border border-white/10 rounded-[1.75rem] shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+              style={{ animationDelay: `${i * 120}ms` }}
             >
-              <CardContent className="p-6">
-
-                {/* ICON */}
+              <CardContent className="p-6 sm:p-7">
                 <div
-                  className={`
-                    w-16 h-16 rounded-xl bg-gradient-to-br ${step.color}
-                    flex items-center justify-center shadow-lg mb-4
-                    group-hover:animate-[soft-spin_0.4s_ease-in-out]
-                    transition-all
-                  `}
+                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-lg mb-5 group-hover:scale-105 transition-transform duration-300`}
                 >
                   {step.icon}
                 </div>
 
-                <h3 className="text-lg font-bold mb-2 text-black">
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">
                   {step.title}
                 </h3>
 
-                <p className="text-black/80 leading-relaxed text-[15px]">
+                <p className="text-slate-600 leading-relaxed text-sm sm:text-base">
                   {step.desc}
                 </p>
-
               </CardContent>
             </Card>
           ))}

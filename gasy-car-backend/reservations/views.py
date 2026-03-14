@@ -1,74 +1,52 @@
-#  import drf
 from decimal import Decimal
-from rest_framework import permissions, decorators, response, status
 
+from django.db import transaction
 from django.db.models import Count, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate, TruncMonth
-from django.db.models import Count
-from django.utils.timezone import now, timedelta
-from rest_framework.decorators import action
-from django.db import transaction
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils.crypto import get_random_string
-from django.http import HttpResponseForbidden
+from django.utils.timezone import now, timedelta
 
-# DRF
-from rest_framework import status, viewsets
-from rest_framework.permissions import IsAdminUser
+from drf_yasg.utils import swagger_auto_schema
+
+from rest_framework import permissions, status, viewsets
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_yasg.utils import swagger_auto_schema
-from rest_framework.decorators import (
-    authentication_classes,
-    permission_classes,
-    api_view,
-)
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from django.urls import reverse
-from django.core.mail import send_mail
+from driver.models import Driver
 from gasycar.utils import send_email_notification
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth.models import AnonymousUser
+from modepayment.models import ModePayment
 from smsapp.helpsms import send_sms_befiana
-
-
-# models
 from users.models import User
 from vehicule.models import Vehicule
-from modepayment.models import ModePayment
 
-
-# import serializers
+from .forms import ReservationPaymentForm
+from .models import Reservation, ReservationPayment, ReservationPricingConfig, ReservationService
 from .serializers import (
     DailyIncomeSerializer,
+    ReservationPaymentSerializer,
+    ReservationPricingConfigSerializer,
     ReservationSerializer,
     ReservationServiceSerializer,
     ReservationStatisticsSerializer,
-    ReservationPaymentSerializer,
-    ReservationPricingConfigSerializer,
 )
-
-# import models
-from .models import Reservation, ReservationService, ReservationPayment, ReservationPricingConfig
-from .forms import ReservationPaymentForm
-from driver.models import Driver
-
-
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 def authenticate_request(request):
     """
-    Authentifie une requête Django à partir du token Bearer dans l’URL ou dans l’Authorization header.
+    Authentifie une requête Django à partir du token Bearer dans l’URL
+    ou dans l’Authorization header.
     """
     jwt_auth = JWTAuthentication()
 
-    # 1. Chercher token dans l'URL
     token_param = request.GET.get("token")
     if token_param:
         request.META["HTTP_AUTHORIZATION"] = f"Bearer {token_param}"
@@ -83,97 +61,310 @@ def authenticate_request(request):
     return None
 
 
+def is_admin_or_support(user):
+    return (
+        getattr(user, "role", None) in ["ADMIN", "SUPPORT"]
+        or getattr(user, "is_superuser", False)
+    )
+
+
+def get_reservation_queryset_for_user(user):
+    qs = (
+        Reservation.objects.with_relations()
+        .select_related(
+            "client",
+            "vehicle",
+            "vehicle__proprietaire",
+            "driver",
+            "payment",
+            "payment__mode",
+        )
+        .prefetch_related("equipments", "services")
+    )
+
+    if is_admin_or_support(user):
+        return qs
+
+    if getattr(user, "role", None) == "PRESTATAIRE":
+        return qs.filter(vehicle__proprietaire=user)
+
+    return qs.filter(client=user)
+
+
+def get_reservation_service_queryset_for_user(user):
+    qs = (
+        ReservationService.objects.with_relations()
+        .select_related(
+            "reservation",
+            "reservation__client",
+            "reservation__vehicle",
+            "reservation__vehicle__proprietaire",
+        )
+    )
+
+    if is_admin_or_support(user):
+        return qs
+
+    if getattr(user, "role", None) == "PRESTATAIRE":
+        return qs.filter(reservation__vehicle__proprietaire=user)
+
+    return qs.filter(reservation__client=user)
+
+
+# Workflow strict des transitions de réservation
+RESERVATION_ALLOWED_TRANSITIONS = {
+    Reservation.Status.PENDING: {
+        Reservation.Status.CONFIRMED,
+        Reservation.Status.CANCELLED,
+    },
+    Reservation.Status.CONFIRMED: {
+        Reservation.Status.IN_PROGRESS,
+        Reservation.Status.CANCELLED,
+    },
+    Reservation.Status.IN_PROGRESS: {
+        Reservation.Status.COMPLETED,
+    },
+    Reservation.Status.COMPLETED: set(),
+    Reservation.Status.CANCELLED: set(),
+}
+
+
+def reservation_payment_is_validated(reservation: Reservation) -> bool:
+    payment = getattr(reservation, "payment", None)
+    return bool(payment and payment.status == ReservationPayment.PaymentStatus.VALIDATED)
+
+
+def ensure_reservation_transition_allowed(user, reservation: Reservation, target_status: str):
+    """
+    Vérifie si l'utilisateur a le droit d'effectuer la transition demandée.
+    """
+    current_status = reservation.status
+    allowed_targets = RESERVATION_ALLOWED_TRANSITIONS.get(current_status, set())
+
+    if target_status not in allowed_targets:
+        raise PermissionDenied(
+            f"Transition non autorisée : {current_status} -> {target_status}."
+        )
+
+    role = getattr(user, "role", None)
+
+    # CONFIRMATION
+    if target_status == Reservation.Status.CONFIRMED:
+        if not reservation_payment_is_validated(reservation):
+            raise PermissionDenied(
+                "Le paiement doit être validé avant de confirmer la réservation."
+            )
+
+        if role != "PRESTATAIRE":
+            raise PermissionDenied(
+                "Seul le prestataire propriétaire peut confirmer cette réservation."
+            )
+
+        if reservation.vehicle.proprietaire_id != user.id:
+            raise PermissionDenied("Accès non autorisé.")
+
+        return
+
+    # DÉMARRAGE
+    if target_status == Reservation.Status.IN_PROGRESS:
+        if role == "PRESTATAIRE":
+            if reservation.vehicle.proprietaire_id != user.id:
+                raise PermissionDenied("Accès non autorisé.")
+            return
+
+        if is_admin_or_support(user):
+            return
+
+        raise PermissionDenied(
+            "Seul le prestataire propriétaire, l'administrateur ou le support peut démarrer cette réservation."
+        )
+
+    # FIN DE LOCATION
+    if target_status == Reservation.Status.COMPLETED:
+        if role == "PRESTATAIRE":
+            if reservation.vehicle.proprietaire_id != user.id:
+                raise PermissionDenied("Accès non autorisé.")
+            return
+
+        if is_admin_or_support(user):
+            return
+
+        raise PermissionDenied(
+            "Seul le prestataire propriétaire, l'administrateur ou le support peut terminer cette réservation."
+        )
+
+    # ANNULATION
+    if target_status == Reservation.Status.CANCELLED:
+        if role == "CLIENT":
+            if reservation.client_id != user.id:
+                raise PermissionDenied("Accès non autorisé.")
+            if current_status not in {
+                Reservation.Status.PENDING,
+                Reservation.Status.CONFIRMED,
+            }:
+                raise PermissionDenied(
+                    "Le client ne peut annuler qu'une réservation en attente ou confirmée."
+                )
+            return
+
+        if role == "PRESTATAIRE":
+            if reservation.vehicle.proprietaire_id != user.id:
+                raise PermissionDenied("Accès non autorisé.")
+            return
+
+        if is_admin_or_support(user):
+            return
+
+        raise PermissionDenied(
+            "Vous n'êtes pas autorisé à annuler cette réservation."
+        )
+
+    raise PermissionDenied("Transition non gérée.")
+
+class SecuredAPIView(APIView):
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+
+class AdminSupportOnlyAPIView(SecuredAPIView):
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if not is_admin_or_support(request.user):
+            self.permission_denied(
+                request,
+                message="Accès réservé aux administrateurs et au support.",
+            )
+
+
 class IsOwnerOrStaff(permissions.BasePermission):
     """
-    Autorise si l'utilisateur est staff (is_staff) ou s'il est le client lié à la réservation.
+    Autorise si l'utilisateur est staff ou s'il est lié à la réservation.
     """
 
     def has_object_permission(self, request, view, obj):
-        # obj est une instance de ReservationPayment
         if request.user and request.user.is_staff:
             return True
+
         reservation = getattr(obj, "reservation", None)
         user_id = getattr(request.user, "id", None)
+
         if not reservation or not user_id:
             return False
+
         if getattr(reservation, "client_id", None) == user_id:
             return True
+
         return getattr(reservation.vehicle, "proprietaire_id", None) == user_id
 
     def has_permission(self, request, view):
-        # pour list/create on laisse passer et on filtrera dans get_queryset / perform_create
         return request.user and request.user.is_authenticated
 
 
 class ReservationPaymentViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet pour ReservationPayment.
-    - Les clients peuvent lister/voir leurs paiements.
-    - Le staff peut voir / modifier / valider.
-    """
-
     queryset = ReservationPayment.objects.select_related(
-        "reservation", "reservation__client", "mode", "processed_by"
+        "reservation",
+        "reservation__client",
+        "reservation__vehicle",
+        "reservation__vehicle__proprietaire",
+        "mode",
+        "processed_by",
     ).all()
     serializer_class = ReservationPaymentSerializer
-    permission_classes = [IsOwnerOrStaff]
-
-    # def get_queryset(self):
-    #     user = self.request.user
-    #     qs = super().get_queryset()
-    #     # if user.is_staff:
-    #     #     return qs
-    #     # les utilisateurs normaux ne voient que leurs propres paiements
-    #     return qs.filter(reservation__client=user)
-
-    # @transaction.atomic
-    # def perform_create(self, serializer):
-    #     """
-    #     Creation sécurisée d'un ReservationPayment.
-    #     - Vérifie que la reservation existe et appartient à l'utilisateur (sauf staff).
-    #     - Accepte un mode de paiement optionnel.
-    #     """
-    #     user = self.request.user
-    #     reservation = serializer.validated_data.get("reservation")
-
-    #     # sécurité : seul le client propriétaire (ou staff) peut créer le paiement pour cette reservation
-    #     if not user.is_staff and reservation.client_id != user.id:
-    #         raise exceptions.PermissionDenied(
-    #             "Vous n'êtes pas autorisé à créer un paiement pour cette réservation."
-    #         )
-
-        # créer l'enregistrement (processed_by laissé à None : la validation peut être faite par le staff via update)
-        # serializer.save()
-
-    def create(self, request, *args, **kwargs):
-        """
-        Override pour accepter aussi la logique quand le frontend
-        envoie 'mode' qui n'existe pas — on retourne une erreur claire.
-        """
-        # Serializer va vérifier existence des PKs (PrimaryKeyRelatedField).
-        return super().create(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        """
-        Limiter qui peut changer le status / processed_by:
-        - Seul le staff peut marquer VALIDATED / REJECTED / REFUNDED ou définir processed_by.
-        """
-        # user = request.user
-        # if not user.is_staff:
-        #     # si un utilisateur normal essaie de modifier status/processed_by -> interdit
-        #     forbidden_fields = {"status", "processed_by"}
-        #     if any(f in request.data for f in forbidden_fields):
-        #         raise exceptions.PermissionDenied(
-        #             "Seul le personnel peut modifier le statut ou le champ processed_by."
-        #         )
-        return super().update(request, *args, **kwargs)
-
-
-class ReservationPricingConfigAPIView(APIView):
-    """Expose et met à jour la configuration globale de tarification réservation."""
-
     authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+
+        if is_admin_or_support(user):
+            return qs
+
+        if getattr(user, "role", None) == "PRESTATAIRE":
+            return qs.filter(reservation__vehicle__proprietaire=user)
+
+        return qs.filter(reservation__client=user)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        user = self.request.user
+        reservation = serializer.validated_data["reservation"]
+
+        if hasattr(reservation, "payment"):
+            raise ValidationError(
+                {"reservation": "Cette réservation a déjà un paiement."}
+            )
+
+        if reservation.status == Reservation.Status.CANCELLED:
+            raise ValidationError(
+                {"reservation": "Impossible de payer une réservation annulée."}
+            )
+
+        allowed = (
+            is_admin_or_support(user)
+            or reservation.client_id == user.id
+            or reservation.vehicle.proprietaire_id == user.id
+        )
+
+        if not allowed:
+            raise PermissionDenied(
+                "Vous n'êtes pas autorisé à créer un paiement pour cette réservation."
+            )
+
+        serializer.save(status=ReservationPayment.PaymentStatus.PENDING)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        user = self.request.user
+        payment = self.get_object()
+        payload_keys = set(self.request.data.keys())
+        new_status = serializer.validated_data.get("status", payment.status)
+
+        # On interdit de changer la réservation liée
+        if "reservation" in payload_keys:
+            raise PermissionDenied(
+                "La réservation liée au paiement ne peut pas être modifiée."
+            )
+
+        # ADMIN / SUPPORT : peuvent traiter le paiement
+        if is_admin_or_support(user):
+            processed_by = (
+                user
+                if new_status in [
+                    ReservationPayment.PaymentStatus.VALIDATED,
+                    ReservationPayment.PaymentStatus.REJECTED,
+                    ReservationPayment.PaymentStatus.REFUNDED,
+                ]
+                else payment.processed_by
+            )
+            serializer.save(processed_by=processed_by)
+            return
+
+        # CLIENT / PRESTATAIRE : peuvent seulement modifier certaines infos tant que paiement PENDING
+        allowed_non_staff_fields = {"mode", "reason", "proof_image"}
+        if payload_keys - allowed_non_staff_fields:
+            raise PermissionDenied(
+                "Seul un administrateur ou le support peut modifier le statut du paiement."
+            )
+
+        if payment.status != ReservationPayment.PaymentStatus.PENDING:
+            raise PermissionDenied(
+                "Un paiement déjà traité ne peut plus être modifié."
+            )
+
+        serializer.save(processed_by=payment.processed_by)
+
+
+class ReservationPricingConfigAPIView(SecuredAPIView):
+    """
+    Expose et met à jour la configuration globale de tarification réservation.
+    """
 
     def get(self, request, format=None):
         config = ReservationPricingConfig.get_solo()
@@ -189,7 +380,11 @@ class ReservationPricingConfigAPIView(APIView):
             )
 
         config = ReservationPricingConfig.get_solo()
-        serializer = ReservationPricingConfigSerializer(config, data=request.data, partial=True)
+        serializer = ReservationPricingConfigSerializer(
+            config,
+            data=request.data,
+            partial=True,
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -205,34 +400,97 @@ def user_can_pay_reservation(user, reservation):
     return reservation.vehicle.proprietaire_id == user.id
 
 
-# reservation APIView
 class ReservationViewSet(viewsets.ModelViewSet):
-    queryset = Reservation.objects.with_relations()
     serializer_class = ReservationSerializer
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(operation_description="Retrieve a list of reservations")
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+    def get_queryset(self):
+        return get_reservation_queryset_for_user(self.request.user)
 
-    @swagger_auto_schema(operation_description="Create a new reservation")
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
 
-    @swagger_auto_schema(operation_description="Retrieve a reservation by ID")
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    @transaction.atomic
+    def perform_create(self, serializer):
+        user = self.request.user
+        vehicle = serializer.validated_data.get("vehicle")
 
-    @swagger_auto_schema(operation_description="Update a reservation by ID")
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        if getattr(user, "role", None) == "CLIENT":
+            serializer.save(client=user)
+            return
 
-    @swagger_auto_schema(operation_description="Partially update a reservation by ID")
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        if getattr(user, "role", None) == "PRESTATAIRE":
+            if not vehicle or vehicle.proprietaire_id != user.id:
+                raise PermissionDenied(
+                    "Vous ne pouvez créer une réservation que sur vos propres véhicules."
+                )
+            serializer.save()
+            return
 
-    @swagger_auto_schema(operation_description="Delete a reservation by ID")
+        if is_admin_or_support(user):
+            serializer.save()
+            return
+
+        raise PermissionDenied("Vous n'êtes pas autorisé à créer cette réservation.")
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        payload_keys = set(self.request.data.keys())
+
+        # Le statut ne passe plus par PATCH générique
+        if "status" in payload_keys:
+            raise PermissionDenied(
+                "Le statut ne peut plus être modifié via PATCH générique. "
+                "Utilisez les endpoints dédiés : accept, cancel, start, complete."
+            )
+
+        # Modification générique réservée à admin/support
+        if not is_admin_or_support(self.request.user):
+            raise PermissionDenied(
+                "Seul un administrateur ou le support peut modifier les détails d'une réservation."
+            )
+
+        serializer.save()
+
     def destroy(self, request, *args, **kwargs):
+        if not is_admin_or_support(request.user):
+            return Response(
+                {
+                    "detail": "Seul un administrateur ou le support peut supprimer définitivement une réservation."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return super().destroy(request, *args, **kwargs)
+
+    def _transition(self, request, reservation: Reservation, target_status: str):
+        ensure_reservation_transition_allowed(request.user, reservation, target_status)
+        reservation.status = target_status
+        reservation.save(update_fields=["status", "updated_at"])
+        serializer = self.get_serializer(reservation)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        reservation = self.get_object()
+        return self._transition(request, reservation, Reservation.Status.CONFIRMED)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        reservation = self.get_object()
+        return self._transition(request, reservation, Reservation.Status.CANCELLED)
+
+    @action(detail=True, methods=["post"], url_path="start")
+    def start_trip(self, request, pk=None):
+        reservation = self.get_object()
+        return self._transition(request, reservation, Reservation.Status.IN_PROGRESS)
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete_trip(self, request, pk=None):
+        reservation = self.get_object()
+        return self._transition(request, reservation, Reservation.Status.COMPLETED)
 
     @action(detail=False, methods=["post"], url_path="delete-all")
     def delete_all(self, request):
@@ -244,9 +502,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if getattr(current_user, "role", None) != "ADMIN" and not current_user.is_superuser:
+        if not is_admin_or_support(current_user):
             return Response(
-                {"detail": "Accès réservé aux administrateurs."},
+                {"detail": "Accès réservé aux administrateurs et au support."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -283,27 +541,35 @@ class ReservationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=["post"])
     def assign_driver(self, request, pk=None):
-        """
-        Permet à l'admin d'assigner un chauffeur (du pool admin ou autre) à une réservation.
-        """
+        if not is_admin_or_support(request.user):
+            return Response(
+                {"detail": "Seul un administrateur ou le support peut assigner un chauffeur."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         from .pricing_service import PricingService
 
         reservation = self.get_object()
-        driver_id = request.data.get('driver_id')
-        
+        driver_id = request.data.get("driver_id")
+
         if not driver_id:
-            return Response({"error": "driver_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
+            return Response(
+                {"error": "driver_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             driver = Driver.objects.get(id=driver_id)
         except Driver.DoesNotExist:
-            return Response({"error": "Driver not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Driver not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        # Update reservation
         reservation.driver = driver
-        reservation.driver_source = Reservation.DriverSource.ADMIN_POOL # Force Source to Admin Pool if assigned by Admin manually
+        reservation.driver_source = Reservation.DriverSource.ADMIN_POOL
         reservation.with_chauffeur = True
         reservation.driving_mode = Reservation.DrivingMode.WITH_DRIVER
 
@@ -316,11 +582,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
             driver_source=reservation.driver_source,
         )
 
-        reservation.total_days = pricing_result['days']
-        reservation.base_amount = pricing_result['base_amount']
-        reservation.options_amount = pricing_result['driver_amount']
-        reservation.total_amount = pricing_result['total_amount']
-
+        reservation.total_days = pricing_result["days"]
+        reservation.base_amount = pricing_result["base_amount"]
+        reservation.options_amount = pricing_result["driver_amount"]
+        reservation.total_amount = pricing_result["total_amount"]
         reservation.save()
 
         chauffeur_service, _ = ReservationService.objects.get_or_create(
@@ -328,53 +593,79 @@ class ReservationViewSet(viewsets.ModelViewSet):
             service_type=ReservationService.ServiceType.CHAUFFEUR,
             defaults={
                 "service_name": "Chauffeur Pro",
-                "price": pricing_result['driver_amount'] / pricing_result['days'],
-                "quantity": pricing_result['days'],
+                "price": pricing_result["driver_amount"] / pricing_result["days"],
+                "quantity": pricing_result["days"],
             },
         )
         chauffeur_service.service_name = "Chauffeur Pro"
-        chauffeur_service.price = pricing_result['driver_amount'] / pricing_result['days']
-        chauffeur_service.quantity = pricing_result['days']
+        chauffeur_service.price = pricing_result["driver_amount"] / pricing_result["days"]
+        chauffeur_service.quantity = pricing_result["days"]
         chauffeur_service.save()
 
-        return Response(ReservationSerializer(reservation).data)
+        return Response(
+            ReservationSerializer(reservation, context={"request": request}).data
+        )
 
 
-# api view pour recuperer les reservations d'un utilisateur
-class UserReservationsAPIView(APIView):
+class UserReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations for a specific user"
     )
     def get(self, request, user_id, format=None):
-        reservations = Reservation.objects.with_relations().filter(client__id=user_id)
-        serializer = ReservationSerializer(reservations, many=True, context={'request': request})
+        if not is_admin_or_support(request.user) and request.user.id != user_id:
+            return Response(
+                {"detail": "Accès non autorisé."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        reservations = get_reservation_queryset_for_user(request.user).filter(client__id=user_id)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations d'un vehicule
-class VehicleReservationsAPIView(APIView):
+class VehicleReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations for a specific vehicle"
     )
     def get(self, request, vehicle_id, format=None):
-        reservations = Reservation.objects.with_relations().filter(
-            vehicle__id=vehicle_id
+        vehicle = get_object_or_404(Vehicule, id=vehicle_id)
+
+        if (
+            not is_admin_or_support(request.user)
+            and getattr(request.user, "role", None) == "PRESTATAIRE"
+            and vehicle.proprietaire_id != request.user.id
+        ):
+            return Response(
+                {"detail": "Accès non autorisé."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        reservations = get_reservation_queryset_for_user(request.user).filter(vehicle__id=vehicle_id)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
         )
-        serializer = ReservationSerializer(reservations, many=True)
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par status
-class StatusReservationsAPIView(APIView):
+class StatusReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(operation_description="Retrieve reservations by status")
     def get(self, request, status, format=None):
-        reservations = Reservation.objects.with_relations().filter(status=status)
-        serializer = ReservationSerializer(reservations, many=True)
+        reservations = get_reservation_queryset_for_user(request.user).filter(status=status)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations actives (PENDING, CONFIRMED, IN_PROGRESS)
-class ActiveReservationsAPIView(APIView):
+class ActiveReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(operation_description="Retrieve active reservations")
     def get(self, request, format=None):
         active_statuses = [
@@ -382,83 +673,91 @@ class ActiveReservationsAPIView(APIView):
             Reservation.Status.CONFIRMED,
             Reservation.Status.IN_PROGRESS,
         ]
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             status__in=active_statuses
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations terminees (COMPLETED, CANCELLED)
-class CompletedReservationsAPIView(APIView):
+class CompletedReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(operation_description="Retrieve completed reservations")
     def get(self, request, format=None):
         completed_statuses = [
             Reservation.Status.COMPLETED,
             Reservation.Status.CANCELLED,
         ]
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             status__in=completed_statuses
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par date de creation
-class DateRangeReservationsAPIView(APIView):
+class DateRangeReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations within a date range"
     )
     def get(self, request, start_date, end_date, format=None):
-        reservations = Reservation.objects.filter(
-            created_at__date__gte=start_date, created_at__date__lte=end_date
+        reservations = get_reservation_queryset_for_user(request.user).filter(
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer le nombre total de reservations
-class TotalReservationsCountAPIView(APIView):
+class TotalReservationsCountAPIView(SecuredAPIView):
     @swagger_auto_schema(operation_description="Retrieve total count of reservations")
     def get(self, request, format=None):
-        total_count = Reservation.objects.count()
+        total_count = get_reservation_queryset_for_user(request.user).count()
         return Response({"total_reservations": total_count})
 
 
-# api view pour recuperer le montant total des reservations
-class TotalReservationsAmountAPIView(APIView):
+class TotalReservationsAmountAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve total amount of all reservations"
     )
     def get(self, request, format=None):
         total_amount = (
-            Reservation.objects.aggregate(Sum("total_amount"))["total_amount__sum"] or 0
+            get_reservation_queryset_for_user(request.user).aggregate(
+                Sum("total_amount")
+            )["total_amount__sum"]
+            or 0
         )
         return Response({"total_reservations_amount": total_amount})
 
 
-class ReservationStatisticsAPIView(APIView):
-    """Return aggregated reservation metrics for administrators."""
-
-    permission_classes = [IsAdminUser]
-
+class ReservationStatisticsAPIView(AdminSupportOnlyAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve aggregated reservation statistics for the admin dashboard"
     )
     def get(self, request, format=None):
-        aggregates = Reservation.objects.aggregate(
+        base_qs = Reservation.objects.all()
+
+        aggregates = base_qs.aggregate(
             total_reservations=Count("id"),
             total_amount_sum=Coalesce(Sum("total_amount"), Value(Decimal("0"))),
         )
 
         status_counts = {choice[0]: 0 for choice in Reservation.Status.choices}
-        for status_data in Reservation.objects.values("status").annotate(
-            count=Count("id")
-        ):
+        for status_data in base_qs.values("status").annotate(count=Count("id")):
             status_counts[status_data["status"]] = status_data["count"]
 
         monthly_stats_qs = (
-            Reservation.objects.annotate(month=TruncMonth("created_at"))
+            base_qs.annotate(month=TruncMonth("created_at"))
             .values("month")
             .annotate(count=Count("id"))
             .order_by("month")
@@ -481,208 +780,225 @@ class ReservationStatisticsAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# api view pour recuperer les reservations avec chauffeur
-class ChauffeurReservationsAPIView(APIView):
+class ChauffeurReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(operation_description="Retrieve reservations with chauffeur")
     def get(self, request, format=None):
-        reservations = Reservation.objects.filter(with_chauffeur=True)
-        serializer = ReservationSerializer(reservations, many=True)
+        reservations = get_reservation_queryset_for_user(request.user).filter(
+            with_chauffeur=True
+        )
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations sans chauffeur
-class WithoutChauffeurReservationsAPIView(APIView):
+class WithoutChauffeurReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations without chauffeur"
     )
     def get(self, request, format=None):
-        reservations = Reservation.objects.filter(with_chauffeur=False)
-        serializer = ReservationSerializer(reservations, many=True)
+        reservations = get_reservation_queryset_for_user(request.user).filter(
+            with_chauffeur=False
+        )
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par lieu de prise en charge
-class PickupLocationReservationsAPIView(APIView):
+class PickupLocationReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations by pickup location"
     )
     def get(self, request, pickup_location, format=None):
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             pickup_location__icontains=pickup_location
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par lieu de retour
-class DropoffLocationReservationsAPIView(APIView):
+class DropoffLocationReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations by dropoff location"
     )
     def get(self, request, dropoff_location, format=None):
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             dropoff_location__icontains=dropoff_location
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par montant total minimum
-class MinTotalAmountReservationsAPIView(APIView):
+class MinTotalAmountReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations with minimum total amount"
     )
     def get(self, request, min_amount, format=None):
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             total_amount__gte=min_amount
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par montant total maximum
-class MaxTotalAmountReservationsAPIView(APIView):
+class MaxTotalAmountReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations with maximum total amount"
     )
     def get(self, request, max_amount, format=None):
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             total_amount__lte=max_amount
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view pour recuperer les reservations par nombre de jours minimum
-class MinTotalDaysReservationsAPIView(APIView):
+class MinTotalDaysReservationsAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservations with minimum total days"
     )
     def get(self, request, min_days, format=None):
-        reservations = Reservation.objects.with_relations().filter(
+        reservations = get_reservation_queryset_for_user(request.user).filter(
             total_days__gte=min_days
         )
-        serializer = ReservationSerializer(reservations, many=True)
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 
-# api view ReservationService
 class ReservationServiceViewSet(viewsets.ModelViewSet):
-    queryset = ReservationService.objects.with_relations()
     serializer_class = ReservationServiceSerializer
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        operation_description="Retrieve a list of reservation services"
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+    def get_queryset(self):
+        return get_reservation_service_queryset_for_user(self.request.user)
 
-    @swagger_auto_schema(operation_description="Create a new reservation service")
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+    @transaction.atomic
+    def perform_create(self, serializer):
+        if not is_admin_or_support(self.request.user):
+            raise PermissionDenied(
+                "Seul un administrateur ou le support peut créer un service de réservation."
+            )
+        serializer.save()
 
-    @swagger_auto_schema(operation_description="Retrieve a reservation service by ID")
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    @transaction.atomic
+    def perform_update(self, serializer):
+        if not is_admin_or_support(self.request.user):
+            raise PermissionDenied(
+                "Seul un administrateur ou le support peut modifier un service de réservation."
+            )
+        serializer.save()
 
-    @swagger_auto_schema(operation_description="Update a reservation service by ID")
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Partially update a reservation service by ID"
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(operation_description="Delete a reservation service by ID")
     def destroy(self, request, *args, **kwargs):
+        if not is_admin_or_support(request.user):
+            return Response(
+                {
+                    "detail": "Seul un administrateur ou le support peut supprimer un service de réservation."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return super().destroy(request, *args, **kwargs)
 
 
-# api view pour recupere ReservationService par reservation
-class ReservationServiceByReservationAPIView(APIView):
+class ReservationServiceByReservationAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservation services for a specific reservation"
     )
     def get(self, request, reservation_id, format=None):
-        services = ReservationService.objects.with_relations().filter(
+        services = get_reservation_service_queryset_for_user(request.user).filter(
             reservation__id=reservation_id
         )
         serializer = ReservationServiceSerializer(services, many=True)
         return Response(serializer.data)
 
 
-# api view pour recupere ReservationService par type de service
-class ReservationServiceByTypeAPIView(APIView):
+class ReservationServiceByTypeAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservation services by service type"
     )
     def get(self, request, service_type, format=None):
-        services = ReservationService.objects.with_relations().filter(
+        services = get_reservation_service_queryset_for_user(request.user).filter(
             service_type=service_type
         )
         serializer = ReservationServiceSerializer(services, many=True)
         return Response(serializer.data)
 
 
-# api view pour recupere ReservationService par nom de service
-class ReservationServiceByNameAPIView(APIView):
+class ReservationServiceByNameAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservation services by service name"
     )
     def get(self, request, service_name, format=None):
-        services = ReservationService.objects.with_relations().filter(
+        services = get_reservation_service_queryset_for_user(request.user).filter(
             service_name__icontains=service_name
         )
         serializer = ReservationServiceSerializer(services, many=True)
         return Response(serializer.data)
 
 
-# api view pour recupere ReservationService par fourchette de prix
-class ReservationServiceByPriceRangeAPIView(APIView):
+class ReservationServiceByPriceRangeAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservation services within a price range"
     )
     def get(self, request, min_price, max_price, format=None):
-        services = ReservationService.objects.with_relations().filter(
-            price__gte=min_price, price__lte=max_price
+        services = get_reservation_service_queryset_for_user(request.user).filter(
+            price__gte=min_price,
+            price__lte=max_price,
         )
         serializer = ReservationServiceSerializer(services, many=True)
         return Response(serializer.data)
 
 
-# api view pour recupere ReservationService par quantite minimum
-class ReservationServiceByMinQuantityAPIView(APIView):
+class ReservationServiceByMinQuantityAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservation services with minimum quantity"
     )
     def get(self, request, min_quantity, format=None):
-        services = ReservationService.objects.with_relations().filter(
+        services = get_reservation_service_queryset_for_user(request.user).filter(
             quantity__gte=min_quantity
         )
         serializer = ReservationServiceSerializer(services, many=True)
         return Response(serializer.data)
 
 
-# api view pour recupere ReservationService par quantite maximum
-class ReservationServiceByMaxQuantityAPIView(APIView):
+class ReservationServiceByMaxQuantityAPIView(SecuredAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve reservation services with maximum quantity"
     )
     def get(self, request, max_quantity, format=None):
-        services = ReservationService.objects.with_relations().filter(
+        services = get_reservation_service_queryset_for_user(request.user).filter(
             quantity__lte=max_quantity
         )
         serializer = ReservationServiceSerializer(services, many=True)
         return Response(serializer.data)
 
 
-class DailyIncomeAPIView(APIView):
-    """Return the daily income aggregated from reservations' total amounts."""
-
-    permission_classes = [IsAdminUser]
-
+class DailyIncomeAPIView(AdminSupportOnlyAPIView):
     @swagger_auto_schema(
         operation_description="Retrieve daily income based on reservation totals"
     )
@@ -698,13 +1014,20 @@ class DailyIncomeAPIView(APIView):
 
 
 class ReservationStatsViewSet(viewsets.ViewSet):
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-    # 📊 1) Stats du jour (24h)
+    def _check_admin_or_support(self, request):
+        if not is_admin_or_support(request.user):
+            raise PermissionDenied(
+                "Accès réservé aux administrateurs et au support."
+            )
 
     @action(detail=False, methods=["get"])
     def day(self, request):
-        today = now().date()
+        self._check_admin_or_support(request)
 
+        today = now().date()
         data = (
             Reservation.objects.filter(created_at__date=today)
             .extra(select={"hour": "EXTRACT(HOUR FROM created_at)"})
@@ -713,14 +1036,13 @@ class ReservationStatsViewSet(viewsets.ViewSet):
             .order_by("hour")
         )
 
-        # Format pour Recharts
         graph = [{"hour": int(d["hour"]), "total": d["total"]} for d in data]
-
         return Response(graph)
 
-    # 📊 2) Stats de la semaine
     @action(detail=False, methods=["get"])
     def week(self, request):
+        self._check_admin_or_support(request)
+
         today = now().date()
         start_week = today - timedelta(days=today.weekday())
 
@@ -733,14 +1055,13 @@ class ReservationStatsViewSet(viewsets.ViewSet):
         )
 
         graph = [{"day": d["day"].strip(), "total": d["total"]} for d in data]
-
         return Response(graph)
 
-    # 📊 3) Stats du mois
     @action(detail=False, methods=["get"])
     def month(self, request):
-        today = now().date()
+        self._check_admin_or_support(request)
 
+        today = now().date()
         data = (
             Reservation.objects.filter(created_at__month=today.month)
             .extra(select={"day": "EXTRACT(DAY FROM created_at)"})
@@ -750,14 +1071,13 @@ class ReservationStatsViewSet(viewsets.ViewSet):
         )
 
         graph = [{"day": int(d["day"]), "total": d["total"]} for d in data]
-
         return Response(graph)
 
 
-class OwnerVehicleReservationsAPIView(APIView):
+class OwnerVehicleReservationsAPIView(SecuredAPIView):
     """
     Récupère toutes les réservations faites par des clients
-    sur les véhicules appartenant à un propriétaire (prestataire).
+    sur les véhicules appartenant à un propriétaire.
     """
 
     @swagger_auto_schema(
@@ -768,24 +1088,28 @@ class OwnerVehicleReservationsAPIView(APIView):
         responses={200: ReservationSerializer(many=True)},
     )
     def get(self, request, owner_id):
-        # Vérifier que l’utilisateur existe
         owner = get_object_or_404(User, id=owner_id)
 
-        # Chercher tous les véhicules de l'utilisateur
+        if not is_admin_or_support(request.user):
+            if getattr(request.user, "role", None) != "PRESTATAIRE" or request.user.id != owner.id:
+                return Response(
+                    {"detail": "Accès non autorisé."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         vehicles = Vehicule.objects.filter(proprietaire=owner)
-
-        # Récupérer toutes les réservations sur ces véhicules
-        reservations = Reservation.objects.with_relations().filter(vehicle__in=vehicles)
-
-        serializer = ReservationSerializer(
-            reservations, many=True, context={"request": request}
+        reservations = get_reservation_queryset_for_user(request.user).filter(
+            vehicle__in=vehicles
         )
 
+        serializer = ReservationSerializer(
+            reservations,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# methode de payment de resrvation send in email et phone
-#  Vue qui affiche la template
 def reservation_payment_page(request, reservation_id, payment_id):
     user = authenticate_request(request)
     if not user:
@@ -794,14 +1118,11 @@ def reservation_payment_page(request, reservation_id, payment_id):
     reservation = get_object_or_404(Reservation, id=reservation_id)
     payment_mode = get_object_or_404(ModePayment, id=payment_id)
 
-    # Sécurité : seul le client, le prestataire propriétaire ou staff peut voir la page
     if not user_can_pay_reservation(user, reservation):
         return render(request, "403.html", status=403)
 
-    # Récupérer les paramètres de l’URL
     payment_ref = request.GET.get("ref")
     payment_token = request.GET.get("paytok")
-     # 🔥 NOUVEAU : récupérer le JWT token dans l’URL
     jwt_token = request.GET.get("token")
 
     return render(
@@ -809,8 +1130,8 @@ def reservation_payment_page(request, reservation_id, payment_id):
         "ReservationPaymentPage.html",
         {
             "reservation": reservation,
-            "payment_modes": [payment_mode],  # 🔥 IMPORTANT : liste pour le template
-            "hidden_payment_id": str(payment_mode.id),  # 🔥 IMPORTANT : liste pour le template
+            "payment_modes": [payment_mode],
+            "hidden_payment_id": str(payment_mode.id),
             "hidden_reservation_id": str(reservation.id),
             "payment_reference": payment_ref,
             "payment_token": payment_token,
@@ -819,11 +1140,7 @@ def reservation_payment_page(request, reservation_id, payment_id):
     )
 
 
-
-# Vue qui reçoit le POST du formulaire (multipart/form-data)
 def submit_reservation_payment(request):
-
-    # 1. 🔐 Récupération du token transmis par le formulaire
     token = request.POST.get("auth_token")
 
     if token:
@@ -831,62 +1148,64 @@ def submit_reservation_payment(request):
 
     user = authenticate_request(request)
     if not user:
-        print("=====Authentification invalide========================")
-        return render(request, "payment_error.html", {"message": "Authentification invalide"}, status=403)
+        return render(
+            request,
+            "payment_error.html",
+            {"message": "Authentification invalide"},
+            status=403,
+        )
 
     if request.method != "POST":
         return redirect("/")
 
-    # 2. Charger les données du POST
     form = ReservationPaymentForm(request.POST, request.FILES)
 
     reservation_id = request.POST.get("reservation")
-    payment_id = request.POST.get("payment_id")  # 🔥 Nouveau !
+    payment_id = request.POST.get("payment_id")
     payment_mode = get_object_or_404(ModePayment, id=payment_id)
 
-    # reservation = get_object_or_404(Reservation, id=reservation_id)
     reservation = get_object_or_404(
         Reservation.objects.select_related("client", "vehicle"),
-        id=reservation_id
+        id=reservation_id,
     )
 
-    # 3. 🔐 Sécurité utilisateur
     if not user_can_pay_reservation(user, reservation):
-        return render(request, "payment_error.html", {"message": "Accès non autorisé"}, status=403)
+        return render(
+            request,
+            "payment_error.html",
+            {"message": "Accès non autorisé"},
+            status=403,
+        )
 
-    # 4. Validation
     if form.is_valid():
-
-        # Vérifier si un paiement existe déjà
         if hasattr(reservation, "payment"):
-            return render(request, "payment_error.html", {
-                "message": "Un paiement est déjà enregistré pour cette réservation."
-            })
+            return render(
+                request,
+                "payment_error.html",
+                {"message": "Un paiement est déjà enregistré pour cette réservation."},
+            )
 
-        # 5. Créer le paiement
         payment = form.save(commit=False)
         payment.reservation = reservation
         payment.mode = payment_mode
         payment.status = ReservationPayment.PaymentStatus.PENDING
         payment.save()
-        
-        # redirection
-        
 
         context = {
-        "reservation": reservation,
-        "payment": payment,
+            "reservation": reservation,
+            "payment": payment,
         }
 
         return render(request, "booking_detail.html", context)
 
-    # → Si formulaire invalide ou erreur image
-    return render(request, "payment_error.html", {
-        "message": "Le formulaire contient des erreurs.",
-        "errors": form.errors,
-    })
-
-
+    return render(
+        request,
+        "payment_error.html",
+        {
+            "message": "Le formulaire contient des erreurs.",
+            "errors": form.errors,
+        },
+    )
 
 
 @api_view(["POST"])
@@ -902,19 +1221,15 @@ def send_link_payment(request):
     if not user_can_pay_reservation(request.user, reservation):
         return Response({"detail": "Non autorisé"}, status=403)
 
-    # Token JWT utilisé dans le lien
     token = str(request.auth)
 
-    # Génération automatique d'une référence de paiement
-    ref_prefix = methode_payment.operateur[:4].upper()
+    ref_prefix = (methode_payment.operateur or methode_payment.name)[:4].upper()
     payment_reference = f"REF-{ref_prefix}-{get_random_string(8).upper()}"
 
-    # URL de paiement
     payment_url = request.build_absolute_uri(
         f"/api/bookings/{reservation.id}/and/{methode_payment.id}/payment/?token={token}&ref={payment_reference}"
     )
 
-    # Préparation email HTML
     email_context = {
         "client_name": reservation.client.first_name or reservation.client.email,
         "payment_url": payment_url,
@@ -922,9 +1237,7 @@ def send_link_payment(request):
         "payment_mode_number": methode_payment.numero,
         "payment_reference": payment_reference,
         "payment_id": methode_payment.id,
-        
     }
-
 
     html_message = render_to_string("payment_link_email.html", email_context)
 
@@ -934,48 +1247,30 @@ def send_link_payment(request):
     try:
         send_email_notification(html_message, recipient, subject, is_html=True)
     except Exception as e:
-        return Response({"detail": "Erreur envoi e-mail", "error": str(e)}, status=500)
-    
-    # sms
+        return Response(
+            {"detail": "Erreur envoi e-mail", "error": str(e)},
+            status=500,
+        )
+
     try:
-        message = f"Bonjour {reservation.client.first_name}, veuillez confirmer votre paiement de la réservation {reservation.reference} via ce lien : {payment_url}"
-        # phone number
+        message = (
+            f"Bonjour {reservation.client.first_name}, veuillez confirmer votre paiement "
+            f"de la réservation {reservation.reference} via ce lien : {payment_url}"
+        )
+
         full_phone = reservation.client.phone
         phone_client = ""
         if full_phone:
-            if full_phone.startswith('+261'):
-                phone_client = full_phone.replace('+261', '', 1)
+            if full_phone.startswith("+261"):
+                phone_client = full_phone.replace("+261", "", 1)
             else:
-                phone_client = full_phone.lstrip('+')
-        # send sms
+                phone_client = full_phone.lstrip("+")
+
         send_sms_befiana(phone_client, message)
     except Exception as e:
-        return Response({"detail": "Erreur envoi sms", "error": str(e)}, status=500)
+        return Response(
+            {"detail": "Erreur envoi sms", "error": str(e)},
+            status=500,
+        )
 
     return Response({"detail": "Lien envoyé avec succès"})
-
-
-# def booking_detail(request, reservation_id):
-#     # 🔥 Authentification via token ou session
-#     user = authenticate_request(request)
-#     if not user:
-#         return HttpResponseForbidden("Accès refusé")
-
-#     reservation = get_object_or_404(
-#         Reservation.objects.select_related("client", "vehicle"),
-#         id=reservation_id
-#     )
-
-#     # 🔥 Sécurité : seul le client propriétaire ou staff peut accéder
-#     if not user.is_staff and reservation.client_id != user.id:
-#         return HttpResponseForbidden("Accès non autorisé")
-
-#     # Paiement associé, si existant
-#     payment = getattr(reservation, "payment", None)
-
-#     context = {
-#         "reservation": reservation,
-#         "payment": payment,
-#     }
-
-#     return render(request, "booking_detail.html", context)

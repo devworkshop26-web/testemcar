@@ -1,5 +1,3 @@
-// types/bookings.ts
-
 import { User } from "./userType";
 import { Vehicule } from "./vehiculeType";
 import { ModePayment } from "./modePayment";
@@ -11,6 +9,18 @@ export type ReservationStatus =
   | "IN_PROGRESS"
   | "COMPLETED"
   | "CANCELLED";
+
+export type PaymentStatus =
+  | "PENDING"
+  | "VALIDATED"
+  | "REJECTED"
+  | "REFUNDED";
+
+export type ReservationTransitionAction =
+  | "accept"
+  | "cancel"
+  | "start"
+  | "complete";
 
 export interface Driver {
   id: string;
@@ -25,30 +35,51 @@ export interface Driver {
   license_category?: string;
 }
 
+export interface ReservationService {
+  id: string;
+  reservation: string;
+  service_type: "ASSURANCE" | "CHAUFFEUR" | "EQUIPEMENT" | "AUTRE";
+  service_name: string;
+  price: string;
+  quantity: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ReservationPayment {
+  id: string;
+  reservation: string | null;
+  mode: string | null;
+  mode_data?: ModePayment;
+  reason: string;
+  proof_image: string | null;
+  status: PaymentStatus;
+  processed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Reservation {
   id: string;
-  reference: string; // Référence unique (ex: RES-20251219-0001)
-  client: string; // id User
-  client_data: User; // id User
-  vehicle: string; // id Vehicule
-  vehicle_data: Vehicule; // id Vehicule
+  reference: string;
+  client: string;
+  client_data: User;
+  vehicle: string;
+  vehicle_data: Vehicule;
 
-  // Driver information
-  driver?: string | null; // driver ID
-  driver_data?: Driver | null; // populated driver data
+  driver?: string | null;
+  driver_data?: Driver | null;
 
-  // Equipments
-  equipments?: string[]; // equipment IDs
-  equipments_data?: VehicleEquipment[]; // populated equipment data
+  equipments?: string[];
+  equipments_data?: VehicleEquipment[];
 
-  // Services
-  services_data?: ReservationService[]; // populated services data
+  services_data?: ReservationService[];
 
-  start_datetime: string; // ISO "2025-11-26T10:00:00Z"
+  start_datetime: string;
   end_datetime: string;
 
   total_days: number;
-  base_amount: string; // Decimal -> string
+  base_amount: string;
   options_amount: string;
   total_amount: string;
   caution_amount: string;
@@ -60,8 +91,6 @@ export interface Reservation {
 
   created_at?: string;
   updated_at?: string;
-  payment_reason?: string;
-  payment_method?: string; // ID or object depending on backend, assuming string ID for now or populated object if handled
   payment?: ReservationPayment;
 
   driving_mode: "SELF_DRIVE" | "WITH_DRIVER";
@@ -74,36 +103,15 @@ export interface Reservation {
   guest_phone?: string;
 }
 
-
-
-export interface ReservationService {
-  id: string;
-  reservation: string; // id Reservation
-  service_type: "ASSURANCE" | "CHAUFFEUR" | "EQUIPEMENT" | "AUTRE";
-  service_name: string;
-  price: string; // Decimal
-  quantity: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Payload pour création (admin)
 export interface CreateReservationPayload {
   client?: string;
   vehicle: string;
   start_datetime: string;
   end_datetime: string;
-  total_days: number;
-  base_amount: string;
-  options_amount?: string;
-  total_amount: string;
   caution_amount: string;
-  status?: ReservationStatus;
   with_chauffeur?: boolean;
   pickup_location: string;
   dropoff_location?: string;
-  payment_method?: string; // ID of the payment mode
-  payment_reason?: string;
 
   driving_mode?: "SELF_DRIVE" | "WITH_DRIVER";
   pricing_zone?: "URBAIN" | "PROVINCE";
@@ -115,9 +123,18 @@ export interface CreateReservationPayload {
   guest_phone?: string;
 }
 
-export type UpdateReservationPayload = Partial<CreateReservationPayload>;
+export type UpdateReservationPayload = Partial<
+  Pick<
+    CreateReservationPayload,
+    | "start_datetime"
+    | "end_datetime"
+    | "pickup_location"
+    | "dropoff_location"
+    | "pricing_zone"
+    | "equipments"
+  >
+>;
 
-// ReservationService
 export interface CreateReservationServicePayload {
   reservation: string;
   service_type: ReservationService["service_type"];
@@ -147,25 +164,6 @@ export interface ReservationGraphiqueMonth {
 export interface UploadPaymentProofPayload {
   reservation_id: string;
   proof_image: File;
-}
-
-export type PaymentStatus =
-  | "PENDING"
-  | "VALIDATED"
-  | "REJECTED"
-  | "REFUNDED";
-
-export interface ReservationPayment {
-  id: string;
-  reservation: string | null;     // OneToOne → ID
-  mode: string | null;            // ModePayment ID
-  mode_data?: ModePayment;        // Populated ModePayment object
-  reason: string;
-  proof_image: string | null;     // URL
-  status: PaymentStatus;
-  processed_by: string | null;    // User ID
-  created_at: string;
-  updated_at: string;
 }
 
 export interface CreateReservationPaymentPayload {

@@ -12,6 +12,7 @@ import ScrollToTopButton from "./components/ScrollToTopButton";
 const App = () => (
     <TooltipProvider>
       <LanguageProvider>
+        
         <Toaster />
         <Sonner />
         <Router />

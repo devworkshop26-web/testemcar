@@ -1,4 +1,3 @@
-// queries/reservation-query.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type {
@@ -11,6 +10,7 @@ import type {
   ReservationGraphiqueMonth,
   ReservationPricingConfig,
   UpdateReservationPricingConfigPayload,
+  ReservationTransitionAction,
 } from "@/types/reservationsType";
 import { Reservation } from "@/types/reservationsType";
 import {
@@ -21,8 +21,6 @@ import {
 import { reservationPaymentAPI } from "@/Actions/reservation-payment-api";
 
 const ONE_HOUR_MS = 1000 * 60 * 60;
-
-// 🔹 Reservations
 
 export const useReservationsQuery = () => {
   return useQuery<Reservation[]>({
@@ -70,11 +68,30 @@ export const useUpdateReservationMutation = () => {
     }: {
       id: string;
       payload: UpdateReservationPayload;
-    }) =>
-      reservationAPI.update_reservation(id, payload).then((res) => res.data),
+    }) => reservationAPI.update_reservation(id, payload).then((res) => res.data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
       queryClient.invalidateQueries({ queryKey: ["reservation-one", id] });
+    },
+  });
+};
+
+export const useReservationTransitionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: ReservationTransitionAction;
+    }) => reservationAPI.transition_reservation(id, action).then((res) => res.data),
+
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-one", id] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-of-Myvehicule-all"] });
     },
   });
 };
@@ -90,7 +107,6 @@ export const useDeleteReservationMutation = () => {
   });
 };
 
-
 export const useDeleteAllReservationsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -102,16 +118,12 @@ export const useDeleteAllReservationsMutation = () => {
   });
 };
 
-// 🔹 Reservation Services
-
 export const useReservationServicesQuery = (reservationId?: string) => {
   return useQuery<ReservationService[]>({
     queryKey: ["reservation-services-all", reservationId],
     enabled: !!reservationId,
     queryFn: async () => {
-      const { data } = await reservationServiceAPI.get_all_services(
-        reservationId
-      );
+      const { data } = await reservationServiceAPI.get_all_services(reservationId);
       return Array.isArray(data) ? data : [];
     },
     staleTime: ONE_HOUR_MS,
@@ -133,19 +145,12 @@ export const useCreateReservationServiceMutation = () => {
 };
 
 export const useDeleteReservationServiceMutation = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
       reservationServiceAPI.delete_service(id).then((res) => res.data),
-    // tu peux invalider depuis la page, où tu connais reservationId
   });
 };
 
-
-
-/* ----------------------------------------
-   🟦 Query: Graphique par jour
----------------------------------------- */
 export const useReservationGraphiqueDayQuery = () =>
   useQuery<ReservationGraphiqueDay[]>({
     queryKey: ["reservation", "stats", "day"],
@@ -157,9 +162,6 @@ export const useReservationGraphiqueDayQuery = () =>
     retry: 2,
   });
 
-/* ----------------------------------------
-   🟩 Query: Graphique par semaine
----------------------------------------- */
 export const useReservationGraphiqueWeekQuery = () =>
   useQuery<ReservationGraphiqueWeek[]>({
     queryKey: ["reservation", "stats", "week"],
@@ -171,9 +173,6 @@ export const useReservationGraphiqueWeekQuery = () =>
     retry: 2,
   });
 
-/* ----------------------------------------
-   🟧 Query: Graphique par mois
----------------------------------------- */
 export const useReservationGraphiqueMonthQuery = () =>
   useQuery<ReservationGraphiqueMonth[]>({
     queryKey: ["reservation", "stats", "month"],
@@ -185,9 +184,6 @@ export const useReservationGraphiqueMonthQuery = () =>
     retry: 2,
   });
 
-/* ----------------------------------------
-   🟪 Hook global : toutes les queries
----------------------------------------- */
 export const useReservationStatsQuery = () => {
   const day = useReservationGraphiqueDayQuery();
   const week = useReservationGraphiqueWeekQuery();
@@ -196,8 +192,6 @@ export const useReservationStatsQuery = () => {
   return { day, week, month };
 };
 
-
-
 export const useAllReservationOfMyvehiculeQuery = (id?: string) => {
   return useQuery<Reservation[]>({
     queryKey: ["reservation-of-Myvehicule-all", id],
@@ -205,7 +199,7 @@ export const useAllReservationOfMyvehiculeQuery = (id?: string) => {
     queryFn: async () => {
       if (!id) throw new Error("ID véhicule manquant");
       const { data } = await reservationAPI.get_all_reservations_of_Myvehicule(id);
-      return data; // data est un tableau
+      return data;
     },
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -238,7 +232,6 @@ export const useUpdateReservationPricingConfigMutation = () => {
   });
 };
 
-
 export const useUpdateReservationPaymentMutation = () => {
   const queryClient = useQueryClient();
 
@@ -248,12 +241,14 @@ export const useUpdateReservationPaymentMutation = () => {
       payload,
     }: {
       id: string;
-      payload: { status: "PENDING" | "VALIDATED" | "REJECTED" };
-    }) => reservationPaymentAPI.update_payment_status(id, payload),
+      payload: { status: "PENDING" | "VALIDATED" | "REJECTED" | "REFUNDED" };
+    }) =>
+      reservationPaymentAPI.update_payment_status(id, payload).then((res) => res.data),
 
     onSuccess: () => {
-      // 🔥 recharge les réservations pour refléter le paiement
       queryClient.invalidateQueries({ queryKey: ["reservations-all"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-of-Myvehicule-all"] });
+      queryClient.invalidateQueries({ queryKey: ["reservation-one"] });
     },
   });
 };

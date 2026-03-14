@@ -1,78 +1,89 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import BookingSidebar from './components/BookingSidebar';
+import BookingSidebar from "./components/BookingSidebar";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import VehicleGallery from './components/VehicleGallery';
-import VehicleHeader from './components/VehicleHeader';
-import { ArrowLeft, CalendarIcon, Clock, Info, MessageSquare, AlertCircle, Lock, Wrench } from 'lucide-react';
+import VehicleGallery from "./components/VehicleGallery";
+import VehicleHeader from "./components/VehicleHeader";
+import {
+  CalendarIcon,
+  Clock,
+  Info,
+  MessageSquare,
+  AlertCircle,
+  Lock,
+  Wrench,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { addDays, startOfToday, format, isBefore } from "date-fns";
-import { fr } from "date-fns/locale";
 
-import ReviewsSection from './components/ReviewsSection';
-import VehicleInfoSection from './components/VehicleInfoSection';
-import PricingGridSection from './components/PricingGridSection';
+import ReviewsSection from "./components/ReviewsSection";
+import VehicleInfoSection from "./components/VehicleInfoSection";
+import PricingGridSection from "./components/PricingGridSection";
 import {
   DriverOption,
   type ChauffeurChoice,
   type PricingRates,
   type ReservationAddon,
   type ReservationVehicle,
-  type TravelZone
-} from './reservationTypes';
-import { useVehiculeQuery } from '@/useQuery/vehiculeUseQuery';
-import { useAllVehicleEquipmentsQuery } from '@/useQuery/vehicleEquipmentsUseQuery';
-import { useCreateReservationMutation, useReservationPricingConfigQuery } from '@/useQuery/reservationsUseQuery';
-import { toast } from 'sonner';
-import { CreateReservationPayload } from '@/types/reservationsType';
-import Header from '@/components/Header';
-import { useCurrentUserQuery } from '@/useQuery/useCurrentUserQuery';
+  type TravelZone,
+} from "./reservationTypes";
+import { useVehiculeQuery } from "@/useQuery/vehiculeUseQuery";
+import { useAllVehicleEquipmentsQuery } from "@/useQuery/vehicleEquipmentsUseQuery";
+import {
+  useCreateReservationMutation,
+  useReservationPricingConfigQuery,
+} from "@/useQuery/reservationsUseQuery";
+import { toast } from "sonner";
+import { CreateReservationPayload } from "@/types/reservationsType";
+import Header from "@/components/Header";
+import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
 
 const ReservationsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const handleBack = () => navigate(-1);
   const [searchParams] = useSearchParams();
-  const requestedTab = searchParams.get('tab');
-  const defaultTab = requestedTab === 'reviews' || requestedTab === 'info' ? requestedTab : 'availability';
+  const requestedTab = searchParams.get("tab");
+  const defaultTab =
+    requestedTab === "reviews" || requestedTab === "info"
+      ? requestedTab
+      : "availability";
 
   const { data: vehicleData, isLoading } = useVehiculeQuery(id);
-
   const { isAuthenticated, data: currentUser } = useCurrentUserQuery();
 
-
-
-
-  // Mutation and User
   const createReservationMutation = useCreateReservationMutation();
   const { data: pricingConfig } = useReservationPricingConfigQuery();
 
-  const [selectedDriverOption, setSelectedDriverOption] = useState<ChauffeurChoice>('SANS_CHAUFFEUR');
-  const [travelZone, setTravelZone] = useState<TravelZone>('TANA');
+  const [selectedDriverOption, setSelectedDriverOption] =
+    useState<ChauffeurChoice>("SANS_CHAUFFEUR");
+  const [travelZone, setTravelZone] = useState<TravelZone>("TANA");
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 
   const today = startOfToday();
   const tomorrow = addDays(today, 1);
   const dayAfter = addDays(today, 2);
 
-  const [pickupDate, setPickupDate] = useState(format(tomorrow, 'yyyy-MM-dd'));
-  const [pickupTime, setPickupTime] = useState('08:00');
-  const [returnDate, setReturnDate] = useState(format(dayAfter, 'yyyy-MM-dd'));
-  const [returnTime, setReturnTime] = useState('18:00');
+  const [pickupDate, setPickupDate] = useState(format(tomorrow, "yyyy-MM-dd"));
+  const [pickupTime, setPickupTime] = useState("08:00");
+  const [returnDate, setReturnDate] = useState(format(dayAfter, "yyyy-MM-dd"));
+  const [returnTime, setReturnTime] = useState("18:00");
   const [desableReservation, setDesableReservation] = useState(false);
 
-  
-
-  // Date Range state for the DateSelector component
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
     from: tomorrow,
-    to: dayAfter
+    to: dayAfter,
   });
-  const [dateSelectionStep, setDateSelectionStep] = useState<'start' | 'end'>('start');
+  const [dateSelectionStep, setDateSelectionStep] = useState<"start" | "end">(
+    "start"
+  );
 
-  // permissions liées à la réservation (sans redirection forcée)
   useEffect(() => {
     if (isAuthenticated && currentUser && currentUser.role !== "CLIENT") {
       setDesableReservation(true);
@@ -82,21 +93,19 @@ const ReservationsPage: React.FC = () => {
     setDesableReservation(false);
   }, [isAuthenticated, currentUser]);
 
-
-  // Sync DateSelector change to string format
   useEffect(() => {
     if (dateRange.from) {
-      setPickupDate(format(dateRange.from, 'yyyy-MM-dd'));
-      setReturnDate(format(dateRange.to ?? dateRange.from, 'yyyy-MM-dd'));
+      setPickupDate(format(dateRange.from, "yyyy-MM-dd"));
+      setReturnDate(format(dateRange.to ?? dateRange.from, "yyyy-MM-dd"));
     }
   }, [dateRange]);
 
   const handleDateClick = (day: Date, modifiers: { disabled?: boolean }) => {
     if (modifiers.disabled) return;
 
-    if (dateSelectionStep === 'start' || !dateRange.from || dateRange.to) {
+    if (dateSelectionStep === "start" || !dateRange.from || dateRange.to) {
       setDateRange({ from: day, to: undefined });
-      setDateSelectionStep('end');
+      setDateSelectionStep("end");
       return;
     }
 
@@ -106,11 +115,15 @@ const ReservationsPage: React.FC = () => {
       setDateRange({ from: dateRange.from, to: day });
     }
 
-    setDateSelectionStep('start');
+    setDateSelectionStep("start");
   };
 
   const toggleAddon = (addonId: string) => {
-    setSelectedAddons((prev) => (prev.includes(addonId) ? prev.filter((id) => id !== addonId) : [...prev, addonId]));
+    setSelectedAddons((prev) =>
+      prev.includes(addonId)
+        ? prev.filter((id) => id !== addonId)
+        : [...prev, addonId]
+    );
   };
 
   const vehicle = useMemo<ReservationVehicle | null>(() => {
@@ -118,14 +131,24 @@ const ReservationsPage: React.FC = () => {
 
     const asReservation = vehicleData as ReservationVehicle;
     const image =
-      asReservation.image || vehicleData.photos?.find((photo) => photo.is_primary)?.image || vehicleData.photos?.[0]?.image;
+      asReservation.image ||
+      vehicleData.photos?.find((photo) => photo.is_primary)?.image ||
+      vehicleData.photos?.[0]?.image;
     const title = asReservation.title || vehicleData.titre;
     const location = asReservation.location || vehicleData.ville || vehicleData.zone;
-    const ownerName = asReservation.ownerName || vehicleData.proprietaire_data?.first_name || vehicleData.proprietaire;
-    const rating = asReservation.rating ?? (vehicleData.note_moyenne ? Number(vehicleData.note_moyenne) : undefined);
+    const ownerName =
+      asReservation.ownerName ||
+      vehicleData.proprietaire_data?.first_name ||
+      vehicleData.proprietaire;
+    const rating =
+      asReservation.rating ??
+      (vehicleData.note_moyenne ? Number(vehicleData.note_moyenne) : undefined);
     const trips = asReservation.trips ?? vehicleData.nombre_locations;
     const features =
-      asReservation.features || vehicleData.equipements_details?.map((equipment) => equipment.label) || vehicleData.equipements || [];
+      asReservation.features ||
+      vehicleData.equipements_details?.map((equipment) => equipment.label) ||
+      vehicleData.equipements ||
+      [];
     const pricePerDay = Number(asReservation.pricePerDay ?? vehicleData.prix_jour ?? 0) || 0;
 
     return {
@@ -139,16 +162,18 @@ const ReservationsPage: React.FC = () => {
       trips,
       features,
       pricePerDay,
-      categoryLabel: vehicleData.categorie_data?.nom || vehicleData.categorie || 'Non spécifié',
-      transmissionLabel: vehicleData.transmission_data?.nom || vehicleData.transmission || 'Manuelle',
-      fuelLabel: vehicleData.type_carburant_data?.nom || vehicleData.type_carburant || 'Essence',
+      categoryLabel: vehicleData.categorie_data?.nom || vehicleData.categorie || "Non spécifié",
+      transmissionLabel:
+        vehicleData.transmission_data?.nom || vehicleData.transmission || "Manuelle",
+      fuelLabel:
+        vehicleData.type_carburant_data?.nom || vehicleData.type_carburant || "Essence",
       year: vehicleData.annee,
       seatCount: vehicleData.nombre_places,
       doorCount: vehicleData.nombre_portes,
       color: vehicleData.couleur || undefined,
       bootVolume: vehicleData.volume_coffre_litres || undefined,
       currentMileage: vehicleData.kilometrage_actuel_km || undefined,
-      licensePlate: vehicleData.numero_immatriculation || undefined
+      licensePlate: vehicleData.numero_immatriculation || undefined,
     };
   }, [vehicleData]);
 
@@ -160,16 +185,24 @@ const ReservationsPage: React.FC = () => {
     const baseDayPrice = Number(vehicle.pricePerDay ?? 0) || 0;
     const rates: Partial<PricingRates> = vehicle.pricingRates || {};
     const pricingGrid = vehicle.pricing_grid || [];
-    const provinceRate = pricingGrid.find(p => p.zone_type === 'PROVINCE');
+    const provinceRate = pricingGrid.find((p) => p.zone_type === "PROVINCE");
 
     const provinceDayPrice = provinceRate?.prix_jour
       ? Number(provinceRate.prix_jour)
-      : (vehicle.province_prix_jour ? Number(vehicle.province_prix_jour) : baseDayPrice);
+      : vehicle.province_prix_jour
+      ? Number(vehicle.province_prix_jour)
+      : baseDayPrice;
 
-    const urbanRate = pricingGrid.find(p => p.zone_type === 'URBAIN');
-    const hourlyPrice = urbanRate?.prix_heure ? Number(urbanRate.prix_heure) : Number(vehicle.prix_heure ?? 0);
-    const weeklyPrice = urbanRate?.prix_par_semaine ? Number(urbanRate.prix_par_semaine) : Number(vehicle.prix_par_semaine ?? 0);
-    const monthlyPrice = urbanRate?.prix_mois ? Number(urbanRate.prix_mois) : Number(vehicle.prix_mois ?? 0);
+    const urbanRate = pricingGrid.find((p) => p.zone_type === "URBAIN");
+    const hourlyPrice = urbanRate?.prix_heure
+      ? Number(urbanRate.prix_heure)
+      : Number(vehicle.prix_heure ?? 0);
+    const weeklyPrice = urbanRate?.prix_par_semaine
+      ? Number(urbanRate.prix_par_semaine)
+      : Number(vehicle.prix_par_semaine ?? 0);
+    const monthlyPrice = urbanRate?.prix_mois
+      ? Number(urbanRate.prix_mois)
+      : Number(vehicle.prix_mois ?? 0);
 
     return {
       hour: hourlyPrice > 0 ? hourlyPrice : undefined,
@@ -179,8 +212,16 @@ const ReservationsPage: React.FC = () => {
       week: weeklyPrice > 0 ? weeklyPrice : undefined,
       month: monthlyPrice > 0 ? monthlyPrice : undefined,
       provinceDay: rates.provinceDay ?? provinceDayPrice,
-      weeklyDiscount: rates.weeklyDiscount ?? (vehicle.remise_longue_duree_pourcent ? Number(vehicle.remise_longue_duree_pourcent) : 0),
-      monthlyDiscount: rates.monthlyDiscount ?? (vehicle.remise_longue_duree_pourcent ? Number(vehicle.remise_longue_duree_pourcent) : 0)
+      weeklyDiscount:
+        rates.weeklyDiscount ??
+        (vehicle.remise_longue_duree_pourcent
+          ? Number(vehicle.remise_longue_duree_pourcent)
+          : 0),
+      monthlyDiscount:
+        rates.monthlyDiscount ??
+        (vehicle.remise_longue_duree_pourcent
+          ? Number(vehicle.remise_longue_duree_pourcent)
+          : 0),
     };
   }, [vehicle]);
 
@@ -190,9 +231,9 @@ const ReservationsPage: React.FC = () => {
     if (!vehicle) return;
 
     if (driverOption === DriverOption.REQUIRED) {
-      setSelectedDriverOption('AVEC_CHAUFFEUR');
+      setSelectedDriverOption("AVEC_CHAUFFEUR");
     } else if (driverOption === DriverOption.NONE) {
-      setSelectedDriverOption('SANS_CHAUFFEUR');
+      setSelectedDriverOption("SANS_CHAUFFEUR");
     }
   }, [vehicle, driverOption]);
 
@@ -207,27 +248,32 @@ const ReservationsPage: React.FC = () => {
     const diffHours = diffMs / (1000 * 60 * 60);
 
     if (!Number.isFinite(diffHours) || diffHours <= 0) {
-      return { price: 0, durationLabel: 'Dates invalides', rateApplied: '-', durationDays: 0 };
+      return {
+        price: 0,
+        durationLabel: "Dates invalides",
+        rateApplied: "-",
+        durationDays: 0,
+      };
     }
 
     const isSameDay = pickupDate === returnDate;
     let price = 0;
-    let label = '';
-    let appliedRate = '';
+    let label = "";
+    let appliedRate = "";
 
-    if (travelZone === 'PROVINCE' && pricingRates.provinceDay) {
+    if (travelZone === "PROVINCE" && pricingRates.provinceDay) {
       const days = Math.max(1, Math.ceil(diffHours / 24));
       price = days * pricingRates.provinceDay;
       label = `${days} Jours (Province)`;
-      appliedRate = 'Tarif Province';
+      appliedRate = "Tarif Province";
     } else if (diffHours <= 5 && pricingRates.halfDay) {
       price = pricingRates.halfDay;
-      label = 'Demi-journée';
-      appliedRate = 'Tarif réduit (4h)';
+      label = "Demi-journée";
+      appliedRate = "Tarif réduit (4h)";
     } else if (diffHours <= 14 && isSameDay) {
       price = pricingRates.day;
-      label = '1 Journée';
-      appliedRate = 'Tarif Journée';
+      label = "1 Journée";
+      appliedRate = "Tarif Journée";
     } else {
       const days24h = Math.ceil(diffHours / 24);
       const unitPrice = pricingRates.twentyFourHours ?? pricingRates.day;
@@ -240,31 +286,36 @@ const ReservationsPage: React.FC = () => {
         discount = pricingRates.weeklyDiscount ?? 0;
         appliedRate = `Hebdo (-${discount}%)`;
       } else {
-        appliedRate = 'Tarif 24h';
+        appliedRate = "Tarif 24h";
       }
 
       price = days24h * unitPrice * (1 - discount / 100);
       label = `${days24h} Jours`;
     }
 
-    return { price, durationLabel: label, rateApplied: appliedRate, durationDays: Math.max(1, Math.ceil(diffHours / 24)) };
+    return {
+      price,
+      durationLabel: label,
+      rateApplied: appliedRate,
+      durationDays: Math.max(1, Math.ceil(diffHours / 24)),
+    };
   }, [pickupDate, pickupTime, returnDate, returnTime, travelZone, pricingRates]);
 
-  // Check if a date is unavailable based on vehicle availability periods
   const isDateUnavailable = useMemo(() => {
-    const unavailablePeriods = vehicle?.availabilities?.filter(
-      (avail) => avail.type === 'BLOCKED' || avail.type === 'RESERVED' || avail.type === 'MAINTENANCE'
-    ) || [];
+    const unavailablePeriods =
+      vehicle?.availabilities?.filter(
+        (avail) =>
+          avail.type === "BLOCKED" ||
+          avail.type === "RESERVED" ||
+          avail.type === "MAINTENANCE"
+      ) || [];
 
     return (date: Date) => {
-      // Disable past dates
       if (date < today) return true;
 
-      // Check if date falls within any unavailable period
       return unavailablePeriods.some((period) => {
         const start = new Date(period.start_date);
         const end = new Date(period.end_date);
-        // Set time to start of day for accurate comparison
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
         const checkDate = new Date(date);
@@ -274,28 +325,6 @@ const ReservationsPage: React.FC = () => {
     };
   }, [vehicle?.availabilities, today]);
 
-  // Get the availability type for a specific date (for styling)
-  const getAvailabilityType = useMemo(() => {
-    const availabilities = vehicle?.availabilities || [];
-
-    return (date: Date) => {
-      for (const period of availabilities) {
-        const start = new Date(period.start_date);
-        const end = new Date(period.end_date);
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        const checkDate = new Date(date);
-        checkDate.setHours(12, 0, 0, 0);
-
-        if (checkDate >= start && checkDate <= end) {
-          return period.type;
-        }
-      }
-      return null;
-    };
-  }, [vehicle?.availabilities]);
-
-  // Create modifiers for different availability types
   const calendarModifiers = useMemo(() => {
     const blocked: Date[] = [];
     const reserved: Date[] = [];
@@ -305,16 +334,15 @@ const ReservationsPage: React.FC = () => {
       const start = new Date(avail.start_date);
       const end = new Date(avail.end_date);
 
-      // Generate all dates in the range
       const current = new Date(start);
       while (current <= end) {
         const dateToAdd = new Date(current);
 
-        if (avail.type === 'BLOCKED') {
+        if (avail.type === "BLOCKED") {
           blocked.push(dateToAdd);
-        } else if (avail.type === 'RESERVED') {
+        } else if (avail.type === "RESERVED") {
           reserved.push(dateToAdd);
-        } else if (avail.type === 'MAINTENANCE') {
+        } else if (avail.type === "MAINTENANCE") {
           maintenance.push(dateToAdd);
         }
 
@@ -325,15 +353,18 @@ const ReservationsPage: React.FC = () => {
     return { blocked, reserved, maintenance };
   }, [vehicle?.availabilities]);
 
-  // Get availability summary
   const availabilitySummary = useMemo(() => {
-    const blocked = vehicle?.availabilities?.filter(a => a.type === 'BLOCKED').length || 0;
-    const reserved = vehicle?.availabilities?.filter(a => a.type === 'RESERVED').length || 0;
-    const maintenance = vehicle?.availabilities?.filter(a => a.type === 'MAINTENANCE').length || 0;
+    const blocked =
+      vehicle?.availabilities?.filter((a) => a.type === "BLOCKED").length || 0;
+    const reserved =
+      vehicle?.availabilities?.filter((a) => a.type === "RESERVED").length || 0;
+    const maintenance =
+      vehicle?.availabilities?.filter((a) => a.type === "MAINTENANCE").length || 0;
     return { blocked, reserved, maintenance, total: blocked + reserved + maintenance };
   }, [vehicle?.availabilities]);
 
-  const { data: equipmentsData, isLoading: isLoadingEquipments } = useAllVehicleEquipmentsQuery();
+  const { data: equipmentsData, isLoading: isLoadingEquipments } =
+    useAllVehicleEquipmentsQuery();
 
   const addonsList = useMemo<ReservationAddon[]>(() => {
     if (!equipmentsData) return [];
@@ -342,23 +373,25 @@ const ReservationsPage: React.FC = () => {
       label: eq.label,
       price: Number(eq.price) || 0,
       description: eq.description,
-      iconKey: (eq.code as any) || 'LayoutList'
+      iconKey: (eq.code as any) || "LayoutList",
     }));
   }, [equipmentsData]);
 
-  const driverFee = selectedDriverOption === 'AVEC_CHAUFFEUR' ? 40000 * durationDays : 0;
+  const driverFee =
+    selectedDriverOption === "AVEC_CHAUFFEUR" ? 40000 * durationDays : 0;
 
+  // ✅ CORRECTION : équipement facturé UNE SEULE FOIS par réservation
   const totalAddOns = useMemo(
-    () => addonsList
-      .filter((a) => selectedAddons.includes(a.id))
-      .reduce((sum, a) => sum + (a.price || 0) * durationDays, 0),
-    [selectedAddons, durationDays, addonsList]
+    () =>
+      addonsList
+        .filter((a) => selectedAddons.includes(a.id))
+        .reduce((sum, a) => sum + (a.price || 0), 0),
+    [selectedAddons, addonsList]
   );
 
   const serviceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
   const totalPrice = basePrice + driverFee + totalAddOns + serviceFee;
 
-  // Handlers for reservation creation
   const handleReservationSubmit = () => {
     if (!currentUser || !isAuthenticated) {
       navigate("/login");
@@ -375,21 +408,22 @@ const ReservationsPage: React.FC = () => {
       return;
     }
 
-    // Calcul des dates
     const startDateTime = new Date(`${pickupDate}T${pickupTime}`);
     const endDateTime = new Date(`${returnDate}T${returnTime}`);
 
-    // Validate dates
     if (endDateTime <= startDateTime) {
       toast.error("La date de retour doit être après la date de départ.");
       return;
     }
 
-    // Check if any date in the selected range falls within an unavailable period
     const checkDateRange = (start: Date, end: Date) => {
-      const unavailablePeriods = vehicle?.availabilities?.filter(
-        (avail) => avail.type === 'BLOCKED' || avail.type === 'RESERVED' || avail.type === 'MAINTENANCE'
-      ) || [];
+      const unavailablePeriods =
+        vehicle?.availabilities?.filter(
+          (avail) =>
+            avail.type === "BLOCKED" ||
+            avail.type === "RESERVED" ||
+            avail.type === "MAINTENANCE"
+        ) || [];
 
       for (const period of unavailablePeriods) {
         const periodStart = new Date(period.start_date);
@@ -397,13 +431,12 @@ const ReservationsPage: React.FC = () => {
         periodStart.setHours(0, 0, 0, 0);
         periodEnd.setHours(23, 59, 59, 999);
 
-        // Check if there's any overlap between selected range and unavailable period
         if (start <= periodEnd && end >= periodStart) {
           return {
             isUnavailable: true,
             type: period.type,
-            periodStart: periodStart.toLocaleDateString('fr-FR'),
-            periodEnd: periodEnd.toLocaleDateString('fr-FR')
+            periodStart: periodStart.toLocaleDateString("fr-FR"),
+            periodEnd: periodEnd.toLocaleDateString("fr-FR"),
           };
         }
       }
@@ -413,11 +446,13 @@ const ReservationsPage: React.FC = () => {
     const availabilityCheck = checkDateRange(startDateTime, endDateTime);
     if (availabilityCheck.isUnavailable) {
       const typeMessages = {
-        BLOCKED: 'bloquée par le propriétaire',
-        RESERVED: 'déjà réservée',
-        MAINTENANCE: 'en maintenance'
+        BLOCKED: "bloquée par le propriétaire",
+        RESERVED: "déjà réservée",
+        MAINTENANCE: "en maintenance",
       };
-      const typeMessage = typeMessages[availabilityCheck.type as keyof typeof typeMessages] || 'indisponible';
+      const typeMessage =
+        typeMessages[availabilityCheck.type as keyof typeof typeMessages] ||
+        "indisponible";
       toast.error(
         `Impossible de réserver : Le véhicule est ${typeMessage} du ${availabilityCheck.periodStart} au ${availabilityCheck.periodEnd}. Veuillez sélectionner d'autres dates.`,
         { duration: 6000 }
@@ -425,11 +460,9 @@ const ReservationsPage: React.FC = () => {
       return;
     }
 
-    // Calcul du nombre de jours
     const diffTime = Math.abs(endDateTime.getTime() - startDateTime.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // Construction du payload
     const payload: CreateReservationPayload = {
       client: currentUser.id,
       vehicle: vehicle.id,
@@ -437,15 +470,21 @@ const ReservationsPage: React.FC = () => {
       end_datetime: endDateTime.toISOString(),
       total_days: diffDays > 0 ? diffDays : 1,
       base_amount: basePrice.toString(),
-      options_amount: totalAddOns.toString(),
+      options_amount: (driverFee + totalAddOns).toString(),
       total_amount: totalPrice.toString(),
       caution_amount: vehicle.montant_caution || "0",
       status: "PENDING",
-      with_chauffeur: driverOption === DriverOption.REQUIRED || selectedDriverOption === 'AVEC_CHAUFFEUR',
+      with_chauffeur:
+        driverOption === DriverOption.REQUIRED ||
+        selectedDriverOption === "AVEC_CHAUFFEUR",
       pickup_location: vehicle.adresse_localisation || "À définir",
       dropoff_location: vehicle.adresse_localisation || "À définir",
-      driving_mode: (driverOption === DriverOption.REQUIRED || selectedDriverOption === 'AVEC_CHAUFFEUR') ? "WITH_DRIVER" : "SELF_DRIVE",
-      pricing_zone: travelZone === 'TANA' ? 'URBAIN' : 'PROVINCE',
+      driving_mode:
+        driverOption === DriverOption.REQUIRED ||
+        selectedDriverOption === "AVEC_CHAUFFEUR"
+          ? "WITH_DRIVER"
+          : "SELF_DRIVE",
+      pricing_zone: travelZone === "TANA" ? "URBAIN" : "PROVINCE",
       equipments: selectedAddons,
     };
 
@@ -461,18 +500,24 @@ const ReservationsPage: React.FC = () => {
           const errorData = error.response.data;
           if (errorData.detail) errorMessage = errorData.detail;
           else if (errorData.error) errorMessage = errorData.error;
-          else if (typeof errorData === 'string') errorMessage = errorData;
+          else if (typeof errorData === "string") errorMessage = errorData;
         }
         toast.error(errorMessage);
-      }
+      },
     });
   };
 
   if (!id) {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col">
-        <h2 className="text-2xl font-bold text-gray-900">Identifiant véhicule manquant</h2>
-        <Button variant="link" onClick={() => navigate('/search')} className="mt-4">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Identifiant véhicule manquant
+        </h2>
+        <Button
+          variant="link"
+          onClick={() => navigate("/search-results")}
+          className="mt-4"
+        >
           Retour aux résultats
         </Button>
       </div>
@@ -494,19 +539,25 @@ const ReservationsPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col">
         <h2 className="text-2xl font-bold text-gray-900">Véhicule introuvable</h2>
-        <Button variant="link" onClick={() => navigate('/search')} className="mt-4">
+        <Button
+          variant="link"
+          onClick={() => navigate("/search-results")}
+          className="mt-4"
+        >
           Retour aux résultats
         </Button>
       </div>
     );
   }
 
-  const coverImage = vehicle.image || 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1600&q=60';
-  const vehicleTitle = vehicle.title || 'Véhicule';
-  const vehicleLocation = vehicle.location || 'Madagascar';
+  const coverImage =
+    vehicle.image ||
+    "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1600&q=60";
+  const vehicleTitle = vehicle.title || "Véhicule";
+  const vehicleLocation = vehicle.location || "Madagascar";
   const vehicleRating = vehicle.rating ?? 4.8;
   const vehicleTrips = vehicle.trips ?? 0;
-  const vehicleType = vehicle.type || vehicle.type_vehicule || 'Véhicule';
+  const vehicleType = vehicle.type || vehicle.type_vehicule || "Véhicule";
   const isCertified = vehicle.isCertified ?? vehicle.est_certifie ?? false;
 
   return (
@@ -514,12 +565,6 @@ const ReservationsPage: React.FC = () => {
       <Header />
 
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <div className="mb-4">
-          <Button variant="ghost" onClick={() => navigate('/allcars')} className="pl-0 hover:bg-transparent text-gray-500 hover:text-primary-600 transition-colors">
-            <ArrowLeft className="w-5 h-5 mr-2" /> Retour aux résultats finale
-          </Button>
-        </div>
-
         <VehicleHeader
           vehicleTitle={vehicleTitle}
           vehicleLocation={vehicleLocation}
@@ -528,39 +573,53 @@ const ReservationsPage: React.FC = () => {
           vehicleType={vehicleType}
           isCertified={isCertified}
           pricingRates={pricingRates}
-          onBack={() => navigate('/search')}
+          onBack={handleBack}
         />
 
-        <VehicleGallery photos={vehicle.photos || [{ image: coverImage, is_primary: true }]} />
+        <VehicleGallery
+          photos={vehicle.photos || [{ image: coverImage, is_primary: true }]}
+        />
 
         <div className="flex flex-col lg:flex-row gap-8 xl:gap-12 mt-12">
-          {/* Main Content */}
           <div className="lg:w-2/3 space-y-8">
             <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-8 p-1 bg-gray-100 rounded-2xl h-14">
-                <TabsTrigger value="availability" className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all">
+                <TabsTrigger
+                  value="availability"
+                  className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all"
+                >
                   <CalendarIcon className="w-4 h-4 mr-2" />
                   Disponibilités
                 </TabsTrigger>
-                <TabsTrigger value="info" className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all">
+                <TabsTrigger
+                  value="info"
+                  className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all"
+                >
                   <Info className="w-4 h-4 mr-2" />
                   Informations
                 </TabsTrigger>
-                <TabsTrigger value="reviews" className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all">
+                <TabsTrigger
+                  value="reviews"
+                  className="rounded-xl h-12 text-sm font-semibold data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-700 transition-all"
+                >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Avis
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="availability" className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 fade-in">
+              <TabsContent
+                value="availability"
+                className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 fade-in"
+              >
                 <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-gray-200/50 border border-gray-100">
                   <h3 className="font-bold text-xl text-gray-900 mb-2 flex items-center gap-2">
                     <CalendarIcon className="w-6 h-6 text-primary" />
                     Sélectionnez vos dates
                   </h3>
-                  <p className="text-gray-500 text-sm mb-4 ml-8">Vérifiez la disponibilité du véhicule et choisissez votre période.</p>
+                  <p className="text-gray-500 text-sm mb-4 ml-8">
+                    Vérifiez la disponibilité du véhicule et choisissez votre période.
+                  </p>
 
-                  {/* Availability Summary */}
                   {availabilitySummary.total > 0 && (
                     <div className="mb-6 ml-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                       <div className="flex items-start gap-2">
@@ -573,19 +632,23 @@ const ReservationsPage: React.FC = () => {
                             {availabilitySummary.blocked > 0 && (
                               <span className="flex items-center gap-1">
                                 <Lock className="w-3 h-3" />
-                                {availabilitySummary.blocked} période{availabilitySummary.blocked > 1 ? 's' : ''} bloquée{availabilitySummary.blocked > 1 ? 's' : ''}
+                                {availabilitySummary.blocked} période
+                                {availabilitySummary.blocked > 1 ? "s" : ""} bloquée
+                                {availabilitySummary.blocked > 1 ? "s" : ""}
                               </span>
                             )}
                             {availabilitySummary.reserved > 0 && (
                               <span className="flex items-center gap-1">
                                 <CalendarIcon className="w-3 h-3" />
-                                {availabilitySummary.reserved} réservation{availabilitySummary.reserved > 1 ? 's' : ''}
+                                {availabilitySummary.reserved} réservation
+                                {availabilitySummary.reserved > 1 ? "s" : ""}
                               </span>
                             )}
                             {availabilitySummary.maintenance > 0 && (
                               <span className="flex items-center gap-1">
                                 <Wrench className="w-3 h-3" />
-                                {availabilitySummary.maintenance} maintenance{availabilitySummary.maintenance > 1 ? 's' : ''}
+                                {availabilitySummary.maintenance} maintenance
+                                {availabilitySummary.maintenance > 1 ? "s" : ""}
                               </span>
                             )}
                           </div>
@@ -602,38 +665,48 @@ const ReservationsPage: React.FC = () => {
                       disabled={isDateUnavailable}
                       modifiers={calendarModifiers}
                       modifiersClassNames={{
-                        blocked: "bg-red-100 text-red-700 hover:bg-red-200 border-red-300 font-semibold",
-                        reserved: "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-300 font-semibold",
-                        maintenance: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-300 font-semibold",
+                        blocked:
+                          "bg-red-100 text-red-700 hover:bg-red-200 border-red-300 font-semibold",
+                        reserved:
+                          "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-300 font-semibold",
+                        maintenance:
+                          "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-300 font-semibold",
                       }}
                       numberOfMonths={2}
                       className="p-0 w-full max-w-4xl"
                       classNames={{
-                        months: "flex flex-col md:flex-row gap-12 space-y-8 md:space-y-0 w-full justify-center",
+                        months:
+                          "flex flex-col md:flex-row gap-12 space-y-8 md:space-y-0 w-full justify-center",
                         month: "space-y-6 w-full max-w-sm",
                         caption: "flex justify-center pt-1 relative items-center mb-6",
                         caption_label: "text-xl font-bold text-gray-800 capitalize",
                         nav: "space-x-2 flex items-center bg-white rounded-full shadow-sm border border-gray-100 p-1.5 absolute right-0 top-0",
-                        nav_button: "h-8 w-8 bg-transparent p-0 text-gray-500 opacity-70 hover:opacity-100 hover:bg-gray-50 rounded-full transition-all",
+                        nav_button:
+                          "h-8 w-8 bg-transparent p-0 text-gray-500 opacity-70 hover:opacity-100 hover:bg-gray-50 rounded-full transition-all",
                         nav_button_previous: "static",
                         nav_button_next: "static",
                         table: "w-full border-collapse space-y-2",
                         head_row: "flex mb-4",
-                        head_cell: "text-gray-400 rounded-md w-full font-semibold text-sm uppercase tracking-wide",
+                        head_cell:
+                          "text-gray-400 rounded-md w-full font-semibold text-sm uppercase tracking-wide",
                         row: "flex w-full mt-2 gap-1",
-                        cell: "h-14 w-full text-center text-sm p-0 m-0 relative [&:has([aria-selected])]:bg-transparent first:[&:has([aria-selected])]:rounded-l-xl last:[&:has([aria-selected])]:rounded-r-xl focus-within:relative focus-within:z-20",
-                        day: "h-14 w-full p-0 font-medium text-base aria-selected:opacity-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all border border-transparent",
-                        day_selected: "bg-primary text-white hover:bg-primary hover:text-white shadow-lg shadow-primary/30 font-bold border-primary",
-                        day_today: "bg-white text-primary font-bold border-2 border-primary/20",
+                        cell:
+                          "h-14 w-full text-center text-sm p-0 m-0 relative [&:has([aria-selected])]:bg-transparent first:[&:has([aria-selected])]:rounded-l-xl last:[&:has([aria-selected])]:rounded-r-xl focus-within:relative focus-within:z-20",
+                        day:
+                          "h-14 w-full p-0 font-medium text-base aria-selected:opacity-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all border border-transparent",
+                        day_selected:
+                          "bg-primary text-white hover:bg-primary hover:text-white shadow-lg shadow-primary/30 font-bold border-primary",
+                        day_today:
+                          "bg-white text-primary font-bold border-2 border-primary/20",
                         day_outside: "text-gray-300 opacity-30",
                         day_disabled: "opacity-50 cursor-not-allowed",
-                        day_range_middle: "aria-selected:bg-primary aria-selected:text-white hover:aria-selected:bg-primary rounded-none my-0",
+                        day_range_middle:
+                          "aria-selected:bg-primary aria-selected:text-white hover:aria-selected:bg-primary rounded-none my-0",
                         day_hidden: "invisible",
                       }}
                     />
                   </div>
 
-                  {/* Legend for calendar */}
                   <div className="mt-6 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl border border-gray-200">
                     <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
                       <Info className="w-4 h-4" />
@@ -696,8 +769,15 @@ const ReservationsPage: React.FC = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="info" className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
-                <VehicleInfoSection vehicle={vehicle} vehicleTitle={vehicleTitle} vehicleLocation={vehicleLocation} />
+              <TabsContent
+                value="info"
+                className="animate-in slide-in-from-bottom-4 duration-500 fade-in"
+              >
+                <VehicleInfoSection
+                  vehicle={vehicle}
+                  vehicleTitle={vehicleTitle}
+                  vehicleLocation={vehicleLocation}
+                />
                 <PricingGridSection
                   pricingGrid={vehicle.pricing_grid || []}
                   weeklyDiscount={pricingRates.weeklyDiscount}
@@ -705,7 +785,10 @@ const ReservationsPage: React.FC = () => {
                 />
               </TabsContent>
 
-              <TabsContent value="reviews" className="animate-in slide-in-from-bottom-4 duration-500 fade-in">
+              <TabsContent
+                value="reviews"
+                className="animate-in slide-in-from-bottom-4 duration-500 fade-in"
+              >
                 <ReviewsSection
                   vehicleId={vehicle.id}
                   ownerId={vehicle.proprietaire_data?.id}
@@ -731,20 +814,21 @@ const ReservationsPage: React.FC = () => {
               isLoadingAddons={isLoadingEquipments}
               isLoading={createReservationMutation.isPending}
               availabilities={vehicle.availabilities || []}
-                      desableReservation={desableReservation}
-              // Missing props
-              deposit={vehicle.montant_caution ? Number(vehicle.montant_caution) : (pricingRates.day ?? 0) * 10}
+              desableReservation={desableReservation}
+              deposit={
+                vehicle.montant_caution
+                  ? Number(vehicle.montant_caution)
+                  : (pricingRates.day ?? 0) * 10
+              }
               travelZone={travelZone}
               pickupDate={pickupDate}
               returnDate={returnDate}
               pickupTime={pickupTime}
               returnTime={returnTime}
-              rateApplied={rateApplied || '-'}
+              rateApplied={rateApplied || "-"}
               driverFee={driverFee}
               totalAddOns={totalAddOns}
               serviceFee={serviceFee}
-
-              // Handlers
               onTravelZoneChange={setTravelZone}
               onDriverOptionChange={setSelectedDriverOption}
               onToggleAddon={toggleAddon}

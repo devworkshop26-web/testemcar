@@ -273,7 +273,7 @@ export const blogPosts: BlogPost[] = [
 export const essentialContent: EssentialLink[] = [
   { title: "Comment ça marche ?", link: "/comment-ca-marche", icon: CheckCheck },
   { title: "Centre d'aide & FAQ", link: "/faq", icon: Headset },
-  { title: "Devenir Propriétaire", link: "/devenir-proprietaire", icon: Heart },
+  { title: " Devenir Hôtes", link: "/devenir-proprietaire", icon: Heart },
 ];
 
 // Statistiques

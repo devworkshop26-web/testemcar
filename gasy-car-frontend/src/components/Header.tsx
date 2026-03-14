@@ -14,6 +14,7 @@ import {
   DoorOpen,
   Key,
   ChevronDown,
+  LogIn,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ const roleMenus: Record<UserRole, MenuItem[]> = {
 
 const navigationLinks = [
   { label: "Accueil", path: "/" },
-  { label: "Nos Véhicules", path: "/allcars" },
+  { label: "Véhicules", path: "/allcars" },
   { label: "Comment ça marche ?", path: "/comment-ca-marche" },
   { label: "Blog", path: "/blog" },
   { label: "Faq", path: "/faq" },
@@ -200,12 +201,18 @@ const Header = () => {
           <div className="hidden md:flex items-center gap-4">
             {!user ? (
               <>
-                <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-primary transition-all hover:-translate-y-0.5 flex items-center gap-2">
-                  <Key size={16} /> Devenir Hôte
+                <Link to="/devenir-hote" className="text-sm font-medium text-slate-600 hover:text-primary transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                  <Key size={16} /> Gagner de l'argent
                 </Link>
                 <div className="h-4 w-px bg-slate-200 mx-2" />
-                <Button asChild className="rounded-full px-6 bg-primary shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all duration-300">
-                  <Link to="/login">Connexion</Link>
+                <Button
+                  asChild
+                  size="icon" // Utilise le format carré/rond spécifique aux icônes
+                  className="rounded-full bg-primary shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all duration-300"
+                >
+                  <Link to="/login" aria-label="Connexion">
+                    <LogIn className="h-5 w-5 text-primary-foreground" />
+                  </Link>
                 </Button>
               </>
             ) : (

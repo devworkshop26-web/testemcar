@@ -4,6 +4,7 @@ import {
   Bookmark,
   BusFront,
   CalendarCheck,
+  ChevronDown,
   CircleDollarSign,
   ClipboardList,
   CreditCard,
@@ -15,6 +16,7 @@ import {
   Settings,
   Shield,
   Siren,
+  Sparkles,
   TriangleAlert,
   User,
   Wrench,
@@ -387,105 +389,224 @@ const FAQ = () => {
     [activeContent.sections, searchTerm],
   );
 
+  const stats = useMemo(
+    () => [
+      {
+        label: "Articles utiles",
+        value: activeContent.featuredArticles.length,
+      },
+      {
+        label: "Catégories",
+        value: activeContent.sections.length,
+      },
+      {
+        label: "Recherche rapide",
+        value: searchTerm ? "Active" : "Prête",
+      },
+    ],
+    [activeContent.featuredArticles.length, activeContent.sections.length, searchTerm],
+  );
+
   return (
-    <main className="bg-[#f6f6f7] pb-20 text-[#121214]">
-      <section className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-12 pt-16 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl">
-            Centre d'aide ici
-          </h1>
-          <p className="mt-3 text-lg text-gray-600">
-            Que pouvons-nous faire pour vous ?
-          </p>
+    <main className="min-h-screen bg-gradient-to-b from-white via-slate-50/60 to-white text-[#121214]">
+      {/* HERO */}
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1489824904134-891ab64532f1?auto=format&fit=crop&q=80&w=1920')",
+          }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(13,27,42,0.96),rgba(13,27,42,0.88),rgba(8,47,73,0.82))]" />
+        <div className="absolute inset-0 bg-black/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/20" />
+        <div className="absolute -top-20 -left-16 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-sky-400/20 blur-3xl animate-pulse" />
 
-          <div className="mt-8 max-w-xl">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher des articles"
-                className="h-12 rounded-md border-gray-300 bg-white pl-10"
-              />
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <div className="max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-700 rounded-[2rem] bg-black/20 backdrop-blur-[2px] px-4 py-6 sm:px-6 sm:py-8">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-md shadow-lg">
+              {/* <Sparkles className="h-4 w-4 text-emerald-300" /> */}
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/95 sm:text-sm">
+                Support & assistance
+              </span>
             </div>
-          </div>
 
-          <div className="mt-10 flex gap-8 border-b border-gray-200 text-sm font-semibold uppercase tracking-wider text-gray-500">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("guests");
-                setExpandedSections([]);
-              }}
-              className={`border-b-2 pb-3 transition ${
-                activeTab === "guests"
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent hover:text-gray-700"
-              }`}
-            >
-              Voyageurs
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("hosts");
-                setExpandedSections([]);
-              }}
-              className={`border-b-2 pb-3 transition ${
-                activeTab === "hosts"
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent hover:text-gray-700"
-              }`}
-            >
-              Hôtes
-            </button>
-          </div>
-        </div>
-      </section>
+            <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)] sm:text-5xl lg:text-6xl">
+              Centre d&apos;aide{" "}
+              <span className="bg-gradient-to-r from-emerald-300 via-sky-300 to-blue-400 bg-clip-text text-transparent">
+                Mcar
+              </span>
+            </h1>
 
-      <section className="mx-auto w-full max-w-6xl px-4 pt-12 sm:px-6 lg:px-8">
-        <div className="rounded-xl bg-[#efebff] p-6 sm:p-8">
-          <div className="mb-6 flex items-center gap-3 text-indigo-600">
-            <Bookmark className="h-7 w-7" />
-            <h2 className="text-3xl font-bold text-[#151522]">Articles mis en avant</h2>
-          </div>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)] sm:text-lg lg:text-xl">
+              Trouvez rapidement les réponses pour vos réservations, paiements,
+              incidents, comptes et publications de véhicules.
+            </p>
 
-          <div className="grid gap-x-8 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFeatured.map((article) => (
-              <Link
-                key={article}
-                to={buildHelpArticleRoute(article)}
-                className="border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
+            <div className="mt-8 max-w-2xl">
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/10 p-3 shadow-2xl backdrop-blur-md">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/55" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Rechercher des articles"
+                    className="h-14 rounded-2xl border-white/10 bg-white/95 pl-11 text-[15px] shadow-none placeholder:text-slate-400 focus-visible:ring-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+              {stats.map((item, index) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-white/10 bg-white/10 px-4 py-4 text-white shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-700"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="text-2xl font-bold">{item.value}</div>
+                  <p className="mt-1 text-sm text-white/75">{item.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("guests");
+                  setExpandedSections([]);
+                }}
+                className={`rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ${
+                  activeTab === "guests"
+                    ? "bg-white text-[#0D1B2A] shadow-lg"
+                    : "border border-white/15 bg-white/10 text-white hover:bg-white/15"
+                }`}
               >
-                {article}
-              </Link>
-            ))}
+                Voyageurs
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("hosts");
+                  setExpandedSections([]);
+                }}
+                className={`rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ${
+                  activeTab === "hosts"
+                    ? "bg-white text-[#0D1B2A] shadow-lg"
+                    : "border border-white/15 bg-white/10 text-white hover:bg-white/15"
+                }`}
+              >
+                Hôtes
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto mt-12 grid w-full max-w-6xl gap-10 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-8">
-        {filteredSections.map((section) => (
-          <article key={section.title} className="space-y-4">
-            <div className="flex items-center gap-3 text-indigo-600">
-              {section.icon}
-              <h3 className="text-3xl font-bold leading-tight text-[#1a1a27]">
-                {section.title}
-              </h3>
+      {/* FEATURED */}
+      <section className="mx-auto -mt-8 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+          <div className="mb-6 flex items-center gap-3 text-primary">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+              <Bookmark className="h-6 w-6" />
             </div>
-            {(() => {
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                Articles mis en avant
+              </h2>
+              <p className="text-sm text-slate-500">
+                Les sujets les plus consultés du moment
+              </p>
+            </div>
+          </div>
+
+          {filteredFeatured.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredFeatured.map((article, index) => (
+                <Link
+                  key={article}
+                  to={buildHelpArticleRoute(article)}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:bg-white hover:shadow-lg animate-in fade-in slide-in-from-bottom-4"
+                  style={{ animationDelay: `${index * 60}ms` }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Bookmark className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 transition-colors group-hover:text-primary">
+                        {article}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Accéder rapidement à cet article d’aide.
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-slate-500">
+              Aucun article mis en avant ne correspond à votre recherche.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* CATEGORIES */}
+      <section className="mx-auto mt-10 w-full max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <span className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+            Parcourir par thème
+          </span>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Catégories d’assistance
+          </h2>
+          <p className="mt-3 max-w-2xl text-base text-slate-500">
+            Explorez les sujets les plus importants selon votre profil et trouvez
+            vos réponses plus rapidement.
+          </p>
+        </div>
+
+        {filteredSections.length > 0 ? (
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filteredSections.map((section, index) => {
               const shouldShowToggle = section.links.length > 3;
               const isExpanded = expandedSections.includes(section.title);
               const visibleLinks = isExpanded ? section.links : section.links.slice(0, 3);
 
               return (
-                <>
+                <article
+                  key={section.title}
+                  className="group rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-in fade-in slide-in-from-bottom-4"
+                  style={{ animationDelay: `${index * 70}ms` }}
+                >
+                  <div className="mb-5 flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
+                      {section.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold leading-tight text-slate-900">
+                        {section.title}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {section.links.length} article
+                        {section.links.length > 1 ? "s" : ""} disponible
+                        {section.links.length > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </div>
+
                   <ul className="space-y-3">
                     {visibleLinks.map((link) => (
                       <li key={link}>
                         <Link
                           to={buildHelpArticleRoute(link)}
-                          className="block border-b border-gray-300 pb-3 text-sm font-medium text-gray-700 hover:text-indigo-600"
+                          className="block rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700 transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-primary"
                         >
                           {link}
                         </Link>
@@ -493,33 +614,50 @@ const FAQ = () => {
                     ))}
                   </ul>
 
-                  {shouldShowToggle ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedSections((current) =>
-                          current.includes(section.title)
-                            ? current.filter((title) => title !== section.title)
-                            : [...current, section.title],
-                        )
-                      }
-                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
-                    >
-                      {isExpanded ? "Voir moins" : section.moreLabel}
-                    </button>
-                  ) : (
-                    <Link
-                      to={buildHelpCategoryRoute(section.moreLabel)}
-                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
-                    >
-                      {section.moreLabel}
-                    </Link>
-                  )}
-                </>
+                  <div className="mt-5 border-t border-slate-100 pt-4">
+                    {shouldShowToggle ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedSections((current) =>
+                            current.includes(section.title)
+                              ? current.filter((title) => title !== section.title)
+                              : [...current, section.title],
+                          )
+                        }
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
+                      >
+                        {isExpanded ? "Voir moins" : section.moreLabel}
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-300 ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                    ) : (
+                      <Link
+                        to={buildHelpCategoryRoute(section.moreLabel)}
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
+                      >
+                        {section.moreLabel}
+                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                      </Link>
+                    )}
+                  </div>
+                </article>
               );
-            })()}
-          </article>
-        ))}
+            })}
+          </div>
+        ) : (
+          <div className="rounded-[2rem] border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+            <h3 className="text-2xl font-semibold text-slate-900">
+              Aucun résultat trouvé
+            </h3>
+            <p className="mt-2 text-slate-500">
+              Essayez un autre mot-clé pour trouver l’article d’aide recherché.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );

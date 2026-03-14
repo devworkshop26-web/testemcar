@@ -23,9 +23,9 @@ import {
   LockKeyhole,
   LogIn,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Link, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { authAPI } from "@/Actions/authApi";
 import { accessTokenKey, refreshTokenKey } from "@/helper/InstanceAxios";
 import { getDashboardPath } from "@/helper/routeUtils";
@@ -33,7 +33,6 @@ import image from "@/assets/hero-2.jpg";
 import { videLocalStorage } from "@/helper/utils";
 import { queryClient } from "@/lib/queryClient";
 import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
-
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -44,26 +43,21 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loginError, setLoginError] = useState<string | null>(null);
+
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const { data: currentUser } = useCurrentUserQuery()
-
+  const { data: currentUser } = useCurrentUserQuery();
 
   if (currentUser) {
     const destination = getDashboardPath(currentUser.role);
     return <Navigate to={destination} replace />;
   }
 
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
 
-    // vide le localstorage 
     videLocalStorage();
 
-    // Validation
     const newErrors: Record<string, string> = {};
     if (!formData.email) newErrors.email = "L'email est requis";
     else if (!/\S+@\S+\.\S+/.test(formData.email))
@@ -82,30 +76,18 @@ const Login = () => {
         password: formData.password,
       });
 
-
-
       const { access_token, refresh_token, user } = response.data;
 
-
-
-
-      // add tokens to local storage
       localStorage.setItem(accessTokenKey, access_token);
       localStorage.setItem(refreshTokenKey, refresh_token);
 
-      // 🔥 IMMEDIATELY update the query cache to avoid UI latency (e.g., in the Header)
       await queryClient.setQueryData(["currentUser"], user);
 
       const successState = {
         state: { message: "Connexion réussie." },
       };
 
-      // redirect based on role or intended destination
       const destination = getDashboardPath(user.role);
-
-
-
-      // navigate(destination);
       navigate(destination, { ...successState, replace: true });
     } catch (error: any) {
       console.error("❌ Erreur de connexion :", error);
@@ -137,79 +119,97 @@ const Login = () => {
 
   const features = [
     {
-      icon: <Clock className="w-5 h-5 text-blue-100" />,
+      icon: <Clock className="w-5 h-5 text-white" />,
       text: "Service 24h/24",
     },
     {
-      icon: <CreditCard className="w-5 h-5 text-blue-100" />,
+      icon: <CreditCard className="w-5 h-5 text-white" />,
       text: "Paiement sécurisé",
     },
     {
-      icon: <CheckCircle className="w-5 h-5 text-blue-100" />,
+      icon: <CheckCircle className="w-5 h-5 text-white" />,
       text: "Assurance incluse",
     },
     {
-      icon: <MapPin className="w-5 h-5 text-blue-100" />,
+      icon: <MapPin className="w-5 h-5 text-white" />,
       text: "Livraison nationale",
     },
   ];
 
+  const inputBaseClass =
+    "h-11 rounded-2xl border border-slate-200 bg-white/80 shadow-[0_4px_18px_rgba(15,23,42,0.04)] backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:border-primary/50 focus-visible:shadow-[0_0_0_4px_rgba(37,99,235,0.10)]";
+
+  const errorTextClass =
+    "absolute left-0 top-full mt-1 text-[11px] leading-tight text-destructive";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-blue-100">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.10),transparent_26%),linear-gradient(to_bottom_right,#f8fbff,#eef5ff,#f8fbff)]">
       <Header />
 
-      <div className="flex items-center justify-center min-h-screen py-8 lg:py-0 fade-in">
-        <div className="container mx-auto px-4 pt-[15vh] pb-[5vh] max-w-7xl h-auto lg:h-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-0 rounded-3xl overflow-hidden shadow-2xl">
-            {/* Colonne gauche - Image et Contenu marketing (3/5) */}
-            <div className="hidden lg:flex lg:col-span-3">
+      <div className="flex min-h-screen items-start justify-center">
+        <div className="container mx-auto max-w-7xl px-4 pt-[14vh] pb-[3vh]">
+          <div className="grid grid-cols-1 overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 shadow-[0_30px_90px_rgba(15,23,42,0.12)] backdrop-blur-xl lg:grid-cols-5">
+            {/* Colonne gauche */}
+            <div className="hidden lg:col-span-3 lg:flex">
               <div
-                className="relative w-full h-full bg-cover bg-center"
+                className="relative min-h-[700px] w-full bg-cover bg-center"
                 style={{ backgroundImage: `url(${image})` }}
               >
-                {/* Overlay gradient pour un look premium et un meilleur contraste */}
-                <div className="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/60 to-transparent"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/50 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-950/30" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/45 to-transparent" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.18),transparent_26%)]" />
+                <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:36px_36px]" />
 
-                <div className="absolute inset-0 flex flex-col justify-between p-12 text-white">
-                  {/* Header (Logo) */}
+                <div className="absolute inset-0 flex flex-col justify-between p-8 text-white xl:p-10">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30 shadow-lg">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-xl backdrop-blur-md">
                       <Car className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-lg font-poppins">
+                      <h1 className="font-poppins text-4xl font-bold tracking-tight text-white drop-shadow-lg">
                         Madagasycar
                       </h1>
-                      <p className="text-blue-200 text-lg font-roboto font-light drop-shadow-md">
-                        Excellence Automobile
+                      <p className="text-sm font-light text-blue-100/90 drop-shadow-md">
+                        Une expérience premium à Madagascar
                       </p>
                     </div>
                   </div>
 
-                  {/* Contenu principal */}
-                  <div className="max-w-xl space-y-6">
-                    <h2 className="text-5xl font-bold leading-tight tracking-wide text-white drop-shadow-2xl font-poppins">
-                      Heureux de vous <br />
-                      <span className="text-primary drop-shadow-lg">
+                  <div className="max-w-xl space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-md shadow-lg">
+                      <Sparkles className="h-4 w-4 text-emerald-300" />
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/95">
+                        Heureux de vous revoir
+                      </span>
+                    </div>
+
+                    <h2 className="font-poppins text-5xl font-bold leading-[1.05] tracking-tight text-white drop-shadow-2xl xl:text-6xl">
+                      Heureux de vous
+                      <br />
+                      <span className="bg-gradient-to-r from-emerald-300 via-sky-300 to-blue-400 bg-clip-text text-transparent">
                         revoir
-                      </span>{" "}
+                      </span>
+                      <br />
                       parmi nous.
                     </h2>
-                    <p className="text-lg text-blue-50 leading-relaxed font-poppins font-medium max-w-lg drop-shadow-md">
+
+                    <p className="max-w-lg text-base leading-relaxed text-blue-50/90 drop-shadow-md">
                       Accédez à votre espace personnel pour gérer vos
-                      réservations et retrouver vos véhicules favoris.
+                      réservations, retrouver vos véhicules favoris et profiter
+                      d’une expérience fluide et élégante.
                     </p>
                   </div>
 
-                  {/* Features */}
-                  <div className="grid grid-cols-2 gap-6 max-w-2xl">
+                  <div className="grid max-w-2xl grid-cols-2 gap-3">
                     {features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-primary/30 backdrop-blur-sm rounded-xl flex items-center justify-center border border-primary/40 shadow-lg">
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-md shadow-lg"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10">
                           {feature.icon}
                         </div>
-                        <span className="text-lg font-medium text-white drop-shadow-md font-roboto">
+                        <span className="text-sm font-medium text-white/95">
                           {feature.text}
                         </span>
                       </div>
@@ -219,186 +219,174 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Colonne droite - Formulaire (2/5) */}
-            <div className="flex items-center justify-center lg:col-span-2 bg-background p-6 lg:p-10">
-              <Card className="w-full max-w-md border-none shadow-none bg-transparent">
-                <CardHeader className="text-center space-y-4 pb-6">
-                  <div className="space-y-2">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg lg:hidden mb-4">
-                      <Car className="w-8 h-8 text-white" />
+            {/* Colonne droite */}
+            <div className="flex items-center justify-center bg-white/75 p-4 sm:p-5 lg:col-span-2 lg:p-6 xl:p-8">
+              <Card className="w-full max-w-md border-none bg-transparent shadow-none">
+                <CardHeader className="space-y-3 pb-4 text-center">
+                  <div className="space-y-1.5">
+                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 shadow-lg lg:hidden">
+                      <Car className="h-7 w-7 text-white" />
                     </div>
-                    <CardTitle className="text-3xl font-bold text-foreground font-poppins">
+
+                    <CardTitle className="font-poppins text-3xl font-bold tracking-tight text-foreground">
                       Connexion
                     </CardTitle>
-                    <CardDescription className="text-muted-foreground text-base font-roboto">
+
+                    <CardDescription className="text-sm text-muted-foreground sm:text-[15px]">
                       Entrez vos identifiants pour accéder à votre compte.
                     </CardDescription>
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-6 pb-8">
-                  <form onSubmit={handleLogin} className="space-y-5">
-                    {loginError && (
-                      <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Erreur</AlertTitle>
-                        <AlertDescription>
-                          {loginError}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {/* Email */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="email"
-                        className="text-sm font-semibold text-foreground flex items-center gap-1"
-                      >
-                        <Mail className="w-4 h-4 text-primary" /> Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="jean.dupont@email.com"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        className={`h-10 text-sm rounded-xl border transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 
-                          ${errors.email
-                            ? "border-destructive"
-                            : "border-border"
-                          }`}
-                        disabled={isLoading}
-                      />
-                      {errors.email && (
-                        <p className="text-destructive text-xs mt-1">
-                          {errors.email}
-                        </p>
+                <CardContent className="pb-5">
+                  <form onSubmit={handleLogin} className="space-y-3">
+                    {/* Zone fixe pour erreur globale */}
+                    <div className="relative min-h-[52px]">
+                      {loginError && (
+                        <div className="absolute inset-x-0 top-0 animate-in fade-in slide-in-from-top-1 duration-300 rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-destructive shadow-sm">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <div>
+                              <p className="text-[12px] font-semibold">Erreur</p>
+                              <p className="text-[11px] leading-relaxed">
+                                {loginError}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    {/* Mot de passe */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
+                    {/* Email */}
+                    <div className="relative pb-5">
+                      <Label
+                        htmlFor="email"
+                        className="mb-2 flex items-center gap-1 text-sm font-semibold text-foreground"
+                      >
+                        Email
+                      </Label>
+
+                      <div className="group relative">
+                        <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="jean.dupont@email.com"
+                          value={formData.email}
+                          onChange={(e) => {
+                            setFormData({ ...formData, email: e.target.value });
+                            if (errors.email) {
+                              setErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.email;
+                                return next;
+                              });
+                            }
+                          }}
+                          className={`${inputBaseClass} pl-11 ${
+                            errors.email
+                              ? "border-destructive focus-visible:border-destructive focus-visible:shadow-[0_0_0_4px_rgba(220,38,38,0.08)]"
+                              : ""
+                          }`}
+                          disabled={isLoading}
+                        />
+                      </div>
+
+                      {errors.email && (
+                        <p className={errorTextClass}>{errors.email}</p>
+                      )}
+                    </div>
+
+                    {/* Password */}
+                    <div className="relative pb-5">
+                      <div className="mb-2 flex items-center justify-between">
                         <Label
                           htmlFor="password"
-                          className="text-sm font-semibold text-foreground flex items-center gap-1"
+                          className="flex items-center gap-1 text-sm font-semibold text-foreground"
                         >
-                          <LockKeyhole className="w-4 h-4 text-primary" /> Mot
+                          Mot
                           de passe
                         </Label>
+
                         <Link
                           to="/forgot-password"
-                          className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="text-[11px] font-medium text-primary transition-colors hover:text-primary/80"
                         >
                           Mot de passe oublié ?
                         </Link>
                       </div>
-                      <div className="relative">
+
+                      <div className="group relative">
+                        <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary" />
                         <Input
                           id="password"
                           type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
                           value={formData.password}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData({
                               ...formData,
                               password: e.target.value,
-                            })
-                          }
-                          className={`h-10 text-sm pr-10 rounded-xl border transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 
-                            ${errors.password
-                              ? "border-destructive"
-                              : "border-border"
-                            }`}
+                            });
+                            if (errors.password) {
+                              setErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.password;
+                                return next;
+                              });
+                            }
+                          }}
+                          className={`${inputBaseClass} pl-11 pr-11 ${
+                            errors.password
+                              ? "border-destructive focus-visible:border-destructive focus-visible:shadow-[0_0_0_4px_rgba(220,38,38,0.08)]"
+                              : ""
+                          }`}
                           disabled={isLoading}
                         />
+
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:text-foreground"
                           disabled={isLoading}
                         >
                           {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
+                            <EyeOff className="h-4 w-4" />
                           ) : (
-                            <Eye className="w-4 h-4" />
+                            <Eye className="h-4 w-4" />
                           )}
                         </button>
                       </div>
+
                       {errors.password && (
-                        <p className="text-destructive text-xs mt-1">
-                          {errors.password}
-                        </p>
+                        <p className={errorTextClass}>{errors.password}</p>
                       )}
                     </div>
 
-                    {/* Bouton de connexion */}
                     <Button
                       type="submit"
-                      className="w-full h-11 text-sm font-semibold rounded-xl bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+                      className="flex h-11 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-primary to-blue-600 text-sm font-semibold shadow-lg transition-all duration-300 hover:from-blue-600 hover:to-blue-700 hover:shadow-xl"
                       disabled={isLoading}
                     >
                       {isLoading ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                           Connexion...
                         </div>
                       ) : (
                         <>
-                          <LogIn className="w-4 h-4 mr-2" />
+                          <LogIn className="mr-2 h-4 w-4" />
                           Se connecter
                         </>
                       )}
                     </Button>
 
-                    {/* Séparateur */}
-                    {/* <div className="relative pt-2">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-border"></div>
-                      </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="px-3 bg-background text-muted-foreground text-xs font-medium uppercase">
-                          Ou continuer avec
-                        </span>
-                      </div>
-                    </div> */}
-
-                    {/* Bouton Google */}
-                    {/* <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-11 text-sm font-medium rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/50 transition-all duration-300 flex items-center justify-center gap-3"
-                    >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        />
-                      </svg>
-                      Google
-                    </Button> */}
-
-                    {/* Lien d'inscription */}
-                    <div className="text-center pt-2">
-                      <p className="text-muted-foreground text-sm">
+                    <div className="pt-1 text-center">
+                      <p className="text-sm text-muted-foreground">
                         Pas encore de compte ?{" "}
                         <Link
                           to="/register"
-                          className="text-primary hover:text-primary/80 font-medium transition-colors"
+                          className="font-semibold text-primary transition-colors hover:text-primary/80"
                         >
                           Créer un compte
                         </Link>

@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { accessTokenKey, refreshTokenKey } from '@/helper/InstanceAxios';
+import { useCallback, useEffect, useRef } from "react";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { accessTokenKey, refreshTokenKey } from "@/helper/InstanceAxios";
 
 export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
   const { logout, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoggingOutRef = useRef(false);
 
   const clearTokens = useCallback(() => {
     localStorage.removeItem(accessTokenKey);
     localStorage.removeItem(refreshTokenKey);
-    localStorage.removeItem('access');
-    localStorage.removeItem('refresh');
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
   }, []);
 
   const clearIdleTimer = useCallback(() => {
@@ -23,22 +24,30 @@ export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
   }, []);
 
   const performLogout = useCallback(async () => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
+
     try {
       await logout();
     } catch {
-      // La déconnexion côté API peut échouer si le token est déjà expiré.
+      // Si la déconnexion API échoue, on force quand même la sortie locale
     } finally {
+      clearIdleTimer();
       clearTokens();
-      navigate('/login', { replace: true });
+      isLoggingOutRef.current = false;
+      navigate("/login?reason=inactive", { replace: true });
     }
-  }, [clearTokens, logout, navigate]);
+  }, [clearIdleTimer, clearTokens, logout, navigate]);
 
   const startIdleTimer = useCallback(() => {
     clearIdleTimer();
+
+    if (!isAuthenticated) return;
+
     timeoutRef.current = setTimeout(() => {
       void performLogout();
     }, timeoutMs);
-  }, [clearIdleTimer, performLogout, timeoutMs]);
+  }, [clearIdleTimer, isAuthenticated, performLogout, timeoutMs]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -47,12 +56,12 @@ export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
     }
 
     const activityEvents: Array<keyof WindowEventMap> = [
-      'mousemove',
-      'mousedown',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'click',
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
     ];
 
     const onUserActivity = () => {
@@ -72,4 +81,18 @@ export const useIdleTimeout = (timeoutMs: number = 15 * 60 * 1000) => {
       clearIdleTimer();
     };
   }, [clearIdleTimer, isAuthenticated, startIdleTimer]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isAuthenticated) {
+        startIdleTimer();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isAuthenticated, startIdleTimer]);
 };

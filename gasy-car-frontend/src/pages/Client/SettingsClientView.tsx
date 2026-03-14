@@ -26,18 +26,13 @@ const SettingsClientView = () => {
     previewPhoto,
     handlePhotoUpload,
     handleDeletePhoto,
-
-    // ✅ CIN
     previewCinRecto,
     previewCinVerso,
     handleCinRectoUpload,
     handleCinVersoUpload,
-
-    // ✅ suppression backend (1 photo à la fois)
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
-
     register,
     onSubmit,
     errors,
@@ -53,15 +48,11 @@ const SettingsClientView = () => {
     );
   }
 
-  /* --------------------------------------------
-     🧹 Déconnexion avec spinner + redirection propre
-  --------------------------------------------- */
   const handleLogout = async () => {
     setLogoutLoading(true);
 
-    deconnectionAction(); // supprime les tokens
+    deconnectionAction();
 
-    // Petit délai pour laisser le spinner visible
     setTimeout(() => {
       navigate("/login", { replace: true });
     }, 600);
@@ -69,7 +60,6 @@ const SettingsClientView = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
-      {/* TITRE PRINCIPAL (style prestataire) */}
       <div className="space-y-2">
         <h2 className="text-3xl font-bold font-poppins tracking-tight">
           Paramètres du compte
@@ -80,7 +70,6 @@ const SettingsClientView = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* SIDEBAR GAUCHE (style prestataire) */}
         <Card className="rounded-2xl shadow-lg border-border/50 h-fit sticky top-24 transition-all duration-300 hover:shadow-xl">
           <CardContent className="p-6 space-y-6">
             <SidebarSettings
@@ -88,7 +77,6 @@ const SettingsClientView = () => {
               setSection={(s: string) => setSection(s as "profile" | "security")}
             />
 
-            {/* ------------------ BOUTON DECONNEXION (premium) ------------------ */}
             <button
               onClick={handleLogout}
               disabled={logoutLoading}
@@ -114,7 +102,6 @@ const SettingsClientView = () => {
           </CardContent>
         </Card>
 
-        {/* FORMULAIRE PRINCIPAL (style prestataire) */}
         <Card className="rounded-2xl shadow-lg border-border/50 md:col-span-2 transition-all duration-300 hover:shadow-xl">
           <CardHeader className="space-y-3 pb-6">
             <CardTitle className="text-2xl font-semibold tracking-tight">
@@ -138,12 +125,10 @@ const SettingsClientView = () => {
                   register={register}
                   handlePhotoUpload={handlePhotoUpload}
                   handleDeletePhoto={handleDeletePhoto}
-                  // ✅ CIN
                   previewCinRecto={previewCinRecto}
                   previewCinVerso={previewCinVerso}
                   handleCinRectoUpload={handleCinRectoUpload}
                   handleCinVersoUpload={handleCinVersoUpload}
-                  // ✅ suppression backend (1 photo à la fois)
                   deleteProfilePhoto={deleteProfilePhoto}
                   deleteCinRecto={deleteCinRecto}
                   deleteCinVerso={deleteCinVerso}
@@ -154,10 +139,10 @@ const SettingsClientView = () => {
 
               {section === "security" && <SecurityForm register={register} />}
 
-              {/* BOUTONS (style prestataire) */}
               <div className="flex flex-col gap-4 pt-6 border-t border-border/50">
                 <div className="flex justify-end items-center gap-3">
                   <Button
+                    type="submit"
                     className="
                       bg-primary text-white rounded-xl flex items-center gap-2
                       transition-all duration-200 hover:scale-105 hover:shadow-md
