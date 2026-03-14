@@ -178,7 +178,25 @@ export default function AdminEditVehiculePage() {
     // Watchers
     const marqueValue = watch("marque")
     const filteredModeles = useMemo(() => {
-        return modeles.filter((m: ModeleVehicule) => m.marque === marqueValue)
+        if (!marqueValue) return modeles
+
+        return modeles.filter((modele) => {
+            const modeleWithMarque = modele as ModeleVehicule & {
+                marque?: string | null
+                marque_id?: string | null
+                marque_data?: { id?: string | null } | string | null
+            }
+
+            const modeleMarqueId =
+                modeleWithMarque.marque ??
+                modeleWithMarque.marque_id ??
+                (typeof modeleWithMarque.marque_data === "string"
+                    ? modeleWithMarque.marque_data
+                    : modeleWithMarque.marque_data?.id)
+
+            if (!modeleMarqueId) return true
+            return String(modeleMarqueId) === String(marqueValue)
+        })
     }, [modeles, marqueValue])
 
     const handlePhotosChange = (files: FileList | null) => {
