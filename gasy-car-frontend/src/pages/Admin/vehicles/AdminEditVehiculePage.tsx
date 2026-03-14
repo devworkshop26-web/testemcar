@@ -92,7 +92,10 @@ export default function AdminEditVehiculePage() {
             devise: "MGA",
             montant_caution: 0,
             remise_longue_duree_pourcent: 0,
+            valide: false,
             est_certifie: true,
+            est_sponsorise: false,
+            est_coup_de_coeur: false,
             est_disponible: true,
             description: "",
             conditions_particulieres: "",
@@ -148,7 +151,10 @@ export default function AdminEditVehiculePage() {
 
                 devise: vehicle.devise || "MGA",
                 montant_caution: vehicle.montant_caution ? parseFloat(vehicle.montant_caution) : 0,
+                valide: vehicle.valide ?? false,
                 est_certifie: vehicle.est_certifie,
+                est_sponsorise: vehicle.est_sponsorise ?? false,
+                est_coup_de_coeur: vehicle.est_coup_de_coeur ?? false,
                 est_disponible: vehicle.est_disponible,
                 description: vehicle.description || "",
                 conditions_particulieres: vehicle.conditions_particulieres || "",
@@ -214,7 +220,10 @@ export default function AdminEditVehiculePage() {
             formData.append("ville", values.ville)
             formData.append("zone", values.zone)
             formData.append("devise", values.devise)
+            formData.append("valide", values.valide.toString())
             formData.append("est_certifie", values.est_certifie.toString())
+            formData.append("est_sponsorise", values.est_sponsorise.toString())
+            formData.append("est_coup_de_coeur", values.est_coup_de_coeur.toString())
             formData.append("est_disponible", values.est_disponible.toString())
             formData.append("description", values.description)
             formData.append("conditions_particulieres", values.conditions_particulieres || "")

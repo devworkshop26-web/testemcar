@@ -100,6 +100,7 @@ export interface Vehicule {
   province_remise_longue_duree_pourcent: string | null;
 
   // Statut & qualité
+  valide: boolean;
   est_certifie: boolean;
   est_sponsorise: boolean;
   est_coup_de_coeur: boolean;
