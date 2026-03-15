@@ -88,7 +88,8 @@ export const passwordAPI = {
       "/users/password/reset/",
       {
         email: payload.email.trim().toLowerCase(),
-        reset_token: String(payload.reset_token || "").trim(),
+        reset_token: String(payload.reset_token || payload.code || "").trim(),
+        code: String(payload.code || payload.reset_token || "").trim(),
         new_password: payload.new_password,
         new_password_confirm: payload.new_password_confirm,
       }

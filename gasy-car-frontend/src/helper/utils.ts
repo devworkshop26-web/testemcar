@@ -1,7 +1,11 @@
 import { queryClient } from "@/lib/queryClient";
 import { accessTokenKey, refreshTokenKey } from "./InstanceAxios";
 
-export const deconnectionAction = (redirectTo: string = "/login") => {
+export const deconnectionAction = (redirectTo: string | unknown = "/login") => {
+  const safeRedirectTo = typeof redirectTo === "string" && redirectTo.trim()
+    ? redirectTo
+    : "/login";
+
   localStorage.removeItem(accessTokenKey);
   localStorage.removeItem(refreshTokenKey);
   localStorage.removeItem("access");
@@ -15,7 +19,7 @@ export const deconnectionAction = (redirectTo: string = "/login") => {
 
   queryClient.clear();
 
-  window.location.href = redirectTo;
+  window.location.href = safeRedirectTo;
 };
 
 export const videLocalStorage = () => {
