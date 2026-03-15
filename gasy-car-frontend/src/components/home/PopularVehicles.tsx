@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleCardSkeleton from "@/components/VehicleCardSkeleton";
 import { AnimatedSection, AnimatedItem } from "@/components/animations";
-import { usePopularVehicles, useSponsoredVehicles } from "@/useQuery/vehiculeStatsUseQuery";
+import { useSponsoredVehicles } from "@/useQuery/vehiculeStatsUseQuery";
 import {
   Carousel,
   CarouselContent,
@@ -16,14 +16,7 @@ import { Star } from "lucide-react";
 import { useReservationAction } from "@/hooks/useReservationAction";
 
 export const PopularVehicles = () => {
-  const { data: sponsoredVehicles = [], isLoading, isError } = useSponsoredVehicles();
-  const shouldLoadPopularFallback = !isLoading && (isError || sponsoredVehicles.length === 0);
-  const { data: popularVehicles = [] } = usePopularVehicles({ enabled: shouldLoadPopularFallback });
-
-  const vehicles =
-    shouldLoadPopularFallback && popularVehicles.length > 0
-      ? popularVehicles
-      : sponsoredVehicles;
+  const { data: vehicles = [], isLoading, isError } = useSponsoredVehicles();
 
   const plugin = useRef(
     Autoplay({ delay: 3000, stopOnMouseEnter: true, stopOnInteraction: false })
@@ -119,7 +112,9 @@ export const PopularVehicles = () => {
             {!isLoading && !hasVehicles && (
               <CarouselItem className="pl-3 md:pl-4 basis-full">
                 <div className="rounded-2xl border bg-card px-6 py-10 text-center text-muted-foreground">
-                  Aucun véhicule disponible actuellement.
+                  {isError
+                    ? "Impossible de charger les véhicules sponsorisés pour le moment."
+                    : "Aucun véhicule sponsorisé disponible actuellement."}
                 </div>
               </CarouselItem>
             )}
