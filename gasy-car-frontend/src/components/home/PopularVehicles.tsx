@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleCardSkeleton from "@/components/VehicleCardSkeleton";
 import { AnimatedSection, AnimatedItem } from "@/components/animations";
-import { useSponsoredVehicles } from "@/useQuery/vehiculeStatsUseQuery";
+import { usePopularVehicles, useSponsoredVehicles } from "@/useQuery/vehiculeStatsUseQuery";
 import {
   Carousel,
   CarouselContent,
@@ -17,7 +17,13 @@ import { useReservationAction } from "@/hooks/useReservationAction";
 
 export const PopularVehicles = () => {
   const { data: sponsoredVehicles = [], isLoading, isError } = useSponsoredVehicles();
-  const vehicles = sponsoredVehicles;
+  const shouldLoadPopularFallback = !isLoading && (isError || sponsoredVehicles.length === 0);
+  const { data: popularVehicles = [] } = usePopularVehicles({ enabled: shouldLoadPopularFallback });
+
+  const vehicles =
+    shouldLoadPopularFallback && popularVehicles.length > 0
+      ? popularVehicles
+      : sponsoredVehicles;
 
   const plugin = useRef(
     Autoplay({ delay: 3000, stopOnMouseEnter: true, stopOnInteraction: false })
@@ -26,10 +32,6 @@ export const PopularVehicles = () => {
   const { handleReserve } = useReservationAction();
   const skeletonCount = 8;
   const hasVehicles = vehicles.length > 0;
-
-  if (!isLoading && (isError || !hasVehicles)) {
-    return null;
-  }
 
   const itemClass =
     "pl-3 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/4 pb-3 pt-2";
@@ -114,6 +116,13 @@ export const PopularVehicles = () => {
                 );
               })}
 
+            {!isLoading && !hasVehicles && (
+              <CarouselItem className="pl-3 md:pl-4 basis-full">
+                <div className="rounded-2xl border bg-card px-6 py-10 text-center text-muted-foreground">
+                  Aucun véhicule disponible actuellement.
+                </div>
+              </CarouselItem>
+            )}
           </CarouselContent>
 
           <CarouselPrevious className="absolute left-[-10px] top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow border hover:bg-primary hover:text-white z-20" />

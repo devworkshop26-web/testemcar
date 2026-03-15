@@ -57,12 +57,6 @@ function toNumberLikeString(input: string) {
 
 export default function VehiculeDetailView() {
   const queryClient = useQueryClient();
-
-  const invalidateVehicleShowcaseQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["vehicles", "sponsored"] });
-    queryClient.invalidateQueries({ queryKey: ["vehicles", "coup-de-coeur"] });
-    queryClient.invalidateQueries({ queryKey: ["vehicles", "popular"] });
-  };
   const { id } = useParams();
 
   const { data: vehicule, isLoading, isError } = useVehiculeQuery(id);
@@ -134,7 +128,6 @@ export default function VehiculeDetailView() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      invalidateVehicleShowcaseQueries();
     },
   });
 
@@ -153,7 +146,6 @@ export default function VehiculeDetailView() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      invalidateVehicleShowcaseQueries();
     },
   });
 
