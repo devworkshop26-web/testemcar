@@ -29,6 +29,8 @@ import { VehiculeOptionsSection } from "@/components/vehicule/VehiculeOptionsSec
 import { VehiculeEquipmentsSection } from "@/components/vehicule/VehiculeEquipmentsSection"
 import { VehiculePhotosSection } from "@/components/vehicule/VehiculePhotosSection"
 import { useAllVehicleEquipmentsQuery } from "@/useQuery/vehicleEquipmentsUseQuery"
+import { adminUseQuery } from "@/useQuery/adminUseQuery"
+import { User } from "@/types/userType"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Loader2 } from "lucide-react"
 
@@ -47,6 +49,7 @@ export default function AdminEditVehiculePage() {
     const { data: statusList = [], isLoading: statusLoading } = useStatusVehiculesQuery()
     const { data: modeles = [], isLoading: modelesLoading } = useModelesVehiculeQuery()
     const { data: equipments = [], isLoading: equipmentsLoading } = useAllVehicleEquipmentsQuery()
+    const { prestataireData = [] } = adminUseQuery()
 
     const [photos, setPhotos] = useState<PhotoItem[]>([])
     const [submitError, setSubmitError] = useState<string | null>(null)
@@ -110,15 +113,15 @@ export default function AdminEditVehiculePage() {
         if (vehicle) {
             reset({
                 titre: vehicle.titre || "",
-                marque: vehicle.marque_data?.id || vehicle.marque || "",
-                modele: vehicle.modele_data?.id || vehicle.modele || "",
+                marque: String(vehicle.marque_data?.id ?? vehicle.marque ?? ""),
+                modele: String(vehicle.modele_data?.id ?? vehicle.modele ?? ""),
                 annee: vehicle.annee || new Date().getFullYear(),
                 numero_immatriculation: vehicle.numero_immatriculation || "",
                 numero_serie: vehicle.numero_serie || "",
-                categorie: vehicle.categorie_data?.id || vehicle.categorie || "",
-                transmission: vehicle.transmission_data?.id || vehicle.transmission || "",
-                type_carburant: vehicle.type_carburant_data?.id || vehicle.type_carburant || "",
-                statut: vehicle.statut_data?.id || vehicle.statut || "",
+                categorie: String(vehicle.categorie_data?.id ?? vehicle.categorie ?? ""),
+                transmission: String(vehicle.transmission_data?.id ?? vehicle.transmission ?? ""),
+                type_carburant: String(vehicle.type_carburant_data?.id ?? vehicle.type_carburant ?? ""),
+                statut: String(vehicle.statut_data?.id ?? vehicle.statut ?? ""),
                 type_vehicule: vehicle.type_vehicule || "TOURISME",
                 nombre_places: vehicle.nombre_places || 4,
                 nombre_portes: vehicle.nombre_portes || 4,
@@ -159,7 +162,7 @@ export default function AdminEditVehiculePage() {
                 description: vehicle.description || "",
                 conditions_particulieres: vehicle.conditions_particulieres || "",
                 equipements: vehicle.equipements || [],
-                proprietaire: vehicle.proprietaire || "",
+                proprietaire: String(vehicle.proprietaire_data?.id ?? vehicle.proprietaire ?? ""),
             })
 
             if (vehicle.photos?.length) {
@@ -245,7 +248,7 @@ export default function AdminEditVehiculePage() {
             formData.append("est_disponible", values.est_disponible.toString())
             formData.append("description", values.description)
             formData.append("conditions_particulieres", values.conditions_particulieres || "")
-            formData.append("proprietaire", values.proprietaire || "admin")
+            formData.append("proprietaire", values.proprietaire)
             formData.append("type_vehicule", values.type_vehicule || "TOURISME")
 
             // Simple Fields if present
@@ -332,18 +335,18 @@ export default function AdminEditVehiculePage() {
     // Define Lists for components
     const IdentityLists: IdentityProps = {
         register, control, errors, watch, setValue,
-        categories: categories.map(c => ({ id: c.id, nom: c.nom, label: c.nom })),
-        transmissions: transmissions.map(t => ({ id: t.id, nom: t.nom, label: t.nom })),
-        fuelTypes: fuelTypes.map(f => ({ id: f.id, nom: f.nom, label: f.nom })),
-        statusList: statusList.map(s => ({ id: s.id, nom: s.nom, label: s.nom })),
+        categories: categories.map(c => ({ id: String(c.id), nom: c.nom, label: c.nom })),
+        transmissions: transmissions.map(t => ({ id: String(t.id), nom: t.nom, label: t.nom })),
+        fuelTypes: fuelTypes.map(f => ({ id: String(f.id), nom: f.nom, label: f.nom })),
+        statusList: statusList.map(s => ({ id: String(s.id), nom: s.nom, label: s.nom })),
         clients: [], // Not used for now
-        proprietaire: [], // Add owner list if necessary
+        proprietaire: (prestataireData as User[]).map((user) => ({ ...user, id: String(user.id) })),
         loadingSelect: marquesLoading || categories.length === 0, // Simplified loading check
     }
 
     const MainInfoLists: MainInfoProps = {
         ...IdentityLists,
-        marques: marques.map(m => ({ id: m.id, nom: m.nom, label: m.nom })), // Redundant but Types require it
+        marques: marques.map(m => ({ id: String(m.id), nom: m.nom, label: m.nom })), // Redundant but Types require it
         filteredModeles,
         loadingSelect: modelesLoading,
         marquesLoading,
