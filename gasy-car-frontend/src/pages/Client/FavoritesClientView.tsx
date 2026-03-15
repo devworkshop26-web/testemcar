@@ -1,31 +1,96 @@
 import { Heart } from "lucide-react";
-import { Card, CardContent } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
+import VehicleCard from "@/components/VehicleCard";
+import { useVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
+import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
 
-// --- VUE 4 : FAVORIS (FAVORITES) ---
 const FavoritesClientView = () => {
-    return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <h2 className="text-2xl font-bold font-poppins">Mes Favoris</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2].map((i) => (
-                    <Card key={i} className="border-none shadow-md rounded-2xl overflow-hidden">
-                        <div className="relative h-48 bg-gray-200">
-                            <img src={`/src/assets/car-${i}.jpg`} className="w-full h-full object-cover" />
-                            <button className="absolute top-3 right-3 p-2 bg-white rounded-full text-red-500 shadow-sm">
-                                <Heart className="w-5 h-5 fill-current" />
-                            </button>
-                        </div>
-                        <CardContent className="p-5">
-                            <h3 className="font-bold text-lg">Mitsubishi L200</h3>
-                            <p className="text-blue-600 font-bold mt-2">200,000 Ar <span className="text-gray-400 text-xs font-normal">/ jour</span></p>
-                            <Button className="w-full mt-4 rounded-xl bg-gray-900">Réserver maintenant</Button>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+  const navigate = useNavigate();
+  const { data: cars = [], isLoading } = useVehiculesQuery();
+  const { favoriteIds, isFavorite, toggleFavorite } = useVehicleFavorites();
+
+  const favoriteCars = cars.filter((car) => favoriteIds.includes(car.id));
+
+  if (isLoading) {
+    return <p className="p-10 text-center">Chargement des favoris...</p>;
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-bold font-poppins">Mes Favoris</h2>
+        <p className="text-sm text-slate-500">
+          {favoriteCars.length} véhicule{favoriteCars.length > 1 ? "s" : ""} en favoris
+        </p>
+      </div>
+
+      {favoriteCars.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-500">
+            <Heart className="h-5 w-5" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900">Aucun favori pour le moment</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Cliquez sur le cœur dans la liste des véhicules pour enregistrer vos coups de cœur.
+          </p>
         </div>
-    );
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {favoriteCars.map((car) => {
+            const price = parseFloat(String(car.prix_jour || 0).replace(/[^\d.-]/g, "")) || 0;
+            const image = car.photo_principale || car.photos?.[0]?.image || "";
+            const brand =
+              (car as any).marque?.nom ||
+              car.marque_data?.nom ||
+              (car as any).marque_nom ||
+              "Marque inconnue";
+            const model =
+              (car as any).modele?.label ||
+              (car as any).modele?.nom ||
+              car.modele_data?.label ||
+              (car as any).modele_label ||
+              car.titre ||
+              "Modèle inconnu";
+            const transmission =
+              (car as any).transmission?.label ||
+              (car as any).transmission?.nom ||
+              car.transmission_data?.nom ||
+              (car as any).transmission_nom ||
+              "Transmission inconnue";
+            const fuel =
+              (car as any).type_carburant?.label ||
+              (car as any).type_carburant?.nom ||
+              car.type_carburant_data?.nom ||
+              (car as any).type_carburant_nom ||
+              "Carburant inconnu";
+
+            return (
+              <Link key={car.id} to={`/vehicule/${car.id}`} className="group block">
+                <VehicleCard
+                  image={image}
+                  year={car.annee}
+                  brand={brand}
+                  model={model}
+                  rating={Number(car.note_moyenne ?? 0)}
+                  trips={car.nombre_locations ?? 0}
+                  price={price}
+                  seats={car.nombre_places ?? 0}
+                  transmission={transmission}
+                  fuel={fuel}
+                  certified={car.est_certifie}
+                  deliveryAvailable={car.est_disponible}
+                  isFavorite={isFavorite(car.id)}
+                  onToggleFavorite={() => toggleFavorite(car.id)}
+                  onReserve={() => navigate(`/client/reservation/${car.id}`)}
+                  reserveButtonClassName="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl hover:bg-primary/90 transition"
+                />
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default FavoritesClientView
+export default FavoritesClientView;
