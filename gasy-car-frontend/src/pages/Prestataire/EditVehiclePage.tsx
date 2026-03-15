@@ -85,12 +85,12 @@ const EditVehiclePage = () => {
     if (!vehicle) return;
     reset({
       titre: vehicle.titre || "",
-      marque: vehicle.marque_data?.id || vehicle.marque || "",
-      modele: vehicle.modele_data?.id || vehicle.modele || "",
-      categorie: vehicle.categorie_data?.id || vehicle.categorie || "",
-      transmission: vehicle.transmission_data?.id ?? vehicle.transmission?.id ?? "",
-      type_carburant: vehicle.type_carburant_data?.id ?? vehicle.type_carburant?.id ?? "",
-      statut: vehicle.statut_data?.id ?? vehicle.statut?.id ?? "",
+      marque: String(vehicle.marque_data?.id ?? vehicle.marque ?? ""),
+      modele: String(vehicle.modele_data?.id ?? vehicle.modele ?? ""),
+      categorie: String(vehicle.categorie_data?.id ?? vehicle.categorie ?? ""),
+      transmission: String(vehicle.transmission_data?.id ?? vehicle.transmission?.id ?? ""),
+      type_carburant: String(vehicle.type_carburant_data?.id ?? vehicle.type_carburant?.id ?? ""),
+      statut: String(vehicle.statut_data?.id ?? vehicle.statut?.id ?? ""),
       type_vehicule: vehicle.type_vehicule === "UTILITAIRE" ? "UTILITAIRE" : "TOURISME",
       // Caractéristiques
       annee: vehicle.annee || new Date().getFullYear(),
@@ -137,7 +137,7 @@ const EditVehiclePage = () => {
       est_disponible: vehicle.est_disponible || true,
       description: vehicle.description || "",
       conditions_particulieres: vehicle.conditions_particulieres || "",
-      proprietaire: vehicle.proprietaire || "",
+      proprietaire: String(vehicle.proprietaire ?? ""),
     });
 
     if (vehicle.photos?.length) {
@@ -152,12 +152,12 @@ const EditVehiclePage = () => {
   }, [vehicle, reset]);
 
   // Options pour les Selects
-  const statusOptions = [{ label: "Choisir un statut", value: "" }, ...(statusData || []).map((s) => ({ label: s.nom, value: s.id }))];
-  const categoryOptions = [{ label: "Choisir une catégorie", value: "" }, ...(CategoryData || []).map((c) => ({ label: c.nom, value: c.id }))];
-  const transmissionOptions = [{ label: "Choisir une transmission", value: "" }, ...(transmissionData || []).map((t) => ({ label: t.nom, value: t.id }))];
-  const fuelOptions = [{ label: "Choisir un type de carburant", value: "" }, ...(fuelTypes || []).map((f) => ({ label: f.nom, value: f.id }))];
-  const marqueOptions = [{ label: "Choisir une marque", value: "" }, ...(marqueData || []).map((m) => ({ label: m.nom, value: m.id }))];
-  const modeleOptions = [{ label: "Choisir un modèle", value: "", marque: null }, ...(modeleData || []).map((m) => ({ label: m.label, value: m.id, marque: m.marque ?? null }))];
+  const statusOptions = [{ label: "Choisir un statut", value: "" }, ...(statusData || []).map((s) => ({ label: s.nom, value: String(s.id) }))];
+  const categoryOptions = [{ label: "Choisir une catégorie", value: "" }, ...(CategoryData || []).map((c) => ({ label: c.nom, value: String(c.id) }))];
+  const transmissionOptions = [{ label: "Choisir une transmission", value: "" }, ...(transmissionData || []).map((t) => ({ label: t.nom, value: String(t.id) }))];
+  const fuelOptions = [{ label: "Choisir un type de carburant", value: "" }, ...(fuelTypes || []).map((f) => ({ label: f.nom, value: String(f.id) }))];
+  const marqueOptions = [{ label: "Choisir une marque", value: "" }, ...(marqueData || []).map((m) => ({ label: m.nom, value: String(m.id) }))];
+  const modeleOptions = [{ label: "Choisir un modèle", value: "", marque: null }, ...(modeleData || []).map((m) => ({ label: m.label, value: String(m.id), marque: m.marque != null ? String(m.marque) : null }))];
   const equipmentOptions = equipmentData?.map((e) => ({ id: e.id, label: e.label ?? e.id })) || [];
 
   const handlePhotosChange = (files: FileList | null) => {
