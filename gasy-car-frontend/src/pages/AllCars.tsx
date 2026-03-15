@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
 
 type FilterState = {
   brand: string;
@@ -105,6 +106,7 @@ const AllCars = () => {
     useVehiculesQuery(typeFilter);
 
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useVehicleFavorites();
   const queryErrorMessage =
     error instanceof Error ? error.message : "Impossible de récupérer les véhicules.";
   const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -797,6 +799,8 @@ const AllCars = () => {
                     <Link to={`/vehicule/${id}`} className="group block">
                       <VehicleCard
                         {...props}
+                        isFavorite={isFavorite(id)}
+                        onToggleFavorite={() => toggleFavorite(id)}
                         onReserve={() => handleReserve(id)}
                         reserveButtonClassName="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl hover:bg-primary/90 transition"
                       />

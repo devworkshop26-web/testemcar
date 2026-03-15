@@ -447,3 +447,31 @@ class VehicleDocuments(models.Model):
 
     def __str__(self):
         return f"Documents {self.vehicle} ({self.id})"
+
+
+class VehiculeFavorite(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="vehicule_favorites",
+        verbose_name="Utilisateur",
+    )
+    vehicle = models.ForeignKey(
+        Vehicule,
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+        verbose_name="Véhicule",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Favori véhicule"
+        verbose_name_plural = "Favoris véhicules"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "vehicle"], name="unique_user_vehicle_favorite"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} ❤️ {self.vehicle}"

@@ -28,6 +28,7 @@ from .models import (
     StatusVehicule,
     Transmission,
     Vehicule,
+    VehiculeFavorite,
     VehicleAvailability,
     VehicleConditionReport,
     VehicleDocuments,
@@ -503,6 +504,83 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(proprietaire=self.request.user)
+
+    def _sync_vehicle_favorites_count(self, vehicle_id):
+        total = VehiculeFavorite.objects.filter(vehicle_id=vehicle_id).count()
+        Vehicule.objects.filter(id=vehicle_id).update(nombre_favoris=total)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="favorites",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def favorites(self, request):
+        favorite_vehicle_ids = list(
+            VehiculeFavorite.objects.filter(user=request.user)
+            .values_list("vehicle_id", flat=True)
+        )
+
+        qs = self.get_queryset().filter(id__in=favorite_vehicle_ids)
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = VehiculeCardSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = VehiculeCardSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="favorites-ids",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def favorites_ids(self, request):
+        favorite_vehicle_ids = list(
+            VehiculeFavorite.objects.filter(user=request.user)
+            .values_list("vehicle_id", flat=True)
+        )
+        return Response({"vehicle_ids": favorite_vehicle_ids}, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post", "delete"],
+        url_path="favorite",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def favorite(self, request, pk=None):
+        vehicle = self.get_object()
+
+        if request.method == "POST":
+            _, created = VehiculeFavorite.objects.get_or_create(
+                user=request.user,
+                vehicle=vehicle,
+            )
+            self._sync_vehicle_favorites_count(vehicle.id)
+            return Response(
+                {
+                    "is_favorite": True,
+                    "created": created,
+                    "message": "Véhicule ajouté aux favoris.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        deleted_count, _ = VehiculeFavorite.objects.filter(
+            user=request.user,
+            vehicle=vehicle,
+        ).delete()
+        self._sync_vehicle_favorites_count(vehicle.id)
+        return Response(
+            {
+                "is_favorite": False,
+                "deleted": deleted_count > 0,
+                "message": "Véhicule retiré des favoris.",
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @swagger_auto_schema(
         operation_description="Assigne un chauffeur au véhicule",
