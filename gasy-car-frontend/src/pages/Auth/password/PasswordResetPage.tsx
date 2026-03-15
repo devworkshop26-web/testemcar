@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LockKeyhole, CheckCircle2, TriangleAlert } from "lucide-react";
+import { LockKeyhole, CheckCircle2, TriangleAlert, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,8 @@ export default function PasswordResetPage() {
   });
 
   const [errors, setErrors] = useState<ErrorMap>({});
+  const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
 
   useEffect(() => {
     const state = location.state as LocationState | null;
@@ -75,7 +77,8 @@ export default function PasswordResetPage() {
     return (
       normalizeError(errors.error) ||
       normalizeError(errors.detail) ||
-      normalizeError(errors.reset_token)
+      normalizeError(errors.reset_token) ||
+      normalizeError(errors.non_field_errors)
     );
   }, [errors]);
 
@@ -154,6 +157,7 @@ export default function PasswordResetPage() {
         normalizeError(apiErrors.error) ||
         normalizeError(apiErrors.detail) ||
         normalizeError(apiErrors.reset_token) ||
+        normalizeError(apiErrors.non_field_errors) ||
         normalizeError(apiErrors.new_password) ||
         normalizeError(apiErrors.new_password_confirm) ||
         "Impossible de réinitialiser le mot de passe.";
@@ -195,15 +199,26 @@ export default function PasswordResetPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="new_password">Nouveau mot de passe</Label>
-            <Input
-              id="new_password"
-              type="password"
-              autoComplete="new-password"
-              value={form.new_password}
-              onChange={handleChange("new_password")}
-              disabled={resetMutation.isPending}
-              className="rounded-2xl h-12"
-            />
+            <div className="relative">
+              <Input
+                id="new_password"
+                type={isNewPasswordVisible ? "text" : "password"}
+                autoComplete="new-password"
+                value={form.new_password}
+                onChange={handleChange("new_password")}
+                disabled={resetMutation.isPending}
+                className="rounded-2xl h-12 pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setIsNewPasswordVisible((prev) => !prev)}
+                disabled={resetMutation.isPending}
+                className="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                aria-label={isNewPasswordVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {isNewPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {getFieldError("new_password") && (
               <p className="text-xs text-red-500">
                 {getFieldError("new_password")}
@@ -215,15 +230,26 @@ export default function PasswordResetPage() {
             <Label htmlFor="new_password_confirm">
               Confirmation du mot de passe
             </Label>
-            <Input
-              id="new_password_confirm"
-              type="password"
-              autoComplete="new-password"
-              value={form.new_password_confirm}
-              onChange={handleChange("new_password_confirm")}
-              disabled={resetMutation.isPending}
-              className="rounded-2xl h-12"
-            />
+            <div className="relative">
+              <Input
+                id="new_password_confirm"
+                type={isConfirmPasswordVisible ? "text" : "password"}
+                autoComplete="new-password"
+                value={form.new_password_confirm}
+                onChange={handleChange("new_password_confirm")}
+                disabled={resetMutation.isPending}
+                className="rounded-2xl h-12 pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setIsConfirmPasswordVisible((prev) => !prev)}
+                disabled={resetMutation.isPending}
+                className="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                aria-label={isConfirmPasswordVisible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {isConfirmPasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
             {getFieldError("new_password_confirm") && (
               <p className="text-xs text-red-500">
                 {getFieldError("new_password_confirm")}
