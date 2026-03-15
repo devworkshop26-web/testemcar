@@ -1,40 +1,41 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurentuser } from "@/useQuery/authUseQuery";
-
-const FAVORITES_STORAGE_PREFIX = "vehicle_favorites";
-
-const getStorageKey = (userId: string) => `${FAVORITES_STORAGE_PREFIX}:${userId}`;
-
-const parseFavorites = (raw: string | null): string[] => {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((id): id is string => typeof id === "string")
-      : [];
-  } catch {
-    return [];
-  }
-};
+import { favoritesAPI } from "@/Actions/favoritesApi";
 
 export const useVehicleFavorites = () => {
-  const { user } = useCurentuser();
-  const userKey = useMemo(
-    () => String(user?.id ?? user?.email ?? "anonymous"),
-    [user?.id, user?.email]
-  );
+  const queryClient = useQueryClient();
+  const { user, isAuthenticated } = useCurentuser();
 
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const favoriteIdsQuery = useQuery({
+    queryKey: ["vehicle-favorites", user?.id],
+    queryFn: async () => {
+      const { data } = await favoritesAPI.getFavoriteVehicleIds();
+      return data.vehicle_ids ?? [];
+    },
+    enabled: Boolean(isAuthenticated && user?.id),
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    const saved = localStorage.getItem(getStorageKey(userKey));
-    setFavoriteIds(parseFavorites(saved));
-  }, [userKey]);
+  const addFavoriteMutation = useMutation({
+    mutationFn: (vehicleId: string) => favoritesAPI.addFavorite(vehicleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicle-favorites", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["vehicle-favorites-vehicles", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    },
+  });
 
-  useEffect(() => {
-    localStorage.setItem(getStorageKey(userKey), JSON.stringify(favoriteIds));
-  }, [favoriteIds, userKey]);
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (vehicleId: string) => favoritesAPI.removeFavorite(vehicleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicle-favorites", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["vehicle-favorites-vehicles", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    },
+  });
 
+  const favoriteIds = favoriteIdsQuery.data ?? [];
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
 
   const isFavorite = useCallback(
@@ -42,17 +43,25 @@ export const useVehicleFavorites = () => {
     [favoriteSet]
   );
 
-  const toggleFavorite = useCallback((vehicleId: string) => {
-    setFavoriteIds((prev) =>
-      prev.includes(vehicleId)
-        ? prev.filter((id) => id !== vehicleId)
-        : [...prev, vehicleId]
-    );
-  }, []);
+  const toggleFavorite = useCallback(
+    (vehicleId: string) => {
+      if (!isAuthenticated) return;
+      if (favoriteSet.has(vehicleId)) {
+        removeFavoriteMutation.mutate(vehicleId);
+      } else {
+        addFavoriteMutation.mutate(vehicleId);
+      }
+    },
+    [isAuthenticated, favoriteSet, addFavoriteMutation, removeFavoriteMutation]
+  );
 
-  const removeFavorite = useCallback((vehicleId: string) => {
-    setFavoriteIds((prev) => prev.filter((id) => id !== vehicleId));
-  }, []);
+  const removeFavorite = useCallback(
+    (vehicleId: string) => {
+      if (!isAuthenticated) return;
+      removeFavoriteMutation.mutate(vehicleId);
+    },
+    [isAuthenticated, removeFavoriteMutation]
+  );
 
   return {
     favoriteIds,
@@ -60,5 +69,7 @@ export const useVehicleFavorites = () => {
     isFavorite,
     toggleFavorite,
     removeFavorite,
+    isLoadingFavorites: favoriteIdsQuery.isLoading,
+    isUpdatingFavorite: addFavoriteMutation.isPending || removeFavoriteMutation.isPending,
   };
 };

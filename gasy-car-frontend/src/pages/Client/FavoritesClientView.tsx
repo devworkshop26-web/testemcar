@@ -1,15 +1,24 @@
 import { Heart } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import VehicleCard from "@/components/VehicleCard";
-import { useVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
+import { favoritesAPI } from "@/Actions/favoritesApi";
 import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
+import { useCurentuser } from "@/useQuery/authUseQuery";
 
 const FavoritesClientView = () => {
   const navigate = useNavigate();
-  const { data: cars = [], isLoading } = useVehiculesQuery();
-  const { favoriteIds, isFavorite, toggleFavorite } = useVehicleFavorites();
+  const { isFavorite, toggleFavorite } = useVehicleFavorites();
+  const { user, isAuthenticated } = useCurentuser();
 
-  const favoriteCars = cars.filter((car) => favoriteIds.includes(car.id));
+  const { data: favoriteCars = [], isLoading } = useQuery({
+    queryKey: ["vehicle-favorites-vehicles", user?.id],
+    enabled: Boolean(isAuthenticated && user?.id),
+    queryFn: async () => {
+      const { data } = await favoritesAPI.getFavoriteVehicles();
+      return Array.isArray(data) ? data : [];
+    },
+  });
 
   if (isLoading) {
     return <p className="p-10 text-center">Chargement des favoris...</p>;
@@ -36,32 +45,20 @@ const FavoritesClientView = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {favoriteCars.map((car) => {
+          {favoriteCars.map((car: any) => {
             const price = parseFloat(String(car.prix_jour || 0).replace(/[^\d.-]/g, "")) || 0;
             const image = car.photo_principale || car.photos?.[0]?.image || "";
-            const brand =
-              (car as any).marque?.nom ||
-              car.marque_data?.nom ||
-              (car as any).marque_nom ||
-              "Marque inconnue";
-            const model =
-              (car as any).modele?.label ||
-              (car as any).modele?.nom ||
-              car.modele_data?.label ||
-              (car as any).modele_label ||
-              car.titre ||
-              "Modèle inconnu";
+            const brand = car.marque_nom || car.marque_data?.nom || "Marque inconnue";
+            const model = car.modele_label || car.modele_data?.label || car.titre || "Modèle inconnu";
             const transmission =
-              (car as any).transmission?.label ||
-              (car as any).transmission?.nom ||
+              car.transmission_nom ||
               car.transmission_data?.nom ||
-              (car as any).transmission_nom ||
+              car.transmission?.nom ||
               "Transmission inconnue";
             const fuel =
-              (car as any).type_carburant?.label ||
-              (car as any).type_carburant?.nom ||
+              car.type_carburant_nom ||
               car.type_carburant_data?.nom ||
-              (car as any).type_carburant_nom ||
+              car.type_carburant?.nom ||
               "Carburant inconnu";
 
             return (
@@ -77,8 +74,8 @@ const FavoritesClientView = () => {
                   seats={car.nombre_places ?? 0}
                   transmission={transmission}
                   fuel={fuel}
-                  certified={car.est_certifie}
-                  deliveryAvailable={car.est_disponible}
+                  certified={Boolean(car.est_certifie)}
+                  deliveryAvailable={Boolean(car.est_disponible)}
                   isFavorite={isFavorite(car.id)}
                   onToggleFavorite={() => toggleFavorite(car.id)}
                   onReserve={() => navigate(`/client/reservation/${car.id}`)}
