@@ -2,12 +2,13 @@ import { Filter, Heart, Star } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { useVehiculesQuery } from "@/useQuery/vehiculeUseQuery";
-import type { Vehicule } from "@/types/vehiculeType";
 import { useNavigate } from "react-router-dom";
+import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
 
 const BrowseCarsClientView = () => {
   const { data: cars = [], isLoading } = useVehiculesQuery();
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useVehicleFavorites();
 
   if (isLoading)
     return <p className="p-10 text-center">Chargement des véhicules...</p>;
@@ -44,8 +45,21 @@ const BrowseCarsClientView = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
 
-                <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition-colors">
-                  <Heart className="w-5 h-5" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFavorite(car.id);
+                  }}
+                  onDoubleClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFavorite(car.id);
+                  }}
+                  className={`absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors ${isFavorite(car.id) ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
+                >
+                  <Heart className={`w-5 h-5 ${isFavorite(car.id) ? "fill-current" : ""}`} />
                 </button>
 
                 <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white text-xs px-2 py-1 rounded-lg">

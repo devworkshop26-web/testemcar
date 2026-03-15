@@ -1,4 +1,4 @@
-import { Star, Users, Fuel, Settings, MapPin, Calendar } from "lucide-react";
+import { Star, Users, Fuel, Settings, MapPin, Calendar, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState, memo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,8 @@ interface VehicleCardProps {
   onReserve?: () => void;
   reserveButtonClassName?: string;
   reserveLabel?: string;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 const VehicleCard = ({
@@ -46,6 +48,8 @@ const VehicleCard = ({
   onReserve,
   reserveButtonClassName,
   reserveLabel = "Réserver",
+  isFavorite = false,
+  onToggleFavorite,
 }: VehicleCardProps) => {
   const hasDiscount = oldPrice && oldPrice > price;
   const discountPercentage = hasDiscount
@@ -103,6 +107,26 @@ const VehicleCard = ({
             </Badge>
           </div>
         )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFavorite?.();
+          }}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFavorite?.();
+          }}
+          className={`absolute top-2 right-2 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-gray-500 shadow-sm transition hover:bg-white hover:text-red-500 ${
+            isFavorite ? "text-red-500" : ""
+          }`}
+          aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+        >
+          <Heart className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+        </button>
+
       </div>
 
       {/* Content */}
