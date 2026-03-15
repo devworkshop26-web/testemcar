@@ -54,6 +54,27 @@ const normalizeVehicleList = (payload: VehicleListResponse): VehicleSearchItem[]
 };
 
 
+const isVehicleFlagEnabled = (value: unknown): boolean => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value === 1;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["true", "1", "yes", "oui"].includes(normalized);
+  }
+
+  return false;
+};
+
+const filterVehiclesByFlag = <T extends VehicleSearchItem>(vehicles: T[], flag: "est_sponsorise" | "est_coup_de_coeur"): T[] =>
+  vehicles.filter((vehicle) => isVehicleFlagEnabled((vehicle as Record<string, unknown>)[flag]));
+
+
 // ░░░░░░░░░░ POPULAR VEHICLES ░░░░░░░░░░
 export const usePopularVehicles = (config?: QueryConfig) => {
   return useQuery<VehicleSearchItem[]>({
@@ -70,7 +91,10 @@ export const useSponsoredVehicles = () => {
     queryKey: ["vehicles", "sponsored"],
     queryFn: async () => {
       try {
-        const sponsoredFromSearch = normalizeVehicleList(await vehiculeSearchAPI.sponsored());
+        const sponsoredFromSearch = filterVehiclesByFlag(
+          normalizeVehicleList(await vehiculeSearchAPI.sponsored()),
+          "est_sponsorise"
+        );
         if (sponsoredFromSearch.length > 0) {
           return sponsoredFromSearch;
         }
@@ -82,7 +106,10 @@ export const useSponsoredVehicles = () => {
         const { data: sponsoredListData } = await vehiculeAPI.get_all_vehicules({
           est_sponsorise: true,
         });
-        const sponsoredFromList = normalizeVehicleList(sponsoredListData as VehicleListResponse);
+        const sponsoredFromList = filterVehiclesByFlag(
+          normalizeVehicleList(sponsoredListData as VehicleListResponse),
+          "est_sponsorise"
+        );
         if (sponsoredFromList.length > 0) {
           return sponsoredFromList;
         }
@@ -92,7 +119,7 @@ export const useSponsoredVehicles = () => {
 
       const { data: allVehiclesData } = await vehiculeAPI.get_all_vehicules();
       const allVehicles = normalizeVehicleList(allVehiclesData as VehicleListResponse);
-      return allVehicles.filter((vehicle) => (vehicle as { est_sponsorise?: boolean }).est_sponsorise === true);
+      return filterVehiclesByFlag(allVehicles, "est_sponsorise");
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
@@ -107,7 +134,10 @@ export const useCoupDeCoeurVehicles = () => {
     queryKey: ["vehicles", "coup-de-coeur"],
     queryFn: async () => {
       try {
-        const coupsFromSearch = normalizeVehicleList(await vehiculeSearchAPI.coupDeCoeur());
+        const coupsFromSearch = filterVehiclesByFlag(
+          normalizeVehicleList(await vehiculeSearchAPI.coupDeCoeur()),
+          "est_coup_de_coeur"
+        );
         if (coupsFromSearch.length > 0) {
           return coupsFromSearch;
         }
@@ -119,7 +149,10 @@ export const useCoupDeCoeurVehicles = () => {
         const { data: coupsFromListData } = await vehiculeAPI.get_all_vehicules({
           est_coup_de_coeur: true,
         });
-        const coupsFromList = normalizeVehicleList(coupsFromListData as VehicleListResponse);
+        const coupsFromList = filterVehiclesByFlag(
+          normalizeVehicleList(coupsFromListData as VehicleListResponse),
+          "est_coup_de_coeur"
+        );
         if (coupsFromList.length > 0) {
           return coupsFromList;
         }
@@ -129,7 +162,7 @@ export const useCoupDeCoeurVehicles = () => {
 
       const { data: allVehiclesData } = await vehiculeAPI.get_all_vehicules();
       const allVehicles = normalizeVehicleList(allVehiclesData as VehicleListResponse);
-      return allVehicles.filter((vehicle) => (vehicle as { est_coup_de_coeur?: boolean }).est_coup_de_coeur === true);
+      return filterVehiclesByFlag(allVehicles, "est_coup_de_coeur");
     },
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
