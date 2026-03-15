@@ -294,24 +294,11 @@ class OTPVerifySerializer(serializers.Serializer):
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    reset_token = serializers.CharField(max_length=128, required=False, allow_blank=True)
-    code = serializers.CharField(max_length=128, required=False, allow_blank=True)
+    reset_token = serializers.CharField(max_length=128)
     new_password = serializers.CharField(min_length=8)
     new_password_confirm = serializers.CharField(min_length=8)
 
     def validate(self, attrs):
-        reset_token = (attrs.get("reset_token") or "").strip()
-        fallback_code = (attrs.get("code") or "").strip()
-
-        if not reset_token and fallback_code:
-            attrs["reset_token"] = fallback_code
-            reset_token = fallback_code
-
-        if not reset_token:
-            raise serializers.ValidationError(
-                {"reset_token": "Le token de réinitialisation est requis."}
-            )
-
         if attrs["new_password"] != attrs["new_password_confirm"]:
             raise serializers.ValidationError(
                 {"new_password_confirm": "Les mots de passe ne correspondent pas."}
