@@ -68,32 +68,7 @@ export const usePopularVehicles = (config?: QueryConfig) => {
 export const useSponsoredVehicles = () => {
   return useQuery<VehicleSearchItem[]>({
     queryKey: ["vehicles", "sponsored"],
-    queryFn: async () => {
-      try {
-        const sponsoredFromSearch = normalizeVehicleList(await vehiculeSearchAPI.sponsored());
-        if (sponsoredFromSearch.length > 0) {
-          return sponsoredFromSearch;
-        }
-      } catch {
-        // fallback below
-      }
-
-      try {
-        const { data: sponsoredListData } = await vehiculeAPI.get_all_vehicules({
-          est_sponsorise: true,
-        });
-        const sponsoredFromList = normalizeVehicleList(sponsoredListData as VehicleListResponse);
-        if (sponsoredFromList.length > 0) {
-          return sponsoredFromList;
-        }
-      } catch {
-        // fallback below
-      }
-
-      const { data: allVehiclesData } = await vehiculeAPI.get_all_vehicules();
-      const allVehicles = normalizeVehicleList(allVehiclesData as VehicleListResponse);
-      return allVehicles.filter((vehicle) => (vehicle as { est_sponsorise?: boolean }).est_sponsorise === true);
-    },
+    queryFn: async () => normalizeVehicleList(await vehiculeSearchAPI.sponsored()),
     staleTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
     retry: 1,

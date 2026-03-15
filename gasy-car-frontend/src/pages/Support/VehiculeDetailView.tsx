@@ -128,6 +128,7 @@ export default function VehiculeDetailView() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles", "sponsored"] });
     },
   });
 
