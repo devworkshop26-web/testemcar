@@ -403,8 +403,8 @@ const ReservationsPage: React.FC = () => {
       return;
     }
 
-    if (!dateRange.from || !dateRange.to) {
-      toast.error("Veuillez sélectionner une date de début et une date de fin.");
+    if (!dateRange.from) {
+      toast.error("Veuillez sélectionner au moins une date de réservation.");
       return;
     }
 
