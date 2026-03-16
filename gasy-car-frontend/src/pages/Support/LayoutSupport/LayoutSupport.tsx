@@ -1,9 +1,17 @@
-// src/pages/Support/LayoutSupport.tsx
 import { useState, useMemo } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, DoorOpen, Settings, ChevronDown } from "lucide-react";
+import {
+  Home,
+  DoorOpen,
+  Settings,
+  ChevronDown,
+  ClipboardList,
+  LifeBuoy,
+  Menu,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import NotificationBell from "@/components/NotificationBell";
 
 import {
   DropdownMenu,
@@ -15,7 +23,7 @@ import {
 
 import SupportSidebar from "./SupportSidebar";
 import { useCurentuser } from "@/useQuery/authUseQuery";
-import AvatarPrestataire from "@/components/Prestataire/AvatarPrestataire";
+import AvatarSupport from "@/components/support/AvatarSupport";
 import { deconnectionAction } from "@/helper/utils";
 
 export default function LayoutSupport() {
@@ -26,11 +34,21 @@ export default function LayoutSupport() {
 
   const pageTitle = useMemo(() => {
     if (location.pathname === "/support") return "Aperçu Général";
-    if (location.pathname.startsWith("/support/reservations")) return "Gestion des Réservations";
-    if (location.pathname.startsWith("/support/clients")) return "Base Clients";
-    if (location.pathname.startsWith("/support/fleet")) return "Flotte de Véhicules";
-    if (location.pathname.startsWith("/support/tickets")) return "Tickets Support";
-    if (location.pathname.startsWith("/support/settings")) return "Mon Profil";
+    if (location.pathname.startsWith("/support/reservations")) {
+      return "Gestion des Réservations";
+    }
+    if (location.pathname.startsWith("/support/clients")) {
+      return "Base Clients";
+    }
+    if (location.pathname.startsWith("/support/fleet")) {
+      return "Flotte de Véhicules";
+    }
+    if (location.pathname.startsWith("/support/tickets")) {
+      return "Tickets Support";
+    }
+    if (location.pathname.startsWith("/support/settings")) {
+      return "Mon Profil";
+    }
     return "Support";
   }, [location.pathname]);
 
@@ -45,68 +63,198 @@ export default function LayoutSupport() {
         `}
       >
         {/* HEADER */}
-        <header className="flex items-center justify-between px-4 md:px-6 py-4 bg-white border-b shadow-sm">
-          <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-semibold text-slate-900 truncate">
-              {pageTitle}
-            </h1>
-            <p className="text-xs text-slate-500 hidden md:block">
-              Espace de gestion du support client.
-            </p>
-          </div>
+        <header
+          className="
+            sticky top-0 z-30 w-full
+            border-b border-slate-200/60
+            bg-white/80 backdrop-blur-md
+            transition-all duration-300 pb-2 pt-2
+          "
+        >
+          <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
+            {/* LEFT */}
+            <div className="flex items-center gap-4 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden rounded-xl hover:bg-slate-100 transition-colors"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                <Menu className="h-5 w-5 text-slate-600" />
+              </Button>
 
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="icon" asChild className="rounded-xl border-slate-200">
-              <Link to="/">
-                <Home className="w-5 h-5" />
-              </Link>
-            </Button>
+              <div className="hidden md:flex flex-col min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 uppercase tracking-wider">
+                    Espace Support
+                  </span>
+                </div>
 
-            {user && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-slate-100 transition">
-                    <AvatarPrestataire user={user} size={40} />
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
-                  </button>
-                </DropdownMenuTrigger>
+                <h1 className="text-sm font-bold text-slate-800 lg:text-base truncate">
+                  {pageTitle}
+                </h1>
 
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 rounded-xl p-2 bg-white"
-                >
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-semibold">
-                      {user.first_name} {user.last_name}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {user.email}
-                    </p>
-                    <p className="text-[10px] mt-1 italic text-blue-600">
-                      Support
-                    </p>
-                  </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  Bienvenue,{" "}
+                  <span className="font-semibold text-slate-700">
+                    {user?.first_name || "Support"}
+                  </span>
+                </p>
+              </div>
+            </div>
 
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem
-                    onClick={() => navigate("/support/settings")}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer"
+            {/* RIGHT */}
+            <div className="flex items-center gap-3">
+              {/* Quick Access */}
+              <div className="hidden sm:flex items-center gap-2 pr-2 border-r border-slate-200">
+                <Link to="/">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="
+                      gap-2 text-slate-600 rounded-lg px-3
+                      transition-all
+                      hover:bg-slate-100/80 hover:text-slate-800 hover:shadow-sm
+                      active:scale-[0.98]
+                    "
                   >
-                    <Settings className="w-4 h-4" />
-                    <span className="text-sm font-medium">Paramètres</span>
-                  </DropdownMenuItem>
+                    <Home className="h-4 w-4" />
+                    <span className="text-xs font-medium">Voir le site</span>
+                  </Button>
+                </Link>
+              </div>
 
-                  <DropdownMenuItem
-                    onClick={deconnectionAction}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-red-600 font-semibold"
+              {/* Notifications */}
+              <NotificationBell />
+
+              {/* USER DROPDOWN */}
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="
+                        group flex items-center gap-2.5 pl-1 pr-2 py-1
+                        rounded-xl border border-transparent
+                        hover:border-slate-200 hover:bg-slate-50/50
+                        transition-all duration-200 focus:outline-none
+                      "
+                    >
+                      <div className="relative">
+                        <AvatarSupport user={user} size={38} />
+                        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                      </div>
+
+                      <div className="hidden lg:flex flex-col items-start leading-none">
+                        <span className="text-sm font-semibold text-slate-700 group-hover:text-primary transition-colors">
+                          {user.first_name || "Support"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-1 font-medium italic">
+                          Support
+                        </span>
+                      </div>
+
+                      <ChevronDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors hidden sm:block" />
+                    </button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={8}
+                    className="
+                      w-64 rounded-2xl p-2
+                      border border-slate-200/60
+                      shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]
+                      animate-in fade-in zoom-in-95
+                      bg-white
+                    "
                   >
-                    <DoorOpen className="w-4 h-4" />
-                    <span>Déconnexion</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                    {/* Top Profile Card */}
+                    <div className="px-3 py-3 mb-2 bg-slate-50/80 rounded-xl">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-tighter">
+                        Compte connecté
+                      </p>
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        {user.first_name} {user.last_name}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                        {user.email}
+                      </p>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      {/* Réservations */}
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/support/reservations"
+                          className="
+                            flex items-center gap-3 rounded-lg cursor-pointer px-3 py-2.5
+                            focus:bg-primary/5 focus:text-primary transition-colors
+                          "
+                        >
+                          <div className="bg-slate-100 p-1.5 rounded-md">
+                            <ClipboardList className="h-4 w-4 text-slate-600" />
+                          </div>
+                          <span className="font-medium text-sm text-slate-700">
+                            Réservations
+                          </span>
+                        </Link>
+                      </DropdownMenuItem>
+
+                      {/* Tickets */}
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/support/tickets"
+                          className="
+                            flex items-center gap-3 rounded-lg cursor-pointer px-3 py-2.5
+                            focus:bg-primary/5 focus:text-primary transition-colors
+                          "
+                        >
+                          <div className="bg-slate-100 p-1.5 rounded-md">
+                            <LifeBuoy className="h-4 w-4 text-slate-600" />
+                          </div>
+                          <span className="font-medium text-sm text-slate-700">
+                            Tickets support
+                          </span>
+                        </Link>
+                      </DropdownMenuItem>
+
+                      {/* Profil */}
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/support/settings"
+                          className="
+                            flex items-center gap-3 rounded-lg cursor-pointer px-3 py-2.5
+                            focus:bg-primary/5 focus:text-primary transition-colors
+                          "
+                        >
+                          <div className="bg-slate-100 p-1.5 rounded-md">
+                            <Settings className="h-4 w-4 text-slate-600" />
+                          </div>
+                          <span className="font-medium text-sm text-slate-700">
+                            Mon profil
+                          </span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </div>
+
+                    <DropdownMenuSeparator className="my-2 bg-slate-100" />
+
+                    {/* Logout */}
+                    <DropdownMenuItem
+                      onClick={deconnectionAction}
+                      className="
+                        flex items-center gap-3 rounded-lg px-3 py-2.5
+                        text-red-600 font-semibold focus:bg-red-50 focus:text-red-700
+                        transition-colors cursor-pointer
+                      "
+                    >
+                      <DoorOpen className="h-4 w-4" />
+                      <span>Déconnexion</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
         </header>
 

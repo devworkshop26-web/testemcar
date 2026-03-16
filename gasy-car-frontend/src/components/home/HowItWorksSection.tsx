@@ -7,40 +7,70 @@ import { steps } from "@/data/homeData";
  */
 export const HowItWorksSection = () => {
   return (
-    <AnimatedSection className="py-12 from-white to-primary/5 mb-8" delay={0}>
-      <div className="text-center mb-10">
-        <span className="text-sm font-semibold uppercase text-secondary tracking-widest">
-          Simplicité Garantie
-        </span>
-        <h2 className="text-3xl md:text-4xl font-poppins font-bold text-foreground mt-2 mb-3">
-          Comment ça fonctionne ?
-        </h2>
-        <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-          Louez la voiture parfaite en seulement <span className="text-primary">4 étapes</span> simples et rapides.
-        </p>
+    <AnimatedSection
+      className="relative mb-10 overflow-hidden rounded-[2rem] border border-border/50 bg-gradient-to-br from-background via-muted/20 to-primary/5 py-14 md:py-16"
+      delay={0}
+    >
+      {/* Décor de fond */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-16 left-0 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute right-0 bottom-0 h-56 w-56 rounded-full bg-secondary/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_35%)]" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
-        {steps?.map((step, index) => (
-          <AnimatedItem key={index} delay={index * 150}>
-            <div className="text-center p-6 bg-white border border-border/50 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 h-full relative group">
-              {/* Numéro de l'étape */}
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white text-xl font-bold border-4 border-white shadow-lg group-hover:scale-110 transition-transform">
-                {step.number}
-              </div>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-14 max-w-3xl text-center">
+          <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            Simplicité Garantie
+          </div>
 
-              <div className="mt-6">
-                <step.icon className="w-10 h-10 text-primary mx-auto mb-4" />
-                <h3 className="text-2xl font-poppins font-semibold text-foreground mb-3">
+          <h2 className="mt-4 text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
+            Comment ça{" "}
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              fonctionne
+            </span>{" "}
+            ?
+          </h2>
+
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Louez la voiture idéale en seulement{" "}
+            <span className="font-semibold text-primary">4 étapes</span> simples,
+            fluides et rapides.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {steps?.map((step, index) => (
+            <AnimatedItem key={index} delay={index * 150}>
+              <div className="group relative h-full overflow-hidden rounded-3xl border border-border/50 bg-background/90 p-6 pt-10 text-center shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-primary/30 hover:shadow-2xl">
+                {/* Accent top */}
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/70 via-secondary/70 to-primary/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+                {/* Numéro */}
+                <div className="absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-lg font-bold text-white shadow-lg ring-4 ring-background transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                  {step.number}
+                </div>
+
+                {/* Icône */}
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-secondary/10 ring-1 ring-primary/10 transition-all duration-300 group-hover:scale-110">
+                  <step.icon className="h-8 w-8 text-primary" />
+                </div>
+
+                {/* Titre */}
+                <h3 className="mb-3 text-xl font-bold leading-snug text-foreground">
                   {step.title}
                 </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
+
+                {/* Description */}
+                <p className="text-sm leading-7 text-muted-foreground">
                   {step.description}
                 </p>
+
+                <div className="mt-6 h-px w-full bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
               </div>
-            </div>
-          </AnimatedItem>
-        ))}
+            </AnimatedItem>
+          ))}
+        </div>
       </div>
     </AnimatedSection>
   );
