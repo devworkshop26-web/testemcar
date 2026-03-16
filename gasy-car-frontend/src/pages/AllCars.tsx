@@ -18,6 +18,13 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
 
 type FilterState = {
+  minYear: number | null;
+  maxYear: number | null;
+  serviceType: string;
+  city: string;
+  delivery: "" | "yes" | "no";
+  chauffeur: "" | "yes" | "no";
+  vehicleKind: string;
   brand: string;
   transmission: string;
   fuel: string;
@@ -32,9 +39,24 @@ type VehicleCardData = {
 } & ComponentProps<typeof VehicleCard>;
 
 const DEFAULT_MIN_SEATS = 0;
+const DEFAULT_YEAR_VALUE = "";
 const ITEMS_PER_PAGE = 9;
 const VISIBLE_BRANDS_COUNT = 2;
 const NEW_LISTING_WINDOW_MS = 1000 * 60 * 60 * 24 * 30;
+const SERVICE_TYPES = [
+  "Transfert aéroport",
+  "LCD (courte durée pas plus d’un mois)",
+  "LMD (un mois et plus)",
+] as const;
+const TOURISME_CATEGORIES = [
+  "Compact",
+  "Citadine",
+  "Midsize SUV",
+  "Premium SUV",
+  "Minivan",
+  "Pick Up",
+];
+const UTILITAIRE_CATEGORIES = ["Fourgon", "Frigoriques", "Bennes", "Plateaux"];
 
 const isRecentListing = (date?: string | null) => {
   if (!date) return false;
@@ -120,6 +142,13 @@ const AllCars = () => {
   const [animatedPrice, setAnimatedPrice] = useState(0);
 
   const [filters, setFilters] = useState<FilterState>({
+    minYear: null,
+    maxYear: null,
+    serviceType: "",
+    city: "",
+    delivery: "",
+    chauffeur: "",
+    vehicleKind: "",
     brand: "",
     transmission: "",
     fuel: "",
@@ -162,6 +191,21 @@ const AllCars = () => {
         (vehicle as any).type_carburant_nom ||
         "Carburant inconnu";
 
+      const city = ((vehicle as any).ville || "").toString().trim();
+      const vehicleType = ((vehicle as any).type_vehicule || "").toString().trim();
+      const category =
+        (vehicle as any).categorie_data?.nom ||
+        (vehicle as any).categorie?.nom ||
+        (vehicle as any).categorie_nom ||
+        "";
+      const hasDriver = Boolean((vehicle as any).driver || (vehicle as any).driver_data);
+      const monthlyPrice =
+        parseFloat(String((vehicle as any).prix_mois || 0).replace(/[^\d.-]/g, "")) ||
+        0;
+      const longDurationDiscount = Number(
+        (vehicle as any).remise_longue_duree_pourcent || 0
+      );
+
       const discount = Number((vehicle as any).remise_par_jour || 0);
 
       return {
@@ -177,6 +221,12 @@ const AllCars = () => {
         seats: vehicle.nombre_places ?? 0,
         transmission,
         fuel,
+        city,
+        vehicleType,
+        category,
+        hasDriver,
+        monthlyPrice,
+        longDurationDiscount,
         certified: vehicle.est_certifie,
         superHost: (vehicle.nombre_locations ?? 0) >= 40,
         newListing: isRecentListing(vehicle.created_at),
@@ -247,12 +297,53 @@ const AllCars = () => {
       (f) => f !== "Carburant inconnu"
     );
     const seats = Array.from(new Set(vehicles.map((v) => v.seats).filter(Boolean)));
+    const cities = Array.from(
+      new Set(
+        vehicles
+          .map((v) => (v as any).city)
+          .filter((c): c is string => Boolean(c && c.trim()))
+      )
+    ).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+    const years = Array.from(
+      new Set(
+        vehicles
+          .map((v) => Number(v.year))
+          .filter((year) => Number.isFinite(year) && year > 0)
+      )
+    ).sort((a, b) => a - b);
+    const minYear = years[0] ?? null;
+    const maxYear = years[years.length - 1] ?? null;
+    const tourismeCategories = TOURISME_CATEGORIES.filter((category) =>
+      vehicles.some(
+        (v) =>
+          (v as any).vehicleType === "TOURISME" &&
+          String((v as any).category || "").toLowerCase() === category.toLowerCase()
+      )
+    );
+    const utilitaireCategories = UTILITAIRE_CATEGORIES.filter((category) =>
+      vehicles.some(
+        (v) =>
+          (v as any).vehicleType === "UTILITAIRE" &&
+          String((v as any).category || "").toLowerCase() === category.toLowerCase()
+      )
+    );
+    const vehicleKinds = [
+      "Deux roue",
+      "Tourismes",
+      ...tourismeCategories.map((c) => `Tourismes • ${c}`),
+      "Utilitaires",
+      ...utilitaireCategories.map((c) => `Utilitaires • ${c}`),
+    ];
 
     return {
       brands: (brands as string[]).sort(),
       transmissions: (transmissions as string[]).sort(),
       fuels: (fuels as string[]).sort(),
       seats: (seats as number[]).filter((s) => s > 0).sort((a, b) => a - b),
+      cities,
+      minYear,
+      maxYear,
+      vehicleKinds,
     };
   }, [vehicles]);
 
@@ -307,6 +398,13 @@ const AllCars = () => {
   const clearFilters = () => {
     setCurrentPage(1);
     setFilters({
+      minYear: null,
+      maxYear: null,
+      serviceType: "",
+      city: "",
+      delivery: "",
+      chauffeur: "",
+      vehicleKind: "",
       brand: "",
       transmission: "",
       fuel: "",
@@ -336,6 +434,56 @@ const AllCars = () => {
     if (filters.fuel) results = results.filter((v) => v.fuel === filters.fuel);
     if (filters.minSeats > 0)
       results = results.filter((v) => (v.seats ?? 0) >= filters.minSeats);
+    if (filters.city)
+      results = results.filter(
+        (v) => String((v as any).city || "").toLowerCase() === filters.city.toLowerCase()
+      );
+    if (filters.minYear)
+      results = results.filter((v) => Number(v.year || 0) >= filters.minYear!);
+    if (filters.maxYear)
+      results = results.filter((v) => Number(v.year || 0) <= filters.maxYear!);
+    if (filters.delivery)
+      results = results.filter((v) =>
+        filters.delivery === "yes" ? Boolean(v.deliveryAvailable) : !v.deliveryAvailable
+      );
+    if (filters.chauffeur)
+      results = results.filter((v) =>
+        filters.chauffeur === "yes" ? Boolean((v as any).hasDriver) : !(v as any).hasDriver
+      );
+    if (filters.serviceType) {
+      results = results.filter((v) => {
+        const monthly = Number((v as any).monthlyPrice ?? 0);
+        switch (filters.serviceType) {
+          case "Transfert aéroport":
+            return Boolean(v.deliveryAvailable);
+          case "LCD (courte durée pas plus d’un mois)":
+            return Boolean(v.price && v.price > 0);
+          case "LMD (un mois et plus)":
+            return monthly > 0 || Boolean((v as any).longDurationDiscount);
+          default:
+            return true;
+        }
+      });
+    }
+    if (filters.vehicleKind) {
+      const kind = filters.vehicleKind;
+      results = results.filter((v) => {
+        const type = String((v as any).vehicleType || "").toUpperCase();
+        const category = String((v as any).category || "").toLowerCase();
+        if (kind === "Deux roue") return category.includes("deux") || category.includes("moto");
+        if (kind === "Tourismes") return type === "TOURISME";
+        if (kind === "Utilitaires") return type === "UTILITAIRE";
+        if (kind.startsWith("Tourismes • ")) {
+          return type === "TOURISME" &&
+            category === kind.replace("Tourismes • ", "").toLowerCase();
+        }
+        if (kind.startsWith("Utilitaires • ")) {
+          return type === "UTILITAIRE" &&
+            category === kind.replace("Utilitaires • ", "").toLowerCase();
+        }
+        return true;
+      });
+    }
 
     results = results.filter(
       (v) => v.price >= filters.minPrice && v.price <= filters.maxPrice
@@ -377,6 +525,13 @@ const AllCars = () => {
     if (filters.transmission) count++;
     if (filters.fuel) count++;
     if (filters.minSeats > 0) count++;
+    if (filters.minYear) count++;
+    if (filters.maxYear) count++;
+    if (filters.serviceType) count++;
+    if (filters.city) count++;
+    if (filters.delivery) count++;
+    if (filters.chauffeur) count++;
+    if (filters.vehicleKind) count++;
     if (filters.maxPrice < availableMaxPrice) count++;
     if (searchTerm.trim()) count++;
     return count;
@@ -413,6 +568,43 @@ const AllCars = () => {
       chips.push({
         label: `${filters.minSeats}+ places`,
         onClick: () => handleFilterChange("minSeats", filters.minSeats),
+      });
+    }
+    if (filters.minYear || filters.maxYear) {
+      chips.push({
+        label: `Années : ${filters.minYear ?? "..."} à ${filters.maxYear ?? "..."}`,
+        onClick: () =>
+          setFilters((prev) => ({ ...prev, minYear: null, maxYear: null })),
+      });
+    }
+    if (filters.serviceType) {
+      chips.push({
+        label: filters.serviceType,
+        onClick: () => handleFilterChange("serviceType", filters.serviceType),
+      });
+    }
+    if (filters.city) {
+      chips.push({
+        label: `Ville : ${filters.city}`,
+        onClick: () => handleFilterChange("city", filters.city),
+      });
+    }
+    if (filters.delivery) {
+      chips.push({
+        label: `Livraison : ${filters.delivery === "yes" ? "oui" : "non"}`,
+        onClick: () => handleFilterChange("delivery", filters.delivery),
+      });
+    }
+    if (filters.chauffeur) {
+      chips.push({
+        label: `Chauffeur : ${filters.chauffeur === "yes" ? "oui" : "non"}`,
+        onClick: () => handleFilterChange("chauffeur", filters.chauffeur),
+      });
+    }
+    if (filters.vehicleKind) {
+      chips.push({
+        label: filters.vehicleKind,
+        onClick: () => handleFilterChange("vehicleKind", filters.vehicleKind),
       });
     }
     if (filters.maxPrice < availableMaxPrice) {
@@ -493,7 +685,13 @@ const AllCars = () => {
                       isSelected ? "font-medium text-primary" : "text-foreground"
                     }`}
                   >
-                    {name === "minSeats" ? `${option} places et +` : option}
+                    {name === "minSeats"
+                      ? `${option} places et +`
+                      : name === "delivery" || name === "chauffeur"
+                        ? option === "yes"
+                          ? "Oui"
+                          : "Non"
+                        : option}
                   </span>
                 </button>
               );
@@ -624,6 +822,79 @@ const AllCars = () => {
                       <XCircle className="h-4 w-4" />
                       Réinitialiser les filtres
                     </button>
+
+                    <div className="border-b border-border/40 pb-5">
+                      <p className="mb-3 text-sm font-semibold text-foreground">Années</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min={filterOptions.minYear ?? undefined}
+                          max={filterOptions.maxYear ?? undefined}
+                          placeholder="de"
+                          value={filters.minYear ?? DEFAULT_YEAR_VALUE}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setCurrentPage(1);
+                            setFilters((prev) => ({
+                              ...prev,
+                              minYear: value ? Number(value) : null,
+                            }));
+                          }}
+                          className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                        />
+                        <input
+                          type="number"
+                          min={filterOptions.minYear ?? undefined}
+                          max={filterOptions.maxYear ?? undefined}
+                          placeholder="à"
+                          value={filters.maxYear ?? DEFAULT_YEAR_VALUE}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setCurrentPage(1);
+                            setFilters((prev) => ({
+                              ...prev,
+                              maxYear: value ? Number(value) : null,
+                            }));
+                          }}
+                          className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <FilterBlock
+                      title="Types de services"
+                      name="serviceType"
+                      options={[...SERVICE_TYPES]}
+                      currentValue={filters.serviceType}
+                    />
+
+                    <FilterBlock
+                      title="Localisations (Ville)"
+                      name="city"
+                      options={filterOptions.cities}
+                      currentValue={filters.city}
+                    />
+
+                    <FilterBlock
+                      title="Livraison"
+                      name="delivery"
+                      options={["yes", "no"]}
+                      currentValue={filters.delivery}
+                    />
+
+                    <FilterBlock
+                      title="Chauffeurs"
+                      name="chauffeur"
+                      options={["yes", "no"]}
+                      currentValue={filters.chauffeur}
+                    />
+
+                    <FilterBlock
+                      title="Type de véhicule"
+                      name="vehicleKind"
+                      options={filterOptions.vehicleKinds}
+                      currentValue={filters.vehicleKind}
+                    />
 
                     <FilterBlock
                       title="Marque"
