@@ -78,6 +78,16 @@ const parseYear = (value: string) => {
   return Number.isFinite(parsed) ? parsed : NaN;
 };
 
+const normalizeVehicleType = (value?: string | null): "TOURISME" | "UTILITAIRE" | undefined => {
+  if (!value) return undefined;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === "TOURISME") return "TOURISME";
+  if (normalized === "UTILITAIRE") return "UTILITAIRE";
+  if (normalized === "TOURISM") return "TOURISME";
+  if (normalized === "UTILITY") return "UTILITAIRE";
+  return undefined;
+};
+
 const FilterSidebarSkeleton = () => (
   <aside className="h-fit w-full shrink-0 lg:w-[270px] xl:w-[280px]">
     <div className="animate-pulse lg:sticky lg:top-28">
@@ -137,7 +147,11 @@ const ResultsHeaderSkeleton = () => (
 
 const AllCars = () => {
   const [searchParams] = useSearchParams();
-  const typeFilter = searchParams.get("type") || undefined;
+  const typeFilter = normalizeVehicleType(
+    searchParams.get("type") ||
+      searchParams.get("type_vehicule") ||
+      searchParams.get("vehicleType")
+  );
 
   const { data: allcarsdata = [], isLoading, isError, error, refetch } =
     useVehiculesQuery(typeFilter);
@@ -439,6 +453,10 @@ const AllCars = () => {
     if (filters.vehicleType)
       results = results.filter((v) => v.vehicleType === filters.vehicleType);
 
+    if (typeFilter) {
+      results = results.filter((v) => v.vehicleType === typeFilter);
+    }
+
     if (filters.yearFrom) {
       const from = parseYear(filters.yearFrom);
       if (!Number.isNaN(from)) {
@@ -481,7 +499,7 @@ const AllCars = () => {
     });
 
     return results;
-  }, [vehicles, debouncedSearchTerm, filters, sortBy]);
+  }, [vehicles, debouncedSearchTerm, filters, sortBy, typeFilter]);
 
   const totalPages = Math.ceil(filteredVehicles.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
