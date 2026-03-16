@@ -629,7 +629,7 @@ const AllCars = () => {
     options: (string | number)[];
     currentValue: FilterState[K];
   }) => {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
     const isBrandFilter = name === "brand";
     const [showAllBrands, setShowAllBrands] = useState(false);
 
