@@ -43,7 +43,7 @@ type VehicleCardData = {
   serviceType?: string;
   hasDelivery?: boolean;
   hasChauffeur?: boolean;
-  vehicleTypeDetail?: string;
+  vehicleType?: "TOURISME" | "UTILITAIRE" | "";
 } & ComponentProps<typeof VehicleCard>;
 
 const DEFAULT_MIN_SEATS = 0;
@@ -60,19 +60,7 @@ const SERVICE_TYPE_OPTIONS = [
 const DELIVERY_OPTIONS = ["Oui", "Non"] as const;
 const CHAUFFEUR_OPTIONS = ["Oui", "Non"] as const;
 
-const VEHICLE_TYPE_OPTIONS = [
-  "Deux roue",
-  "Tourismes - Compact",
-  "Tourismes - Citadine",
-  "Tourismes - Midsize SUV",
-  "Tourismes - Premium SUV",
-  "Tourismes - Minivan",
-  "Tourismes - Pick Up",
-  "Utilitaires - Fourgon",
-  "Utilitaires - Frigorifiques",
-  "Utilitaires - Bennes",
-  "Utilitaires - Plateaux",
-] as const;
+const VEHICLE_TYPE_OPTIONS = ["TOURISME", "UTILITAIRE"] as const;
 
 const isRecentListing = (date?: string | null) => {
   if (!date) return false;
@@ -241,38 +229,7 @@ const AllCars = () => {
             ? "LCD (courte durée)"
             : "";
 
-      const typeVehicule = vehicle.type_vehicule || "";
-      const normalizedCategory = toNormalized(category);
-      const normalizedModel = toNormalized(model);
-      const normalizedTitle = toNormalized(vehicle.titre);
-      const source = normalizedCategory + normalizedModel + normalizedTitle;
-      const includesAny = (needles: string[]) => needles.some((n) => source.includes(n));
-
-      let vehicleTypeDetail = typeVehicule === "UTILITAIRE" ? "Utilitaires - Fourgon" : "Tourismes - Compact";
-
-      if (includesAny(["moto", "scooter", "2 roue", "deux roue"])) {
-        vehicleTypeDetail = "Deux roue";
-      } else if (includesAny(["compact", "compacte"])) {
-        vehicleTypeDetail = "Tourismes - Compact";
-      } else if (includesAny(["citadin", "city"])) {
-        vehicleTypeDetail = "Tourismes - Citadine";
-      } else if (includesAny(["premium suv", "luxe", "haut de gamme"])) {
-        vehicleTypeDetail = "Tourismes - Premium SUV";
-      } else if (includesAny(["midsize suv", "suv moyen", "suv"])) {
-        vehicleTypeDetail = "Tourismes - Midsize SUV";
-      } else if (includesAny(["minivan", "van", "7 places", "8 places", "9 places"])) {
-        vehicleTypeDetail = "Tourismes - Minivan";
-      } else if (includesAny(["pick up", "pickup"])) {
-        vehicleTypeDetail = "Tourismes - Pick Up";
-      } else if (includesAny(["frigo", "frigorifique", "refrigere"])) {
-        vehicleTypeDetail = "Utilitaires - Frigorifiques";
-      } else if (includesAny(["benne", "bennes"])) {
-        vehicleTypeDetail = "Utilitaires - Bennes";
-      } else if (includesAny(["plateau", "plateaux"])) {
-        vehicleTypeDetail = "Utilitaires - Plateaux";
-      } else if (includesAny(["fourgon", "van utilitaire"])) {
-        vehicleTypeDetail = "Utilitaires - Fourgon";
-      }
+      const vehicleType = vehicle.type_vehicule || "";
 
       const discount = Number((vehicle as any).remise_par_jour || 0);
 
@@ -295,7 +252,7 @@ const AllCars = () => {
         serviceType,
         hasDelivery: Boolean(vehicle.est_disponible),
         hasChauffeur: Boolean(vehicle.driver || vehicle.driver_data || vehicle.driver_name),
-        vehicleTypeDetail,
+        vehicleType,
         certified: vehicle.est_certifie,
         superHost: (vehicle.nombre_locations ?? 0) >= 40,
         newListing: isRecentListing(vehicle.created_at),
@@ -480,7 +437,7 @@ const AllCars = () => {
         filters.chauffeur === "Oui" ? v.hasChauffeur : !v.hasChauffeur
       );
     if (filters.vehicleType)
-      results = results.filter((v) => v.vehicleTypeDetail === filters.vehicleType);
+      results = results.filter((v) => v.vehicleType === filters.vehicleType);
 
     if (filters.yearFrom) {
       const from = parseYear(filters.yearFrom);
@@ -611,7 +568,7 @@ const AllCars = () => {
     }
     if (filters.vehicleType) {
       chips.push({
-        label: filters.vehicleType,
+        label: `Type : ${filters.vehicleType}`,
         onClick: () => handleFilterChange("vehicleType", filters.vehicleType),
       });
     }
