@@ -18,15 +18,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
 
 type FilterState = {
-  yearFrom: string;
-  yearTo: string;
-  serviceType: string;
-  city: string;
-  delivery: string;
-  chauffeur: string;
-  vehicleType: string;
   brand: string;
-  model: string;
   transmission: string;
   fuel: string;
   minSeats: number;
@@ -37,13 +29,6 @@ type FilterState = {
 type VehicleCardData = {
   id: string;
   created_at?: string | null;
-  rawYear?: number | null;
-  city?: string;
-  category?: string;
-  serviceType?: string;
-  hasDelivery?: boolean;
-  hasChauffeur?: boolean;
-  vehicleType?: "TOURISME" | "UTILITAIRE" | "";
 } & ComponentProps<typeof VehicleCard>;
 
 const DEFAULT_MIN_SEATS = 0;
@@ -51,41 +36,9 @@ const ITEMS_PER_PAGE = 9;
 const VISIBLE_BRANDS_COUNT = 2;
 const NEW_LISTING_WINDOW_MS = 1000 * 60 * 60 * 24 * 30;
 
-const SERVICE_TYPE_OPTIONS = [
-  "Transfert aéroport",
-  "LCD (courte durée)",
-  "LMD (un mois et +)",
-] as const;
-
-const DELIVERY_OPTIONS = ["Oui", "Non"] as const;
-const CHAUFFEUR_OPTIONS = ["Oui", "Non"] as const;
-
-const VEHICLE_TYPE_OPTIONS = ["TOURISME", "UTILITAIRE"] as const;
-
 const isRecentListing = (date?: string | null) => {
   if (!date) return false;
   return Date.now() - new Date(date).getTime() <= NEW_LISTING_WINDOW_MS;
-};
-
-const toNormalized = (value?: string | null) =>
-  (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-const parseYear = (value: string) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : NaN;
-};
-
-const normalizeVehicleType = (value?: string | null): "TOURISME" | "UTILITAIRE" | undefined => {
-  if (!value) return undefined;
-  const normalized = value.trim().toUpperCase();
-  if (normalized === "TOURISME") return "TOURISME";
-  if (normalized === "UTILITAIRE") return "UTILITAIRE";
-  if (normalized === "TOURISM") return "TOURISME";
-  if (normalized === "UTILITY") return "UTILITAIRE";
-  return undefined;
 };
 
 const FilterSidebarSkeleton = () => (
@@ -147,11 +100,7 @@ const ResultsHeaderSkeleton = () => (
 
 const AllCars = () => {
   const [searchParams] = useSearchParams();
-  const typeFilter = normalizeVehicleType(
-    searchParams.get("type") ||
-      searchParams.get("type_vehicule") ||
-      searchParams.get("vehicleType")
-  );
+  const typeFilter = searchParams.get("type") || undefined;
 
   const { data: allcarsdata = [], isLoading, isError, error, refetch } =
     useVehiculesQuery(typeFilter);
@@ -171,15 +120,7 @@ const AllCars = () => {
   const [animatedPrice, setAnimatedPrice] = useState(0);
 
   const [filters, setFilters] = useState<FilterState>({
-    yearFrom: "",
-    yearTo: "",
-    serviceType: "",
-    city: "",
-    delivery: "",
-    chauffeur: "",
-    vehicleType: "",
     brand: "",
-    model: "",
     transmission: "",
     fuel: "",
     minSeats: DEFAULT_MIN_SEATS,
@@ -208,12 +149,6 @@ const AllCars = () => {
         (vehicle as any).modele_label ||
         vehicle.titre ||
         "Modèle inconnu";
-      const category =
-        (vehicle as any).categorie?.nom ||
-        vehicle.categorie_data?.nom ||
-        (vehicle as any).categorie_nom ||
-        "";
-      const city = (vehicle.ville || "").trim();
       const transmission =
         (vehicle as any).transmission?.label ||
         (vehicle as any).transmission?.nom ||
@@ -227,24 +162,6 @@ const AllCars = () => {
         (vehicle as any).type_carburant_nom ||
         "Carburant inconnu";
 
-      const hasHourlyPrice = Number(vehicle.prix_heure || 0) > 0;
-      const hasMonthlyPrice = Number(vehicle.prix_mois || 0) > 0;
-      const hasLongDurationDiscount = Number(vehicle.remise_longue_duree_pourcent || 0) > 0;
-
-      const searchableText = toNormalized(
-        `${vehicle.titre} ${model} ${category} ${vehicle.zone} ${vehicle.adresse_localisation}`
-      );
-
-      const serviceType = searchableText.includes("aeroport") || searchableText.includes("airport")
-        ? "Transfert aéroport"
-        : hasMonthlyPrice || hasLongDurationDiscount
-          ? "LMD (un mois et +)"
-          : hasHourlyPrice || Number(vehicle.prix_jour || 0) > 0
-            ? "LCD (courte durée)"
-            : "";
-
-      const vehicleType = vehicle.type_vehicule || "";
-
       const discount = Number((vehicle as any).remise_par_jour || 0);
 
       return {
@@ -252,7 +169,6 @@ const AllCars = () => {
         created_at: vehicle.created_at,
         image,
         year: vehicle.annee,
-        rawYear: vehicle.annee,
         brand,
         model,
         rating: Number(vehicle.note_moyenne ?? 0),
@@ -261,12 +177,6 @@ const AllCars = () => {
         seats: vehicle.nombre_places ?? 0,
         transmission,
         fuel,
-        city,
-        category,
-        serviceType,
-        hasDelivery: Boolean(vehicle.est_disponible),
-        hasChauffeur: Boolean(vehicle.driver || vehicle.driver_data || vehicle.driver_name),
-        vehicleType,
         certified: vehicle.est_certifie,
         superHost: (vehicle.nombre_locations ?? 0) >= 40,
         newListing: isRecentListing(vehicle.created_at),
@@ -337,17 +247,11 @@ const AllCars = () => {
       (f) => f !== "Carburant inconnu"
     );
     const seats = Array.from(new Set(vehicles.map((v) => v.seats).filter(Boolean)));
-    const cities = Array.from(new Set(vehicles.map((v) => v.city).filter(Boolean)));
-    const models = Array.from(new Set(vehicles.map((v) => v.model).filter(Boolean))).filter(
-      (model) => model !== "Modèle inconnu"
-    );
 
     return {
       brands: (brands as string[]).sort(),
-      models: (models as string[]).sort(),
       transmissions: (transmissions as string[]).sort(),
       fuels: (fuels as string[]).sort(),
-      cities: (cities as string[]).sort(),
       seats: (seats as number[]).filter((s) => s > 0).sort((a, b) => a - b),
     };
   }, [vehicles]);
@@ -403,15 +307,7 @@ const AllCars = () => {
   const clearFilters = () => {
     setCurrentPage(1);
     setFilters({
-      yearFrom: "",
-      yearTo: "",
-      serviceType: "",
-      city: "",
-      delivery: "",
-      chauffeur: "",
-      vehicleType: "",
       brand: "",
-      model: "",
       transmission: "",
       fuel: "",
       minSeats: DEFAULT_MIN_SEATS,
@@ -435,42 +331,9 @@ const AllCars = () => {
     }
 
     if (filters.brand) results = results.filter((v) => v.brand === filters.brand);
-    if (filters.model) results = results.filter((v) => v.model === filters.model);
     if (filters.transmission)
       results = results.filter((v) => v.transmission === filters.transmission);
     if (filters.fuel) results = results.filter((v) => v.fuel === filters.fuel);
-    if (filters.serviceType)
-      results = results.filter((v) => v.serviceType === filters.serviceType);
-    if (filters.city) results = results.filter((v) => v.city === filters.city);
-    if (filters.delivery)
-      results = results.filter((v) =>
-        filters.delivery === "Oui" ? v.hasDelivery : !v.hasDelivery
-      );
-    if (filters.chauffeur)
-      results = results.filter((v) =>
-        filters.chauffeur === "Oui" ? v.hasChauffeur : !v.hasChauffeur
-      );
-    if (filters.vehicleType)
-      results = results.filter((v) => v.vehicleType === filters.vehicleType);
-
-    if (typeFilter) {
-      results = results.filter((v) => v.vehicleType === typeFilter);
-    }
-
-    if (filters.yearFrom) {
-      const from = parseYear(filters.yearFrom);
-      if (!Number.isNaN(from)) {
-        results = results.filter((v) => Number(v.rawYear || 0) >= from);
-      }
-    }
-
-    if (filters.yearTo) {
-      const to = parseYear(filters.yearTo);
-      if (!Number.isNaN(to)) {
-        results = results.filter((v) => Number(v.rawYear || 0) <= to);
-      }
-    }
-
     if (filters.minSeats > 0)
       results = results.filter((v) => (v.seats ?? 0) >= filters.minSeats);
 
@@ -499,7 +362,7 @@ const AllCars = () => {
     });
 
     return results;
-  }, [vehicles, debouncedSearchTerm, filters, sortBy, typeFilter]);
+  }, [vehicles, debouncedSearchTerm, filters, sortBy]);
 
   const totalPages = Math.ceil(filteredVehicles.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -510,15 +373,7 @@ const AllCars = () => {
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (filters.yearFrom) count++;
-    if (filters.yearTo) count++;
-    if (filters.serviceType) count++;
-    if (filters.city) count++;
-    if (filters.delivery) count++;
-    if (filters.chauffeur) count++;
-    if (filters.vehicleType) count++;
     if (filters.brand) count++;
-    if (filters.model) count++;
     if (filters.transmission) count++;
     if (filters.fuel) count++;
     if (filters.minSeats > 0) count++;
@@ -542,12 +397,6 @@ const AllCars = () => {
         onClick: () => handleFilterChange("brand", filters.brand),
       });
     }
-    if (filters.model) {
-      chips.push({
-        label: `Modèle : ${filters.model}`,
-        onClick: () => handleFilterChange("model", filters.model),
-      });
-    }
     if (filters.transmission) {
       chips.push({
         label: filters.transmission,
@@ -558,42 +407,6 @@ const AllCars = () => {
       chips.push({
         label: filters.fuel,
         onClick: () => handleFilterChange("fuel", filters.fuel),
-      });
-    }
-    if (filters.serviceType) {
-      chips.push({
-        label: `Service : ${filters.serviceType}`,
-        onClick: () => handleFilterChange("serviceType", filters.serviceType),
-      });
-    }
-    if (filters.city) {
-      chips.push({
-        label: `Ville : ${filters.city}`,
-        onClick: () => handleFilterChange("city", filters.city),
-      });
-    }
-    if (filters.delivery) {
-      chips.push({
-        label: `Livraison : ${filters.delivery}`,
-        onClick: () => handleFilterChange("delivery", filters.delivery),
-      });
-    }
-    if (filters.chauffeur) {
-      chips.push({
-        label: `Chauffeur : ${filters.chauffeur}`,
-        onClick: () => handleFilterChange("chauffeur", filters.chauffeur),
-      });
-    }
-    if (filters.vehicleType) {
-      chips.push({
-        label: `Type : ${filters.vehicleType}`,
-        onClick: () => handleFilterChange("vehicleType", filters.vehicleType),
-      });
-    }
-    if (filters.yearFrom || filters.yearTo) {
-      chips.push({
-        label: `Années : ${filters.yearFrom || "..."} → ${filters.yearTo || "..."}`,
-        onClick: () => setFilters((prev) => ({ ...prev, yearFrom: "", yearTo: "" })),
       });
     }
     if (filters.minSeats > 0) {
@@ -758,36 +571,6 @@ const AllCars = () => {
 
                   <div className="space-y-5 p-5">
                     <div className="rounded-[1.4rem] border border-border/50 bg-slate-50/70 p-4">
-                      <h3 className="mb-4 text-sm font-semibold text-foreground">Années</h3>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="number"
-                          min={1950}
-                          max={2100}
-                          placeholder="De"
-                          value={filters.yearFrom}
-                          onChange={(e) => {
-                            setCurrentPage(1);
-                            setFilters((prev) => ({ ...prev, yearFrom: e.target.value }));
-                          }}
-                          className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/40"
-                        />
-                        <input
-                          type="number"
-                          min={1950}
-                          max={2100}
-                          placeholder="À"
-                          value={filters.yearTo}
-                          onChange={(e) => {
-                            setCurrentPage(1);
-                            setFilters((prev) => ({ ...prev, yearTo: e.target.value }));
-                          }}
-                          className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/40"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.4rem] border border-border/50 bg-slate-50/70 p-4">
                       <h3 className="mb-4 text-sm font-semibold text-foreground">
                         Budget maximum
                       </h3>
@@ -843,52 +626,10 @@ const AllCars = () => {
                     </button>
 
                     <FilterBlock
-                      title="Types de services"
-                      name="serviceType"
-                      options={[...SERVICE_TYPE_OPTIONS]}
-                      currentValue={filters.serviceType}
-                    />
-
-                    <FilterBlock
-                      title="Localisations (Ville)"
-                      name="city"
-                      options={filterOptions.cities}
-                      currentValue={filters.city}
-                    />
-
-                    <FilterBlock
-                      title="Livraison"
-                      name="delivery"
-                      options={[...DELIVERY_OPTIONS]}
-                      currentValue={filters.delivery}
-                    />
-
-                    <FilterBlock
-                      title="Chauffeurs"
-                      name="chauffeur"
-                      options={[...CHAUFFEUR_OPTIONS]}
-                      currentValue={filters.chauffeur}
-                    />
-
-                    <FilterBlock
-                      title="Type de véhicule"
-                      name="vehicleType"
-                      options={[...VEHICLE_TYPE_OPTIONS]}
-                      currentValue={filters.vehicleType}
-                    />
-
-                    <FilterBlock
                       title="Marque"
                       name="brand"
                       options={filterOptions.brands}
                       currentValue={filters.brand}
-                    />
-
-                    <FilterBlock
-                      title="Modèle"
-                      name="model"
-                      options={filterOptions.models}
-                      currentValue={filters.model}
                     />
 
                     <FilterBlock
