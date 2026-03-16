@@ -19,8 +19,16 @@ import { useVehicleFavorites } from "@/hooks/useVehicleFavorites";
 
 type FilterState = {
   brand: string;
+  model: string;
   transmission: string;
   fuel: string;
+  city: string;
+  serviceType: "" | "airport-transfer" | "lcd" | "lmd";
+  delivery: "" | "yes" | "no";
+  withDriver: "" | "yes" | "no";
+  vehicleType: "" | "TOURISME" | "UTILITAIRE";
+  yearFrom: number;
+  yearTo: number;
   minSeats: number;
   minPrice: number;
   maxPrice: number;
@@ -35,6 +43,8 @@ const DEFAULT_MIN_SEATS = 0;
 const ITEMS_PER_PAGE = 9;
 const VISIBLE_BRANDS_COUNT = 2;
 const NEW_LISTING_WINDOW_MS = 1000 * 60 * 60 * 24 * 30;
+const DEFAULT_MIN_YEAR = 1900;
+const DEFAULT_MAX_YEAR = 2100;
 
 const isRecentListing = (date?: string | null) => {
   if (!date) return false;
@@ -121,8 +131,21 @@ const AllCars = () => {
 
   const [filters, setFilters] = useState<FilterState>({
     brand: "",
+    model: "",
     transmission: "",
     fuel: "",
+    city: "",
+    serviceType: "",
+    delivery: "",
+    withDriver: "",
+    vehicleType:
+      typeFilter === "utilitaire"
+        ? "UTILITAIRE"
+        : typeFilter === "tourisme"
+        ? "TOURISME"
+        : "",
+    yearFrom: DEFAULT_MIN_YEAR,
+    yearTo: DEFAULT_MAX_YEAR,
     minSeats: DEFAULT_MIN_SEATS,
     minPrice: 0,
     maxPrice: 1000,
@@ -161,6 +184,19 @@ const AllCars = () => {
         vehicle.type_carburant_data?.nom ||
         (vehicle as any).type_carburant_nom ||
         "Carburant inconnu";
+      const city =
+        (vehicle as any).ville ||
+        (vehicle as any).adresse_localisation ||
+        "Ville inconnue";
+      const rawVehicleType = String((vehicle as any).type_vehicule || "").toUpperCase();
+      const monthlyPrice = Number((vehicle as any).prix_mois || 0);
+      const hasLongTermDiscount = Number((vehicle as any).remise_longue_duree_pourcent || 0) > 0;
+      const hasDriver = Boolean(
+        (vehicle as any).driver || (vehicle as any).driver_data || (vehicle as any).driver_name
+      );
+      const airportTransfer = /aeroport|airport|ivato/i.test(
+        `${city} ${(vehicle as any).titre || ""} ${(vehicle as any).description || ""}`
+      );
 
       const discount = Number((vehicle as any).remise_par_jour || 0);
 
@@ -177,6 +213,16 @@ const AllCars = () => {
         seats: vehicle.nombre_places ?? 0,
         transmission,
         fuel,
+        city,
+        hasDriver,
+        vehicleType:
+          rawVehicleType === "UTILITAIRE"
+            ? "UTILITAIRE"
+            : rawVehicleType === "TOURISME"
+            ? "TOURISME"
+            : "",
+        supportsLongTerm: monthlyPrice > 0 || hasLongTermDiscount,
+        airportTransfer,
         certified: vehicle.est_certifie,
         superHost: (vehicle.nombre_locations ?? 0) >= 40,
         newListing: isRecentListing(vehicle.created_at),
@@ -240,21 +286,42 @@ const AllCars = () => {
 
   const filterOptions = useMemo(() => {
     const brands = Array.from(new Set(vehicles.map((v) => v.brand))).filter(Boolean);
+    const models = Array.from(new Set(vehicles.map((v) => v.model))).filter(Boolean);
     const transmissions = Array.from(
       new Set(vehicles.map((v) => v.transmission))
     ).filter((t) => t !== "Transmission inconnue");
     const fuels = Array.from(new Set(vehicles.map((v) => v.fuel))).filter(
       (f) => f !== "Carburant inconnu"
     );
+    const cities = Array.from(new Set(vehicles.map((v) => (v as any).city))).filter(
+      (city) => city && city !== "Ville inconnue"
+    );
     const seats = Array.from(new Set(vehicles.map((v) => v.seats).filter(Boolean)));
+    const years = vehicles
+      .map((v) => Number(v.year))
+      .filter((year) => !Number.isNaN(year) && year > 0);
+    const minYear = years.length ? Math.min(...years) : DEFAULT_MIN_YEAR;
+    const maxYear = years.length ? Math.max(...years) : DEFAULT_MAX_YEAR;
 
     return {
       brands: (brands as string[]).sort(),
+      models: (models as string[]).sort(),
       transmissions: (transmissions as string[]).sort(),
       fuels: (fuels as string[]).sort(),
+      cities: (cities as string[]).sort(),
       seats: (seats as number[]).filter((s) => s > 0).sort((a, b) => a - b),
+      minYear,
+      maxYear,
     };
   }, [vehicles]);
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      yearFrom: prev.yearFrom === DEFAULT_MIN_YEAR ? filterOptions.minYear : prev.yearFrom,
+      yearTo: prev.yearTo === DEFAULT_MAX_YEAR ? filterOptions.maxYear : prev.yearTo,
+    }));
+  }, [filterOptions.minYear, filterOptions.maxYear]);
 
   const handleReserve = (carId: string) => {
     navigate(`/reservation/${carId}`);
@@ -285,7 +352,13 @@ const AllCars = () => {
 
     if (sameValue) {
       newValue = (
-        name === "minSeats" ? (DEFAULT_MIN_SEATS as unknown) : ("" as unknown)
+        name === "minSeats"
+          ? (DEFAULT_MIN_SEATS as unknown)
+          : name === "yearFrom"
+          ? (filterOptions.minYear as unknown)
+          : name === "yearTo"
+          ? (filterOptions.maxYear as unknown)
+          : ("" as unknown)
       ) as FilterState[K];
     } else {
       newValue = value;
@@ -308,8 +381,21 @@ const AllCars = () => {
     setCurrentPage(1);
     setFilters({
       brand: "",
+      model: "",
       transmission: "",
       fuel: "",
+      city: "",
+      serviceType: "",
+      delivery: "",
+      withDriver: "",
+      vehicleType:
+        typeFilter === "utilitaire"
+          ? "UTILITAIRE"
+          : typeFilter === "tourisme"
+          ? "TOURISME"
+          : "",
+      yearFrom: filterOptions.minYear,
+      yearTo: filterOptions.maxYear,
       minSeats: DEFAULT_MIN_SEATS,
       minPrice: 0,
       maxPrice: availableMaxPrice,
@@ -331,9 +417,32 @@ const AllCars = () => {
     }
 
     if (filters.brand) results = results.filter((v) => v.brand === filters.brand);
+    if (filters.model) results = results.filter((v) => v.model === filters.model);
     if (filters.transmission)
       results = results.filter((v) => v.transmission === filters.transmission);
     if (filters.fuel) results = results.filter((v) => v.fuel === filters.fuel);
+    if (filters.city) results = results.filter((v) => (v as any).city === filters.city);
+    if (filters.delivery)
+      results = results.filter((v) =>
+        filters.delivery === "yes" ? v.deliveryAvailable : !v.deliveryAvailable
+      );
+    if (filters.withDriver)
+      results = results.filter((v) =>
+        filters.withDriver === "yes" ? (v as any).hasDriver : !(v as any).hasDriver
+      );
+    if (filters.vehicleType)
+      results = results.filter((v) => (v as any).vehicleType === filters.vehicleType);
+    if (filters.serviceType) {
+      results = results.filter((v) => {
+        if (filters.serviceType === "airport-transfer") return (v as any).airportTransfer;
+        if (filters.serviceType === "lmd") return (v as any).supportsLongTerm;
+        if (filters.serviceType === "lcd") return !(v as any).supportsLongTerm;
+        return true;
+      });
+    }
+    results = results.filter(
+      (v) => Number(v.year) >= filters.yearFrom && Number(v.year) <= filters.yearTo
+    );
     if (filters.minSeats > 0)
       results = results.filter((v) => (v.seats ?? 0) >= filters.minSeats);
 
@@ -374,13 +483,21 @@ const AllCars = () => {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.brand) count++;
+    if (filters.model) count++;
     if (filters.transmission) count++;
     if (filters.fuel) count++;
+    if (filters.city) count++;
+    if (filters.serviceType) count++;
+    if (filters.delivery) count++;
+    if (filters.withDriver) count++;
+    if (filters.vehicleType) count++;
+    if (filters.yearFrom > filterOptions.minYear || filters.yearTo < filterOptions.maxYear)
+      count++;
     if (filters.minSeats > 0) count++;
     if (filters.maxPrice < availableMaxPrice) count++;
     if (searchTerm.trim()) count++;
     return count;
-  }, [filters, availableMaxPrice, searchTerm]);
+  }, [filters, availableMaxPrice, searchTerm, filterOptions.minYear, filterOptions.maxYear]);
 
   const filterChips = useMemo(() => {
     const chips: { label: string; onClick: () => void }[] = [];
@@ -397,6 +514,12 @@ const AllCars = () => {
         onClick: () => handleFilterChange("brand", filters.brand),
       });
     }
+    if (filters.model) {
+      chips.push({
+        label: `Modèle : ${filters.model}`,
+        onClick: () => handleFilterChange("model", filters.model),
+      });
+    }
     if (filters.transmission) {
       chips.push({
         label: filters.transmission,
@@ -407,6 +530,53 @@ const AllCars = () => {
       chips.push({
         label: filters.fuel,
         onClick: () => handleFilterChange("fuel", filters.fuel),
+      });
+    }
+    if (filters.city) {
+      chips.push({
+        label: `Ville : ${filters.city}`,
+        onClick: () => handleFilterChange("city", filters.city),
+      });
+    }
+    if (filters.vehicleType) {
+      chips.push({
+        label: `Type : ${filters.vehicleType === "TOURISME" ? "Tourisme" : "Utilitaire"}`,
+        onClick: () => handleFilterChange("vehicleType", filters.vehicleType),
+      });
+    }
+    if (filters.withDriver) {
+      chips.push({
+        label: `Chauffeur : ${filters.withDriver === "yes" ? "Oui" : "Non"}`,
+        onClick: () => handleFilterChange("withDriver", filters.withDriver),
+      });
+    }
+    if (filters.delivery) {
+      chips.push({
+        label: `Livraison : ${filters.delivery === "yes" ? "Oui" : "Non"}`,
+        onClick: () => handleFilterChange("delivery", filters.delivery),
+      });
+    }
+    if (filters.serviceType) {
+      const label =
+        filters.serviceType === "airport-transfer"
+          ? "Transfert aéroport"
+          : filters.serviceType === "lcd"
+          ? "LCD"
+          : "LMD";
+      chips.push({
+        label: `Service : ${label}`,
+        onClick: () => handleFilterChange("serviceType", filters.serviceType),
+      });
+    }
+    if (filters.yearFrom > filterOptions.minYear || filters.yearTo < filterOptions.maxYear) {
+      chips.push({
+        label: `Années : ${filters.yearFrom} - ${filters.yearTo}`,
+        onClick: () =>
+          setFilters((prev) => ({
+            ...prev,
+            yearFrom: filterOptions.minYear,
+            yearTo: filterOptions.maxYear,
+          })),
       });
     }
     if (filters.minSeats > 0) {
@@ -424,7 +594,7 @@ const AllCars = () => {
     }
 
     return chips;
-  }, [searchTerm, filters, availableMaxPrice]);
+  }, [searchTerm, filters, availableMaxPrice, filterOptions.minYear, filterOptions.maxYear]);
 
   const FilterBlock = <K extends keyof FilterState>({
     title,
@@ -464,6 +634,24 @@ const AllCars = () => {
           <div className="mt-3 space-y-1.5">
             {visibleOptions.map((option, i) => {
               const isSelected = currentValue === option;
+              const optionLabel =
+                name === "minSeats"
+                  ? `${option} places et +`
+                  : name === "serviceType"
+                  ? option === "airport-transfer"
+                    ? "Transfert aéroport"
+                    : option === "lcd"
+                    ? "LCD (courte durée)"
+                    : "LMD (un mois et plus)"
+                  : name === "delivery" || name === "withDriver"
+                  ? option === "yes"
+                    ? "Oui"
+                    : "Non"
+                  : name === "vehicleType"
+                  ? option === "TOURISME"
+                    ? "Tourisme"
+                    : "Utilitaire"
+                  : option;
 
               return (
                 <button
@@ -493,7 +681,7 @@ const AllCars = () => {
                       isSelected ? "font-medium text-primary" : "text-foreground"
                     }`}
                   >
-                    {name === "minSeats" ? `${option} places et +` : option}
+                    {optionLabel}
                   </span>
                 </button>
               );
@@ -630,6 +818,68 @@ const AllCars = () => {
                       name="brand"
                       options={filterOptions.brands}
                       currentValue={filters.brand}
+                    />
+
+                    <FilterBlock
+                      title="Marque et modèle"
+                      name="model"
+                      options={filterOptions.models}
+                      currentValue={filters.model}
+                    />
+
+                    <FilterBlock
+                      title="Années"
+                      name="yearFrom"
+                      options={Array.from(
+                        { length: filterOptions.maxYear - filterOptions.minYear + 1 },
+                        (_, idx) => filterOptions.minYear + idx
+                      )}
+                      currentValue={filters.yearFrom}
+                    />
+
+                    <FilterBlock
+                      title="Année jusqu'à"
+                      name="yearTo"
+                      options={Array.from(
+                        { length: filterOptions.maxYear - filterOptions.minYear + 1 },
+                        (_, idx) => filterOptions.minYear + idx
+                      )}
+                      currentValue={filters.yearTo}
+                    />
+
+                    <FilterBlock
+                      title="Types de services"
+                      name="serviceType"
+                      options={["airport-transfer", "lcd", "lmd"]}
+                      currentValue={filters.serviceType}
+                    />
+
+                    <FilterBlock
+                      title="Localisations"
+                      name="city"
+                      options={filterOptions.cities}
+                      currentValue={filters.city}
+                    />
+
+                    <FilterBlock
+                      title="Livraison"
+                      name="delivery"
+                      options={["yes", "no"]}
+                      currentValue={filters.delivery}
+                    />
+
+                    <FilterBlock
+                      title="Chauffeurs"
+                      name="withDriver"
+                      options={["yes", "no"]}
+                      currentValue={filters.withDriver}
+                    />
+
+                    <FilterBlock
+                      title="Type de véhicule"
+                      name="vehicleType"
+                      options={["TOURISME", "UTILITAIRE"]}
+                      currentValue={filters.vehicleType}
                     />
 
                     <FilterBlock
