@@ -157,6 +157,8 @@ const AllCars = () => {
     maxPrice: 1000,
   });
 
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
   const vehicleListRef = useRef<HTMLElement | null>(null);
 
   const vehicles = useMemo<VehicleCardData[]>(() => {
@@ -629,7 +631,8 @@ const AllCars = () => {
     options: (string | number)[];
     currentValue: FilterState[K];
   }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const sectionKey = String(name);
+    const isOpen = Boolean(openSections[sectionKey]);
     const isBrandFilter = name === "brand";
     const [showAllBrands, setShowAllBrands] = useState(false);
 
@@ -642,7 +645,9 @@ const AllCars = () => {
       <div className="border-b border-border/40 pb-5 last:border-0 last:pb-0">
         <button
           className="flex w-full items-center justify-between py-1.5 text-left text-sm font-semibold text-foreground transition-colors hover:text-primary"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() =>
+            setOpenSections((prev) => ({ ...prev, [sectionKey]: !Boolean(prev[sectionKey]) }))
+          }
         >
           {title}
           <ChevronDown
