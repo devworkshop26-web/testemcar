@@ -380,13 +380,13 @@ const ReservationsPage: React.FC = () => {
   const driverFee =
     selectedDriverOption === "AVEC_CHAUFFEUR" ? 40000 * durationDays : 0;
 
-  // ✅ CORRECTION : équipement facturé UNE SEULE FOIS par réservation
+  // ✅ Les options sont facturées PAR JOUR de location
   const totalAddOns = useMemo(
     () =>
       addonsList
         .filter((a) => selectedAddons.includes(a.id))
-        .reduce((sum, a) => sum + (a.price || 0), 0),
-    [selectedAddons, addonsList]
+        .reduce((sum, a) => sum + (a.price || 0), 0) * durationDays,
+    [selectedAddons, addonsList, durationDays]
   );
 
   const serviceFee = Number(pricingConfig?.service_fee ?? 5000) || 0;
@@ -403,8 +403,8 @@ const ReservationsPage: React.FC = () => {
       return;
     }
 
-    if (!dateRange.from || !dateRange.to) {
-      toast.error("Veuillez sélectionner une date de début et une date de fin.");
+    if (!dateRange.from) {
+      toast.error("Veuillez sélectionner au moins une date de réservation.");
       return;
     }
 
