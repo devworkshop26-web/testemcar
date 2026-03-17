@@ -43,19 +43,8 @@ const formatPrice = (price?: string | number | null) => {
 const parseDiscountPercent = (discount?: string | number | null) => {
   const parsed = parseNumberish(discount);
   if (parsed === null || parsed < 0) return 0;
+  if (parsed >= 100) return 100;
   return parsed;
-};
-
-const getOriginalPrice = (
-  discountedPrice?: string | number | null,
-  discountPercent?: string | number | null,
-) => {
-  const price = parseNumberish(discountedPrice);
-  const discount = parseDiscountPercent(discountPercent);
-
-  if (price === null) return null;
-  if (discount <= 0 || discount >= 100) return price;
-  return price / (1 - discount / 100);
 };
 
 const pickDiscount = (itemDiscount?: string | number | null, fallbackDiscount?: string | number | null) => (
@@ -72,21 +61,21 @@ const PricingGridSection: React.FC<PricingGridSectionProps> = ({
   const renderPriceLine = (
     label: string,
     icon: React.ReactNode,
-    price?: string | number | null,
+    basePrice?: string | number | null,
     discount?: string | number | null,
   ) => {
-    const parsedPrice = parseNumberish(price);
-    if (parsedPrice === null) return null;
+    const parsedBasePrice = parseNumberish(basePrice);
+    if (parsedBasePrice === null) return null;
 
     const discountPercent = parseDiscountPercent(discount);
-    const originalPrice = getOriginalPrice(parsedPrice, discountPercent);
+    const discountedPrice = parsedBasePrice * (1 - discountPercent / 100);
 
     return (
       <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
         <span className="text-gray-500 text-sm flex items-center gap-2">{icon} {label}</span>
         <div className="flex items-end flex-col gap-1">
-          <span className="font-bold text-gray-900">{formatPrice(parsedPrice)}</span>
-          <span className="text-xs font-medium text-gray-500">Prix sans remise: {formatPrice(originalPrice)}</span>
+          <span className="font-bold text-gray-900">{formatPrice(discountedPrice)}</span>
+          <span className="text-xs font-medium text-gray-500">Prix sans remise: {formatPrice(parsedBasePrice)}</span>
           <span className={`text-xs font-medium ${discountPercent > 0 ? 'text-emerald-700' : 'text-gray-500'}`}>
             Remise: -{discountPercent}%
           </span>
