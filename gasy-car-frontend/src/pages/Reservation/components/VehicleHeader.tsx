@@ -23,6 +23,13 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({
     pricingRates,
     onBack
 }) => {
+    const discounts = [
+        { label: 'Remise/heure', value: pricingRates.hourlyDiscount },
+        { label: 'Remise/jour', value: pricingRates.dailyDiscount },
+        { label: 'Remise/mois', value: pricingRates.monthlyRateDiscount },
+        { label: 'Remise longue durée', value: pricingRates.longDurationDiscount },
+    ].filter((discount) => typeof discount.value === 'number' && discount.value > 0);
+
     return (
         <div className="w-full flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6 px-2">
             <div className="space-y-4">
@@ -66,6 +73,15 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({
                 <p className="text-4xl font-black text-gray-900">
                     {(pricingRates.day ?? 0).toLocaleString('fr-FR')} <span className="text-lg text-gray-500 font-bold">Ar</span>
                 </p>
+                {discounts.length > 0 && (
+                    <div className="mt-2 space-y-0.5">
+                        {discounts.map((discount) => (
+                            <p key={discount.label} className="text-[11px] text-gray-500 leading-tight">
+                                {discount.label} ({discount.value}%)
+                            </p>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

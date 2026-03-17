@@ -39,6 +39,10 @@ export type PricingRates = {
   week?: number;
   month?: number;
   provinceDay?: number;
+  hourlyDiscount?: number;
+  dailyDiscount?: number;
+  monthlyRateDiscount?: number;
+  longDurationDiscount?: number;
   weeklyDiscount?: number;
   monthlyDiscount?: number;
 };

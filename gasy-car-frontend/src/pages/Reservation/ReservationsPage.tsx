@@ -203,6 +203,18 @@ const ReservationsPage: React.FC = () => {
     const monthlyPrice = urbanRate?.prix_mois
       ? Number(urbanRate.prix_mois)
       : Number(vehicle.prix_mois ?? 0);
+    const hourlyDiscount = urbanRate?.remise_par_heure
+      ? Number(urbanRate.remise_par_heure)
+      : Number(vehicle.remise_par_heure ?? 0);
+    const dailyDiscount = urbanRate?.remise_par_jour
+      ? Number(urbanRate.remise_par_jour)
+      : Number(vehicle.remise_par_jour ?? 0);
+    const monthlyRateDiscount = urbanRate?.remise_par_mois
+      ? Number(urbanRate.remise_par_mois)
+      : Number(vehicle.remise_par_mois ?? 0);
+    const longDurationDiscount = urbanRate?.remise_longue_duree_pourcent
+      ? Number(urbanRate.remise_longue_duree_pourcent)
+      : Number(vehicle.remise_longue_duree_pourcent ?? 0);
 
     return {
       hour: hourlyPrice > 0 ? hourlyPrice : undefined,
@@ -212,16 +224,12 @@ const ReservationsPage: React.FC = () => {
       week: weeklyPrice > 0 ? weeklyPrice : undefined,
       month: monthlyPrice > 0 ? monthlyPrice : undefined,
       provinceDay: rates.provinceDay ?? provinceDayPrice,
-      weeklyDiscount:
-        rates.weeklyDiscount ??
-        (vehicle.remise_longue_duree_pourcent
-          ? Number(vehicle.remise_longue_duree_pourcent)
-          : 0),
-      monthlyDiscount:
-        rates.monthlyDiscount ??
-        (vehicle.remise_longue_duree_pourcent
-          ? Number(vehicle.remise_longue_duree_pourcent)
-          : 0),
+      hourlyDiscount: hourlyDiscount > 0 ? hourlyDiscount : undefined,
+      dailyDiscount: dailyDiscount > 0 ? dailyDiscount : undefined,
+      monthlyRateDiscount: monthlyRateDiscount > 0 ? monthlyRateDiscount : undefined,
+      longDurationDiscount: longDurationDiscount > 0 ? longDurationDiscount : undefined,
+      weeklyDiscount: rates.weeklyDiscount ?? longDurationDiscount,
+      monthlyDiscount: rates.monthlyDiscount ?? longDurationDiscount,
     };
   }, [vehicle]);
 
