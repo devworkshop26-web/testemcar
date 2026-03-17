@@ -780,8 +780,6 @@ const ReservationsPage: React.FC = () => {
                 />
                 <PricingGridSection
                   pricingGrid={vehicle.pricing_grid || []}
-                  weeklyDiscount={pricingRates.weeklyDiscount}
-                  monthlyDiscount={pricingRates.monthlyDiscount}
                 />
               </TabsContent>
 
