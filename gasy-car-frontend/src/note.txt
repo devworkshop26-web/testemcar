@@ -1,0 +1,23 @@
+# admin information
+      DEFAULT_ADMIN_EMAIL: admin@gasysystem.com
+      DEFAULT_ADMIN_PASSWORD: Admin123!
+      DEFAULT_ADMIN_FIRST_NAME: Super
+      DEFAULT_ADMIN_LAST_NAME: Admin
+
+      # client
+      DEFAULT_CLIENT_EMAIL: client@gasysystem.com
+      DEFAULT_CLIENT_PASSWORD: Client123!
+      DEFAULT_CLIENT_FIRST_NAME: Super
+      DEFAULT_CLIENT_LAST_NAME: client
+
+      # Prestataire
+      DEFAULT_PRESTATAIRE_EMAIL: owner@gasysystem.com
+      DEFAULT_PRESTATAIRE_PASSWORD: Client123!
+      DEFAULT_PRESTATAIRE_FIRST_NAME: Super
+      DEFAULT_PRESTATAIRE_LAST_NAME: Pretataire
+
+      # SUPORT
+      DEFAULT_SUPPORT_EMAIL: support@gasysystem.com
+      DEFAULT_SUPPORT_PASSWORD: Support123!
+      DEFAULT_SUPPORT_FIRST_NAME: Super
+      DEFAULT_SUPPORT_LAST_NAME: Support
