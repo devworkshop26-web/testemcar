@@ -14,16 +14,88 @@ interface PricingGridItem {
     remise_longue_duree_pourcent?: string | number | null;
 }
 
-interface PricingGridSectionProps {
-    pricingGrid: PricingGridItem[];
+interface ZoneDiscounts {
+    remise_par_heure?: string | number | null;
+    remise_par_jour?: string | number | null;
+    remise_par_mois?: string | number | null;
+    remise_longue_duree_pourcent?: string | number | null;
 }
 
-const PricingGridSection: React.FC<PricingGridSectionProps> = ({ pricingGrid }) => {
+interface PricingGridSectionProps {
+    pricingGrid: PricingGridItem[];
+    urbanDiscounts?: ZoneDiscounts;
+    provinceDiscounts?: ZoneDiscounts;
+}
+
+const PricingGridSection: React.FC<PricingGridSectionProps> = ({
+    pricingGrid,
+    urbanDiscounts,
+    provinceDiscounts,
+}) => {
     if (!pricingGrid || pricingGrid.length === 0) return null;
 
+    const parseNumeric = (value?: string | number | null) => {
+        if (value === null || value === undefined || value === '') return null;
+
+        const normalized = typeof value === 'string' ? value.replace(',', '.') : value;
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : null;
+    };
+
     const formatPrice = (price?: string | number | null) => {
-        if (!price) return '-';
-        return Number(price).toLocaleString('fr-FR') + ' Ar';
+        const parsed = parseNumeric(price);
+        if (parsed === null) return '-';
+        return parsed.toLocaleString('fr-FR') + ' Ar';
+    };
+
+    const toDiscountNumber = (discount?: string | number | null) => {
+        const parsed = parseNumeric(discount);
+        if (parsed === null || parsed < 0) return 0;
+        return parsed;
+    };
+
+    const getOriginalPrice = (price?: string | number | null, discount?: string | number | null) => {
+        const priceNumber = parseNumeric(price);
+        const discountNumber = toDiscountNumber(discount);
+
+        if (priceNumber === null || discountNumber <= 0 || discountNumber >= 100) {
+            return priceNumber;
+        }
+
+        return priceNumber / (1 - discountNumber / 100);
+    };
+
+    const resolveDiscount = (
+        itemDiscount?: string | number | null,
+        fallbackDiscount?: string | number | null,
+    ) => (itemDiscount !== null && itemDiscount !== undefined ? itemDiscount : fallbackDiscount);
+
+    const renderPriceLine = (
+        label: string,
+        icon: React.ReactNode,
+        price?: string | number | null,
+        discount?: string | number | null,
+    ) => {
+        const parsedPrice = parseNumeric(price);
+        if (parsedPrice === null) return null;
+
+        const discountNumber = toDiscountNumber(discount);
+        const originalPrice = getOriginalPrice(parsedPrice, discountNumber);
+
+        return (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-gray-500 text-sm flex items-center gap-2">{icon} {label}</span>
+                <div className="flex items-end flex-col gap-1">
+                    <span className="font-bold text-gray-900">{formatPrice(parsedPrice)}</span>
+                    <span className="text-xs font-medium text-gray-500">
+                        Prix sans remise: {formatPrice(originalPrice)}
+                    </span>
+                    <span className={`text-xs font-medium ${discountNumber > 0 ? 'text-emerald-700' : 'text-gray-500'}`}>
+                        Remise: -{discountNumber}%
+                    </span>
+                </div>
+            </div>
+        );
     };
 
     const toDiscountNumber = (discount?: string | number | null) => {
@@ -87,21 +159,25 @@ const PricingGridSection: React.FC<PricingGridSectionProps> = ({ pricingGrid }) 
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {pricingGrid.map((item, index) => (
-                    <div key={index} className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100 hover:border-emerald-100 hover:shadow-md transition-all group">
-                        <div className="flex items-center gap-2 mb-4">
-                            {item.zone_type === 'URBAIN' ? <Map className="w-5 h-5 text-blue-500" /> : <Map className="w-5 h-5 text-orange-500" />}
-                            <h4 className="font-bold text-lg text-gray-800 capitalize">{item.zone_type.toLowerCase()}</h4>
-                        </div>
+                {pricingGrid.map((item, index) => {
+                    const zoneDiscounts = item.zone_type === 'PROVINCE' ? provinceDiscounts : urbanDiscounts;
 
-                        <div className="space-y-3">
-                            {item.zone_type === 'URBAIN' && renderPriceLine('Par Heure', <Clock className="w-4 h-4" />, item.prix_heure, item.remise_par_heure)}
-                            {renderPriceLine('Par Jour', <CalendarDays className="w-4 h-4" />, item.prix_jour, item.remise_par_jour)}
-                            {renderPriceLine('Par Semaine', <CalendarCheck className="w-4 h-4" />, item.prix_par_semaine, item.remise_longue_duree_pourcent)}
-                            {renderPriceLine('Par Mois', <CalendarCheck className="w-4 h-4" />, item.prix_mois, item.remise_par_mois)}
+                    return (
+                        <div key={index} className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100 hover:border-emerald-100 hover:shadow-md transition-all group">
+                            <div className="flex items-center gap-2 mb-4">
+                                {item.zone_type === 'URBAIN' ? <Map className="w-5 h-5 text-blue-500" /> : <Map className="w-5 h-5 text-orange-500" />}
+                                <h4 className="font-bold text-lg text-gray-800 capitalize">{item.zone_type.toLowerCase()}</h4>
+                            </div>
+
+                            <div className="space-y-3">
+                                {item.zone_type === 'URBAIN' && renderPriceLine('Par Heure', <Clock className="w-4 h-4" />, item.prix_heure, resolveDiscount(item.remise_par_heure, zoneDiscounts?.remise_par_heure))}
+                                {renderPriceLine('Par Jour', <CalendarDays className="w-4 h-4" />, item.prix_jour, resolveDiscount(item.remise_par_jour, zoneDiscounts?.remise_par_jour))}
+                                {renderPriceLine('Par Semaine', <CalendarCheck className="w-4 h-4" />, item.prix_par_semaine, resolveDiscount(item.remise_longue_duree_pourcent, zoneDiscounts?.remise_longue_duree_pourcent))}
+                                {renderPriceLine('Par Mois', <CalendarCheck className="w-4 h-4" />, item.prix_mois, resolveDiscount(item.remise_par_mois, zoneDiscounts?.remise_par_mois))}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

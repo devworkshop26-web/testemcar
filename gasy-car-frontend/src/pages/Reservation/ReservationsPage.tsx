@@ -780,6 +780,18 @@ const ReservationsPage: React.FC = () => {
                 />
                 <PricingGridSection
                   pricingGrid={vehicle.pricing_grid || []}
+                  urbanDiscounts={{
+                    remise_par_heure: vehicle.remise_par_heure,
+                    remise_par_jour: vehicle.remise_par_jour,
+                    remise_par_mois: vehicle.remise_par_mois,
+                    remise_longue_duree_pourcent: vehicle.remise_longue_duree_pourcent,
+                  }}
+                  provinceDiscounts={{
+                    remise_par_heure: vehicle.province_remise_par_heure,
+                    remise_par_jour: vehicle.province_remise_par_jour,
+                    remise_par_mois: vehicle.province_remise_par_mois,
+                    remise_longue_duree_pourcent: vehicle.province_remise_longue_duree_pourcent,
+                  }}
                 />
               </TabsContent>
 
