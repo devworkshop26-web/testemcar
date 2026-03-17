@@ -241,7 +241,14 @@ const ReservationsPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const { price: basePrice, durationLabel, rateApplied, durationDays } = useMemo(() => {
+  const {
+    price: basePrice,
+    basePriceBeforeDiscount,
+    discountAmount,
+    durationLabel,
+    rateApplied,
+    durationDays,
+  } = useMemo(() => {
     const start = new Date(`${pickupDate}T${pickupTime}`);
     const end = new Date(`${returnDate}T${returnTime}`);
     const diffMs = end.getTime() - start.getTime();
@@ -250,56 +257,123 @@ const ReservationsPage: React.FC = () => {
     if (!Number.isFinite(diffHours) || diffHours <= 0) {
       return {
         price: 0,
+        basePriceBeforeDiscount: 0,
+        discountAmount: 0,
         durationLabel: "Dates invalides",
         rateApplied: "-",
         durationDays: 0,
       };
     }
 
+    const parsePercent = (value?: string | number | null) => {
+      if (value === null || value === undefined || value === "") return 0;
+      const normalized = typeof value === "string" ? value.replace(",", ".") : value;
+      const parsed = Number(normalized);
+      if (!Number.isFinite(parsed) || parsed < 0) return 0;
+      if (parsed > 100) return 100;
+      return parsed;
+    };
+
+    const pricingGrid = vehicle?.pricing_grid || [];
+    const urbanRate = pricingGrid.find((p) => p.zone_type === "URBAIN");
+    const provinceRate = pricingGrid.find((p) => p.zone_type === "PROVINCE");
+
+    const urbanDiscounts = {
+      day: parsePercent(urbanRate?.remise_par_jour ?? vehicle?.remise_par_jour),
+      week: parsePercent(
+        urbanRate?.remise_longue_duree_pourcent ??
+          vehicle?.remise_longue_duree_pourcent
+      ),
+      month: parsePercent(urbanRate?.remise_par_mois ?? vehicle?.remise_par_mois),
+    };
+
+    const provinceDiscounts = {
+      day: parsePercent(
+        provinceRate?.remise_par_jour ?? vehicle?.province_remise_par_jour
+      ),
+      week: parsePercent(
+        provinceRate?.remise_longue_duree_pourcent ??
+          vehicle?.province_remise_longue_duree_pourcent
+      ),
+      month: parsePercent(
+        provinceRate?.remise_par_mois ?? vehicle?.province_remise_par_mois
+      ),
+    };
+
+    const applyDiscount = (amount: number, discountPercent: number) =>
+      amount * (1 - discountPercent / 100);
+
     const isSameDay = pickupDate === returnDate;
     let price = 0;
+    let baseAmountBeforeDiscount = 0;
     let label = "";
     let appliedRate = "";
 
     if (travelZone === "PROVINCE" && pricingRates.provinceDay) {
       const days = Math.max(1, Math.ceil(diffHours / 24));
-      price = days * pricingRates.provinceDay;
-      label = `${days} Jours (Province)`;
-      appliedRate = "Tarif Province";
-    } else if (diffHours <= 5 && pricingRates.halfDay) {
-      price = pricingRates.halfDay;
-      label = "Demi-journée";
-      appliedRate = "Tarif réduit (4h)";
-    } else if (diffHours <= 14 && isSameDay) {
-      price = pricingRates.day;
-      label = "1 Journée";
-      appliedRate = "Tarif Journée";
-    } else {
-      const days24h = Math.ceil(diffHours / 24);
-      const unitPrice = pricingRates.twentyFourHours ?? pricingRates.day;
-      let discount = 0;
+      const baseProvinceAmount = days * pricingRates.provinceDay;
+      baseAmountBeforeDiscount = baseProvinceAmount;
 
-      if (days24h >= 30) {
-        discount = pricingRates.monthlyDiscount ?? 0;
-        appliedRate = `Mensuel (-${discount}%)`;
-      } else if (days24h >= 7) {
-        discount = pricingRates.weeklyDiscount ?? 0;
-        appliedRate = `Hebdo (-${discount}%)`;
+      let discount = 0;
+      if (days >= 30) {
+        discount = provinceDiscounts.month;
+        appliedRate = `Tarif Province mensuel (-${discount}%)`;
+      } else if (days >= 7) {
+        discount = provinceDiscounts.week;
+        appliedRate = `Tarif Province hebdo (-${discount}%)`;
       } else {
-        appliedRate = "Tarif 24h";
+        discount = provinceDiscounts.day;
+        appliedRate = `Tarif Province jour (-${discount}%)`;
       }
 
-      price = days24h * unitPrice * (1 - discount / 100);
+      price = applyDiscount(baseProvinceAmount, discount);
+      label = `${days} Jours (Province)`;
+    } else if (diffHours <= 5 && pricingRates.halfDay) {
+      const discount = urbanDiscounts.day;
+      baseAmountBeforeDiscount = pricingRates.halfDay;
+      price = applyDiscount(pricingRates.halfDay, discount);
+      label = "Demi-journée";
+      appliedRate = `Tarif réduit (4h) (-${discount}%)`;
+    } else if (diffHours <= 14 && isSameDay) {
+      const discount = urbanDiscounts.day;
+      baseAmountBeforeDiscount = pricingRates.day;
+      price = applyDiscount(pricingRates.day, discount);
+      label = "1 Journée";
+      appliedRate = `Tarif Journée (-${discount}%)`;
+    } else {
+      const days24h = Math.max(1, Math.ceil(diffHours / 24));
+      const unitPrice = pricingRates.twentyFourHours ?? pricingRates.day;
+      const baseAmount = days24h * unitPrice;
+      baseAmountBeforeDiscount = baseAmount;
+
+      let discount = 0;
+      if (days24h >= 30) {
+        discount = urbanDiscounts.month;
+        appliedRate = `Mensuel (-${discount}%)`;
+      } else if (days24h >= 7) {
+        discount = urbanDiscounts.week;
+        appliedRate = `Hebdo (-${discount}%)`;
+      } else {
+        discount = urbanDiscounts.day;
+        appliedRate = `Tarif 24h (-${discount}%)`;
+      }
+
+      price = applyDiscount(baseAmount, discount);
       label = `${days24h} Jours`;
     }
 
+    const roundedPrice = Math.max(0, Math.round(price));
+    const roundedBaseBeforeDiscount = Math.max(0, Math.round(baseAmountBeforeDiscount));
+
     return {
-      price,
+      price: roundedPrice,
+      basePriceBeforeDiscount: roundedBaseBeforeDiscount,
+      discountAmount: Math.max(0, roundedBaseBeforeDiscount - roundedPrice),
       durationLabel: label,
       rateApplied: appliedRate,
       durationDays: Math.max(1, Math.ceil(diffHours / 24)),
     };
-  }, [pickupDate, pickupTime, returnDate, returnTime, travelZone, pricingRates]);
+  }, [pickupDate, pickupTime, returnDate, returnTime, travelZone, pricingRates, vehicle]);
 
   const isDateUnavailable = useMemo(() => {
     const unavailablePeriods =
@@ -780,8 +854,18 @@ const ReservationsPage: React.FC = () => {
                 />
                 <PricingGridSection
                   pricingGrid={vehicle.pricing_grid || []}
-                  weeklyDiscount={pricingRates.weeklyDiscount}
-                  monthlyDiscount={pricingRates.monthlyDiscount}
+                  urbanDiscounts={{
+                    remise_par_heure: vehicle.remise_par_heure,
+                    remise_par_jour: vehicle.remise_par_jour,
+                    remise_par_mois: vehicle.remise_par_mois,
+                    remise_longue_duree_pourcent: vehicle.remise_longue_duree_pourcent,
+                  }}
+                  provinceDiscounts={{
+                    remise_par_heure: vehicle.province_remise_par_heure,
+                    remise_par_jour: vehicle.province_remise_par_jour,
+                    remise_par_mois: vehicle.province_remise_par_mois,
+                    remise_longue_duree_pourcent: vehicle.province_remise_longue_duree_pourcent,
+                  }}
                 />
               </TabsContent>
 
@@ -805,6 +889,8 @@ const ReservationsPage: React.FC = () => {
               vehicle={vehicle}
               durationLabel={durationLabel}
               basePrice={basePrice}
+              basePriceBeforeDiscount={basePriceBeforeDiscount}
+              discountAmount={discountAmount}
               totalPrice={totalPrice}
               pricingRates={pricingRates}
               addons={addonsList}
