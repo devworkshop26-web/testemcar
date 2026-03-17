@@ -24,6 +24,8 @@ export type BookingSidebarProps = {
   selectedDriverOption: ChauffeurChoice;
   selectedAddons: string[];
   basePrice: number;
+  basePriceBeforeDiscount: number;
+  discountAmount: number;
   driverFee: number;
   totalAddOns: number;
   serviceFee: number;
@@ -59,6 +61,8 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   selectedDriverOption,
   selectedAddons,
   basePrice,
+  basePriceBeforeDiscount,
+  discountAmount,
   driverFee,
   totalAddOns,
   serviceFee,
@@ -79,19 +83,36 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
   const cautionAmount = Math.max(0, Math.round(deposit));
 
   const pricingBreakdown = [
-    { key: 'location', label: `Location (${durationLabel})`, value: basePrice, show: true },
-    { key: 'driver', label: 'Chauffeur', value: driverFee, show: driverFee > 0 },
-    { key: 'options', label: 'Options', value: totalAddOns, show: totalAddOns > 0 },
-    { key: 'service', label: 'Frais de service', value: serviceFee, show: serviceFee > 0 },
+    {
+      key: 'location_base',
+      label: `Location brute (${durationLabel})`,
+      value: Math.max(0, Math.round(basePriceBeforeDiscount)),
+      show: basePriceBeforeDiscount > 0,
+      sign: '' as '' | '+' | '-',
+    },
+    {
+      key: 'location_discount',
+      label: `Remise appliquée (${rateApplied})`,
+      value: Math.max(0, Math.round(discountAmount)),
+      show: discountAmount > 0,
+      sign: '-' as '' | '+' | '-',
+    },
+    {
+      key: 'location_net',
+      label: `Location nette (${durationLabel})`,
+      value: Math.max(0, Math.round(basePrice)),
+      show: true,
+      sign: '' as '' | '+' | '-',
+    },
+    { key: 'driver', label: 'Chauffeur', value: driverFee, show: driverFee > 0, sign: '+' as '' | '+' | '-' },
+    { key: 'options', label: 'Options', value: totalAddOns, show: totalAddOns > 0, sign: '+' as '' | '+' | '-' },
+    { key: 'service', label: 'Frais de service', value: serviceFee, show: serviceFee > 0, sign: '+' as '' | '+' | '-' },
   ].filter((item) => item.show);
 
-  const breakdownLabelText = pricingBreakdown
-    .map((item) => item.label.toLowerCase().replace(` (${durationLabel.toLowerCase()})`, ''))
-    .join(' + ');
-
-  const breakdownValueText = pricingBreakdown
-    .map((item) => item.value.toLocaleString())
-    .join(' + ');
+  const breakdownFormula = pricingBreakdown
+    .filter((item) => item.key !== 'location_base')
+    .map((item) => `${item.sign || '+'}${item.value.toLocaleString()}`)
+    .join(' ');
 
   const availableZones = useMemo(() => {
     const pricingGrid = vehicle.pricing_grid || [];
@@ -222,7 +243,7 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
                   <div key={item.key} className="flex justify-between items-center text-gray-600">
                     <span>{item.label}</span>
                     <span className="font-bold text-gray-900">
-                      {index === 0 ? '' : '+'}{item.value.toLocaleString()} Ar
+                      {item.sign}{item.value.toLocaleString()} Ar
                     </span>
                   </div>
                 ))}
@@ -250,9 +271,17 @@ const BookingSidebar: React.FC<BookingSidebarProps> = ({
         </div>
 
         <div className="z-10 text-[11px] text-gray-500 bg-white/80 border border-gray-100 rounded-xl px-3 py-2">
-          <p className="font-semibold text-gray-700">Calcul: {breakdownLabelText}</p>
+          <p className="font-semibold text-gray-700">Calcul location + frais de service</p>
+          <p className="mt-1">Location brute: {Math.round(basePriceBeforeDiscount).toLocaleString()} Ar</p>
+          {discountAmount > 0 && (
+            <p className="mt-1 text-emerald-700">- Remise location: {Math.round(discountAmount).toLocaleString()} Ar</p>
+          )}
+          <p className="mt-1">Location nette: {Math.round(basePrice).toLocaleString()} Ar</p>
+          {driverFee > 0 && <p className="mt-1">+ Chauffeur: {Math.round(driverFee).toLocaleString()} Ar</p>}
+          {totalAddOns > 0 && <p className="mt-1">+ Options: {Math.round(totalAddOns).toLocaleString()} Ar</p>}
+          {serviceFee > 0 && <p className="mt-1">+ Frais de service: {Math.round(serviceFee).toLocaleString()} Ar</p>}
           <p className="mt-1">
-            {breakdownValueText} =
+            {breakdownFormula} =
             <span className="font-bold text-gray-900"> {finalTotal.toLocaleString()} Ar</span>
           </p>
           {cautionAmount > 0 && (
