@@ -266,7 +266,9 @@ const ReservationsPage: React.FC = () => {
     }
 
     const parsePercent = (value?: string | number | null) => {
-      const parsed = Number(value ?? 0);
+      if (value === null || value === undefined || value === "") return 0;
+      const normalized = typeof value === "string" ? value.replace(",", ".") : value;
+      const parsed = Number(normalized);
       if (!Number.isFinite(parsed) || parsed < 0) return 0;
       if (parsed > 100) return 100;
       return parsed;
