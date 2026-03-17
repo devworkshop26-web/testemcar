@@ -98,6 +98,54 @@ const PricingGridSection: React.FC<PricingGridSectionProps> = ({
         );
     };
 
+    const toDiscountNumber = (discount?: string | number | null) => {
+        if (!discount) return 0;
+        const parsed = Number(discount);
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const getOriginalPrice = (price?: string | number | null, discount?: string | number | null) => {
+        if (!price) return null;
+
+        const priceNumber = Number(price);
+        const discountNumber = toDiscountNumber(discount);
+
+        if (!Number.isFinite(priceNumber) || discountNumber <= 0 || discountNumber >= 100) {
+            return null;
+        }
+
+        return priceNumber / (1 - discountNumber / 100);
+    };
+
+    const renderPriceLine = (
+        label: string,
+        icon: React.ReactNode,
+        price?: string | number | null,
+        discount?: string | number | null,
+    ) => {
+        if (!price) return null;
+
+        const discountNumber = toDiscountNumber(discount);
+        const originalPrice = getOriginalPrice(price, discount);
+
+        return (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-gray-500 text-sm flex items-center gap-2">{icon} {label}</span>
+                <div className="flex items-end flex-col gap-1">
+                    <span className="font-bold text-gray-900">{formatPrice(price)}</span>
+                    {discountNumber > 0 && (
+                        <span className="text-xs font-medium text-emerald-700">
+                            Remise: -{discountNumber}%
+                            {originalPrice && (
+                                <span className="text-gray-500"> · Prix normal: {formatPrice(originalPrice)}</span>
+                            )}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-gray-200/50 border border-gray-100 mt-8">
             <div className="flex items-center gap-3 mb-8">
