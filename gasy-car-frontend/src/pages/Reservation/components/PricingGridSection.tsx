@@ -8,20 +8,70 @@ interface PricingGridItem {
     prix_jour?: string | number | null;
     prix_par_semaine?: string | number | null;
     prix_mois?: string | number | null;
+    remise_par_heure?: string | number | null;
+    remise_par_jour?: string | number | null;
+    remise_par_mois?: string | number | null;
+    remise_longue_duree_pourcent?: string | number | null;
 }
 
 interface PricingGridSectionProps {
     pricingGrid: PricingGridItem[];
-    weeklyDiscount?: number;
-    monthlyDiscount?: number;
 }
 
-const PricingGridSection: React.FC<PricingGridSectionProps> = ({ pricingGrid, weeklyDiscount, monthlyDiscount }) => {
+const PricingGridSection: React.FC<PricingGridSectionProps> = ({ pricingGrid }) => {
     if (!pricingGrid || pricingGrid.length === 0) return null;
 
     const formatPrice = (price?: string | number | null) => {
         if (!price) return '-';
         return Number(price).toLocaleString('fr-FR') + ' Ar';
+    };
+
+    const toDiscountNumber = (discount?: string | number | null) => {
+        if (!discount) return 0;
+        const parsed = Number(discount);
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const getOriginalPrice = (price?: string | number | null, discount?: string | number | null) => {
+        if (!price) return null;
+
+        const priceNumber = Number(price);
+        const discountNumber = toDiscountNumber(discount);
+
+        if (!Number.isFinite(priceNumber) || discountNumber <= 0 || discountNumber >= 100) {
+            return null;
+        }
+
+        return priceNumber / (1 - discountNumber / 100);
+    };
+
+    const renderPriceLine = (
+        label: string,
+        icon: React.ReactNode,
+        price?: string | number | null,
+        discount?: string | number | null,
+    ) => {
+        if (!price) return null;
+
+        const discountNumber = toDiscountNumber(discount);
+        const originalPrice = getOriginalPrice(price, discount);
+
+        return (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <span className="text-gray-500 text-sm flex items-center gap-2">{icon} {label}</span>
+                <div className="flex items-end flex-col gap-1">
+                    <span className="font-bold text-gray-900">{formatPrice(price)}</span>
+                    {discountNumber > 0 && (
+                        <span className="text-xs font-medium text-emerald-700">
+                            Remise: -{discountNumber}%
+                            {originalPrice && (
+                                <span className="text-gray-500"> · Prix normal: {formatPrice(originalPrice)}</span>
+                            )}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -45,49 +95,14 @@ const PricingGridSection: React.FC<PricingGridSectionProps> = ({ pricingGrid, we
                         </div>
 
                         <div className="space-y-3">
-                            {item.zone_type === 'URBAIN' && item.prix_heure && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                                    <span className="text-gray-500 text-sm flex items-center gap-2"><Clock className="w-4 h-4" /> Par Heure</span>
-                                    <span className="font-bold text-gray-900">{formatPrice(item.prix_heure)}</span>
-                                </div>
-                            )}
-                            {item.prix_jour && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                                    <span className="text-gray-500 text-sm flex items-center gap-2"><CalendarDays className="w-4 h-4" /> Par Jour</span>
-                                    <span className="font-bold text-gray-900">{formatPrice(item.prix_jour)}</span>
-                                </div>
-                            )}
-                            {item.prix_par_semaine && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                                    <span className="text-gray-500 text-sm flex items-center gap-2"><CalendarCheck className="w-4 h-4" /> Par Semaine</span>
-                                    <span className="font-bold text-gray-900">{formatPrice(item.prix_par_semaine)}</span>
-                                </div>
-                            )}
-                            {item.prix_mois && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                                    <span className="text-gray-500 text-sm flex items-center gap-2"><CalendarCheck className="w-4 h-4" /> Par Mois</span>
-                                    <span className="font-bold text-gray-900">{formatPrice(item.prix_mois)}</span>
-                                </div>
-                            )}
+                            {item.zone_type === 'URBAIN' && renderPriceLine('Par Heure', <Clock className="w-4 h-4" />, item.prix_heure, item.remise_par_heure)}
+                            {renderPriceLine('Par Jour', <CalendarDays className="w-4 h-4" />, item.prix_jour, item.remise_par_jour)}
+                            {renderPriceLine('Par Semaine', <CalendarCheck className="w-4 h-4" />, item.prix_par_semaine, item.remise_longue_duree_pourcent)}
+                            {renderPriceLine('Par Mois', <CalendarCheck className="w-4 h-4" />, item.prix_mois, item.remise_par_mois)}
                         </div>
                     </div>
                 ))}
             </div>
-
-            {(weeklyDiscount || monthlyDiscount) && (
-                <div className="mt-6 flex flex-wrap gap-4">
-                    {weeklyDiscount && weeklyDiscount > 0 && (
-                        <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold border border-emerald-100 flex items-center gap-2">
-                            <CalendarCheck className="w-4 h-4" /> Remise Hebdomadaire: -{weeklyDiscount}%
-                        </div>
-                    )}
-                    {monthlyDiscount && monthlyDiscount > 0 && (
-                        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-bold border border-blue-100 flex items-center gap-2">
-                            <CalendarCheck className="w-4 h-4" /> Remise Mensuelle: -{monthlyDiscount}%
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 };
