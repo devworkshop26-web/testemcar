@@ -241,7 +241,14 @@ const ReservationsPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const { price: basePrice, durationLabel, rateApplied, durationDays } = useMemo(() => {
+  const {
+    price: basePrice,
+    basePriceBeforeDiscount,
+    discountAmount,
+    durationLabel,
+    rateApplied,
+    durationDays,
+  } = useMemo(() => {
     const start = new Date(`${pickupDate}T${pickupTime}`);
     const end = new Date(`${returnDate}T${returnTime}`);
     const diffMs = end.getTime() - start.getTime();
@@ -250,6 +257,8 @@ const ReservationsPage: React.FC = () => {
     if (!Number.isFinite(diffHours) || diffHours <= 0) {
       return {
         price: 0,
+        basePriceBeforeDiscount: 0,
+        discountAmount: 0,
         durationLabel: "Dates invalides",
         rateApplied: "-",
         durationDays: 0,
@@ -294,12 +303,14 @@ const ReservationsPage: React.FC = () => {
 
     const isSameDay = pickupDate === returnDate;
     let price = 0;
+    let baseAmountBeforeDiscount = 0;
     let label = "";
     let appliedRate = "";
 
     if (travelZone === "PROVINCE" && pricingRates.provinceDay) {
       const days = Math.max(1, Math.ceil(diffHours / 24));
       const baseProvinceAmount = days * pricingRates.provinceDay;
+      baseAmountBeforeDiscount = baseProvinceAmount;
 
       let discount = 0;
       if (days >= 30) {
@@ -317,11 +328,13 @@ const ReservationsPage: React.FC = () => {
       label = `${days} Jours (Province)`;
     } else if (diffHours <= 5 && pricingRates.halfDay) {
       const discount = urbanDiscounts.day;
+      baseAmountBeforeDiscount = pricingRates.halfDay;
       price = applyDiscount(pricingRates.halfDay, discount);
       label = "Demi-journée";
       appliedRate = `Tarif réduit (4h) (-${discount}%)`;
     } else if (diffHours <= 14 && isSameDay) {
       const discount = urbanDiscounts.day;
+      baseAmountBeforeDiscount = pricingRates.day;
       price = applyDiscount(pricingRates.day, discount);
       label = "1 Journée";
       appliedRate = `Tarif Journée (-${discount}%)`;
@@ -329,6 +342,7 @@ const ReservationsPage: React.FC = () => {
       const days24h = Math.max(1, Math.ceil(diffHours / 24));
       const unitPrice = pricingRates.twentyFourHours ?? pricingRates.day;
       const baseAmount = days24h * unitPrice;
+      baseAmountBeforeDiscount = baseAmount;
 
       let discount = 0;
       if (days24h >= 30) {
@@ -346,8 +360,13 @@ const ReservationsPage: React.FC = () => {
       label = `${days24h} Jours`;
     }
 
+    const roundedPrice = Math.max(0, Math.round(price));
+    const roundedBaseBeforeDiscount = Math.max(0, Math.round(baseAmountBeforeDiscount));
+
     return {
-      price: Math.max(0, Math.round(price)),
+      price: roundedPrice,
+      basePriceBeforeDiscount: roundedBaseBeforeDiscount,
+      discountAmount: Math.max(0, roundedBaseBeforeDiscount - roundedPrice),
       durationLabel: label,
       rateApplied: appliedRate,
       durationDays: Math.max(1, Math.ceil(diffHours / 24)),
@@ -868,6 +887,8 @@ const ReservationsPage: React.FC = () => {
               vehicle={vehicle}
               durationLabel={durationLabel}
               basePrice={basePrice}
+              basePriceBeforeDiscount={basePriceBeforeDiscount}
+              discountAmount={discountAmount}
               totalPrice={totalPrice}
               pricingRates={pricingRates}
               addons={addonsList}
