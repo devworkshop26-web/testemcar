@@ -245,6 +245,8 @@ const DashboardOverClientView = () => {
                     reservation.pickup_location ||
                     "Madagascar";
 
+                  const vehicleId = vehicle?.id ? String(vehicle.id) : null;
+
                   return (
                     <Card
                       key={reservation.id}
@@ -277,7 +279,7 @@ const DashboardOverClientView = () => {
                         <div className="flex flex-col items-start gap-3 lg:items-end">
                           <Button
                             className="rounded-2xl bg-[#EEF4FF] px-6 text-sm font-semibold text-[#316BFF] hover:bg-[#E2ECFF]"
-                            onClick={() => navigate("/allCars")}
+                            onClick={() => navigate(vehicleId ? `/vehicule/${vehicleId}` : "/allCars")}
                           >
                             Louer à nouveau
                           </Button>
