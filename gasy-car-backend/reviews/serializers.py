@@ -21,7 +21,13 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = "__all__"
-        read_only_fields = ("author", "is_verified", "created_at", "updated_at")
+        read_only_fields = (
+            "author",
+            "is_verified",
+            "moderation_status",
+            "created_at",
+            "updated_at",
+        )
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -36,10 +42,10 @@ class ReviewSerializer(serializers.ModelSerializer):
                 {"reservation": "Un avis doit obligatoirement être lié à une réservation réelle."}
             )
 
-        allowed_statuses = {Reservation.Status.CONFIRMED, Reservation.Status.COMPLETED}
+        allowed_statuses = {Reservation.Status.COMPLETED}
         if reservation.status not in allowed_statuses:
             raise serializers.ValidationError(
-                {"reservation": "Vous pouvez laisser un avis uniquement pour une réservation confirmée ou terminée."}
+                {"reservation": "Vous pouvez laisser un avis uniquement pour une réservation terminée."}
             )
 
         if not user or not user.is_authenticated:
@@ -71,4 +77,5 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["is_verified"] = True
+        validated_data["moderation_status"] = Review.ModerationStatus.PENDING
         return super().create(validated_data)
