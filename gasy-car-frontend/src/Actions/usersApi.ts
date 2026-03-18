@@ -49,6 +49,9 @@ updateUser: (
   clearCinVerso: (user_id: string) =>
     InstanceAxis.patch(`/users/profile/${user_id}/`, { cin_photo_verso: null }),
 
+  clearDrivingLicense: (user_id: string) =>
+    InstanceAxis.patch(`/users/profile/${user_id}/`, { permis_conduire: null }),
+
   changePassword: (data: {
     old_password: string;
     new_password: string;

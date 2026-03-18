@@ -17,6 +17,7 @@ export interface User {
   cin_number?: string;
   cin_photo_recto?: string;
   cin_photo_verso?: string;
+  permis_conduire?: string;
 
   date_of_birth?: string;
 
