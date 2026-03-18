@@ -1,9 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InstanceAxis } from "@/helper/InstanceAxios";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
-import { ChevronRight, Clock3, Crown, FilePlus2, Gift, ShieldCheck } from "lucide-react";
+import {
+  ChevronRight,
+  Clock3,
+  Crown,
+  FilePlus2,
+  Gift,
+  ImageOff,
+  ShieldCheck,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const loyaltyProgress = 96;
@@ -15,6 +32,31 @@ type ExtendedUser = {
   permis_conduire_recto?: string | null;
   permis_conduire_verso?: string | null;
   cin_photo_recto?: string | null;
+  cin_photo_verso?: string | null;
+};
+
+type DocumentPreview = {
+  label: string;
+  src: string | null;
+};
+
+type DocumentItem = {
+  id: "permis" | "cin";
+  label: string;
+  status: string;
+  icon: JSX.Element;
+  description: string;
+  previews: DocumentPreview[];
+};
+
+const rawBaseUrl = String(InstanceAxis.defaults.baseURL || "");
+const mediaBaseUrl = rawBaseUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+const toAbsoluteMediaUrl = (path?: string | null) => {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  if (!mediaBaseUrl) return path;
+  return path.startsWith("/") ? `${mediaBaseUrl}${path}` : `${mediaBaseUrl}/${path}`;
 };
 
 const formatReservationDateRange = (start?: string, end?: string) => {
@@ -32,10 +74,36 @@ const formatReservationDateRange = (start?: string, end?: string) => {
   })}`;
 };
 
+const DocumentImageCard = ({ label, src }: DocumentPreview) => {
+  if (!src) {
+    return (
+      <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+        <div className="mb-3 rounded-full bg-white p-3 text-slate-400 shadow-sm">
+          <ImageOff className="h-5 w-5" />
+        </div>
+        <p className="text-sm font-semibold text-slate-700">{label}</p>
+        <p className="mt-1 text-xs text-slate-500">Aucun document disponible.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-4 py-3">
+        <p className="text-sm font-semibold text-slate-900">{label}</p>
+      </div>
+      <div className="bg-slate-50 p-3">
+        <img src={src} alt={label} className="h-[240px] w-full rounded-xl object-cover" />
+      </div>
+    </div>
+  );
+};
+
 const DashboardOverClientView = () => {
   const { user } = useCurentuser();
   const { data: reservations = [] } = useReservationClientQuery(user?.id);
   const navigate = useNavigate();
+  const [selectedDocumentId, setSelectedDocumentId] = useState<DocumentItem["id"] | null>(null);
 
   const profile = (user ?? {}) as ExtendedUser;
 
@@ -48,203 +116,282 @@ const DashboardOverClientView = () => {
     })
     .slice(0, 3);
 
-  const documentItems = [
-    {
-      id: "permis",
-      label: "Permis de conduire",
-      status:
-        profile.permis_conduire_recto ||
-        profile.permis_conduire_verso ||
-        profile.permis_conduire
-          ? "Validé"
-          : "À compléter",
-      icon: <ShieldCheck className="h-4 w-4" />,
-    },
-    {
-      id: "cin",
-      label: "CIN / Passeport",
-      status: profile.cin_photo_recto ? "Validé" : "À compléter",
-      icon: <Gift className="h-4 w-4" />,
-    },
-  ];
+  const documentItems = useMemo<DocumentItem[]>(
+    () => [
+      {
+        id: "permis",
+        label: "Permis de conduire",
+        status:
+          profile.permis_conduire_recto ||
+          profile.permis_conduire_verso ||
+          profile.permis_conduire
+            ? "Validé"
+            : "À compléter",
+        icon: <ShieldCheck className="h-4 w-4" />,
+        description:
+          "Consultez ici les images recto et verso de votre permis de conduire.",
+        previews: [
+          {
+            label: "Permis - Recto",
+            src: toAbsoluteMediaUrl(
+              profile.permis_conduire_recto || profile.permis_conduire || null
+            ),
+          },
+          {
+            label: "Permis - Verso",
+            src: toAbsoluteMediaUrl(profile.permis_conduire_verso || null),
+          },
+        ],
+      },
+      {
+        id: "cin",
+        label: "CIN / Passeport",
+        status:
+          profile.cin_photo_recto || profile.cin_photo_verso
+            ? "Validé"
+            : "À compléter",
+        icon: <Gift className="h-4 w-4" />,
+        description:
+          "Consultez ici les images recto et verso de votre CIN ou passeport.",
+        previews: [
+          {
+            label: "CIN / Passeport - Recto",
+            src: toAbsoluteMediaUrl(profile.cin_photo_recto || null),
+          },
+          {
+            label: "CIN / Passeport - Verso",
+            src: toAbsoluteMediaUrl(profile.cin_photo_verso || null),
+          },
+        ],
+      },
+    ],
+    [profile]
+  );
+
+  const selectedDocument =
+    documentItems.find((document) => document.id === selectedDocumentId) ?? null;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <Card className="overflow-hidden rounded-[28px] border-0 bg-[#182235] text-white shadow-[0_20px_55px_-35px_rgba(15,23,42,0.82)]">
-        <CardContent className="relative p-0">
-          <div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.08),_transparent_45%)]" />
-          <div className="absolute -right-10 top-0 h-52 w-52 rounded-full border border-white/6" />
-          <div className="absolute -right-4 top-8 h-40 w-40 rounded-full border border-white/5" />
+    <>
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <Card className="overflow-hidden rounded-[28px] border-0 bg-[#182235] text-white shadow-[0_20px_55px_-35px_rgba(15,23,42,0.82)]">
+          <CardContent className="relative p-0">
+            <div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.08),_transparent_45%)]" />
+            <div className="absolute -right-10 top-0 h-52 w-52 rounded-full border border-white/6" />
+            <div className="absolute -right-4 top-8 h-40 w-40 rounded-full border border-white/5" />
 
-          <div className="relative flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-3xl space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl font-bold font-poppins leading-tight text-white sm:text-[30px]">
-                  Bonjour, {user?.first_name || "Client"} {user?.last_name || ""} !
-                </h2>
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
-                  <Crown className="h-3.5 w-3.5" />
-                  Gold
-                </span>
+            <div className="relative flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl font-bold font-poppins leading-tight text-white sm:text-[30px]">
+                    Bonjour, {user?.first_name || "Client"} {user?.last_name || ""} !
+                  </h2>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                    <Crown className="h-3.5 w-3.5" />
+                    Gold
+                  </span>
+                </div>
+
+                <p className="max-w-2xl text-base leading-8 text-white/90 sm:text-[18px]">
+                  Vous avez cumulé <span className="font-bold text-white">{loyaltyPoints} points</span>. Plus que {loyaltyPointsToNextTier} points pour atteindre
+                  le niveau Platinum et bénéficier de <span className="font-bold text-white">-10% sur toutes les locations</span>.
+                </p>
+
+                <div className="h-4 max-w-2xl overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#FFD21E] via-[#FFD21E] to-[#E6B800]"
+                    style={{ width: `${loyaltyProgress}%` }}
+                  />
+                </div>
               </div>
 
-              <p className="max-w-2xl text-base leading-8 text-white/90 sm:text-[18px]">
-                Vous avez cumulé <span className="font-bold text-white">{loyaltyPoints} points</span>. Plus que {loyaltyPointsToNextTier} points pour atteindre
-                le niveau Platinum et bénéficier de <span className="font-bold text-white">-10% sur toutes les locations</span>.
-              </p>
-
-              <div className="h-4 max-w-2xl overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#FFD21E] via-[#FFD21E] to-[#E6B800]"
-                  style={{ width: `${loyaltyProgress}%` }}
-                />
+              <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row lg:flex-col">
+                <Button
+                  className="h-12 min-w-[136px] rounded-2xl bg-white px-6 text-base font-bold text-slate-950 hover:bg-white/95"
+                  onClick={() => navigate("/client/loyalty")}
+                >
+                  Mes Points
+                </Button>
+                <Button
+                  className="h-12 min-w-[176px] rounded-2xl bg-[#316BFF] px-6 text-base font-bold text-white hover:bg-[#2558db]"
+                  onClick={() => navigate("/client/loyalty")}
+                >
+                  Parrainer un ami
+                </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row lg:flex-col">
-              <Button
-                className="h-12 min-w-[136px] rounded-2xl bg-white px-6 text-base font-bold text-slate-950 hover:bg-white/95"
-                onClick={() => navigate("/client/loyalty")}
-              >
-                Mes Points
-              </Button>
-              <Button
-                className="h-12 min-w-[176px] rounded-2xl bg-[#316BFF] px-6 text-base font-bold text-white hover:bg-[#2558db]"
-                onClick={() => navigate("/client/loyalty")}
-              >
-                Parrainer un ami
-              </Button>
+        <div className="grid gap-8 xl:grid-cols-[1.45fr_0.7fr] xl:items-start">
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Clock3 className="h-4 w-4" />
+              </div>
+              <h3 className="font-poppins text-[20px] font-bold tracking-tight text-slate-900 sm:text-[22px]">
+                Locations Récentes
+              </h3>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      <div className="grid gap-8 xl:grid-cols-[1.45fr_0.7fr] xl:items-start">
-        <section className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Clock3 className="h-4 w-4" />
-            </div>
-            <h3 className="text-[20px] font-bold tracking-tight text-slate-900 font-poppins sm:text-[22px]">
-              Locations Récentes
-            </h3>
-          </div>
+            <div className="space-y-5">
+              {recentReservations.length > 0 ? (
+                recentReservations.map((reservation) => {
+                  const vehicle = reservation.vehicle_data;
+                  const image = vehicle?.photo_principale || vehicle?.photos?.[0]?.image;
+                  const locationLabel =
+                    vehicle?.ville ||
+                    vehicle?.adresse_localisation ||
+                    reservation.pickup_location ||
+                    "Madagascar";
 
-          <div className="space-y-5">
-            {recentReservations.length > 0 ? (
-              recentReservations.map((reservation) => {
-                const vehicle = reservation.vehicle_data;
-                const image = vehicle?.photo_principale || vehicle?.photos?.[0]?.image;
-                const locationLabel =
-                  vehicle?.ville ||
-                  vehicle?.adresse_localisation ||
-                  reservation.pickup_location ||
-                  "Madagascar";
+                  return (
+                    <Card
+                      key={reservation.id}
+                      className="rounded-[22px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,0.38)]"
+                    >
+                      <CardContent className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex min-w-0 items-center gap-4">
+                          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
+                            {image ? (
+                              <img src={image} alt={vehicle?.titre || "Véhicule"} className="h-full w-full object-cover" />
+                            ) : (
+                              <Skeleton className="h-full w-full rounded-none bg-slate-200" />
+                            )}
+                          </div>
 
-                return (
-                  <Card
-                    key={reservation.id}
-                    className="rounded-[22px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,0.38)]"
-                  >
-                    <CardContent className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex min-w-0 items-center gap-4">
-                        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
-                          {image ? (
-                            <img src={image} alt={vehicle?.titre || "Véhicule"} className="h-full w-full object-cover" />
-                          ) : (
-                            <Skeleton className="h-full w-full rounded-none bg-slate-200" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 space-y-1.5">
-                          <h4 className="truncate text-[18px] font-bold text-slate-900 font-poppins sm:text-[19px]">
-                            {vehicle?.titre || `${vehicle?.marque_data?.nom || "Véhicule"} ${vehicle?.modele_data?.label || ""}`.trim()}
-                          </h4>
-                          <p className="text-base text-slate-500">{locationLabel}</p>
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-                            <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
-                              {reservation.status === "CANCELLED" ? "Annulé" : "Terminé"}
-                            </span>
-                            <span>{formatReservationDateRange(reservation.start_datetime, reservation.end_datetime)}</span>
+                          <div className="min-w-0 space-y-1.5">
+                            <h4 className="font-poppins text-[18px] font-bold text-slate-900 sm:text-[19px]">
+                              {vehicle?.titre || `${vehicle?.marque_data?.nom || "Véhicule"} ${vehicle?.modele_data?.label || ""}`.trim()}
+                            </h4>
+                            <p className="text-base text-slate-500">{locationLabel}</p>
+                            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                              <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
+                                {reservation.status === "CANCELLED" ? "Annulé" : "Terminé"}
+                              </span>
+                              <span>{formatReservationDateRange(reservation.start_datetime, reservation.end_datetime)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex flex-col items-start gap-3 lg:items-end">
-                        <Button
-                          className="rounded-2xl bg-[#EEF4FF] px-6 text-sm font-semibold text-[#316BFF] hover:bg-[#E2ECFF]"
-                          onClick={() => navigate("/allCars")}
-                        >
-                          Louer à nouveau
-                        </Button>
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-slate-400 transition-colors hover:text-slate-600"
-                          onClick={() => navigate(`/client/rentals/${reservation.id}`)}
-                        >
-                          Voir facture
-                        </button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            ) : (
-              <Card className="rounded-[22px] border border-dashed border-slate-300 bg-white shadow-sm">
-                <CardContent className="p-10 text-center text-slate-500">
-                  Aucune location récente pour le moment.
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </section>
+                        <div className="flex flex-col items-start gap-3 lg:items-end">
+                          <Button
+                            className="rounded-2xl bg-[#EEF4FF] px-6 text-sm font-semibold text-[#316BFF] hover:bg-[#E2ECFF]"
+                            onClick={() => navigate("/allCars")}
+                          >
+                            Louer à nouveau
+                          </Button>
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-slate-400 transition-colors hover:text-slate-600"
+                            onClick={() => navigate(`/client/rentals/${reservation.id}`)}
+                          >
+                            Voir facture
+                          </button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                <Card className="rounded-[22px] border border-dashed border-slate-300 bg-white shadow-sm">
+                  <CardContent className="p-10 text-center text-slate-500">
+                    Aucune location récente pour le moment.
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </section>
 
-        <section>
-          <Card className="rounded-[24px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,0.38)] xl:sticky xl:top-24">
-            <CardContent className="p-6">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-                <h3 className="text-[20px] font-bold tracking-tight text-slate-900 font-poppins sm:text-[22px]">
-                  Mes Documents
-                </h3>
-              </div>
-
-              <div className="space-y-4">
-                {documentItems.map((document) => (
-                  <div
-                    key={document.id}
-                    className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-4 transition-colors hover:bg-slate-100/80"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                        {document.icon}
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-slate-900">{document.label}</p>
-                        <p className="text-sm text-emerald-600">{document.status}</p>
-                      </div>
-                    </div>
-
-                    <ChevronRight className="h-5 w-5 text-slate-300" />
+          <section>
+            <Card className="rounded-[24px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,0.38)] xl:sticky xl:top-24">
+              <CardContent className="p-6">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <ShieldCheck className="h-4 w-4" />
                   </div>
-                ))}
+                  <h3 className="font-poppins text-[20px] font-bold tracking-tight text-slate-900 sm:text-[22px]">
+                    Mes Documents
+                  </h3>
+                </div>
 
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-base font-medium text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
-                  onClick={() => navigate("/client/settings")}
-                >
-                  <FilePlus2 className="h-4 w-4" />
-                  Ajouter un document
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+                <div className="space-y-4">
+                  {documentItems.map((document) => (
+                    <button
+                      key={document.id}
+                      type="button"
+                      onClick={() => setSelectedDocumentId(document.id)}
+                      className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-4 py-4 text-left transition-colors hover:bg-slate-100/80"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                          {document.icon}
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-slate-900">{document.label}</p>
+                          <p className="text-sm text-emerald-600">{document.status}</p>
+                        </div>
+                      </div>
+
+                      <ChevronRight className="h-5 w-5 text-slate-300" />
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-base font-medium text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
+                    onClick={() => navigate("/client/settings")}
+                  >
+                    <FilePlus2 className="h-4 w-4" />
+                    Ajouter un document
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
       </div>
-    </div>
+
+      <Dialog open={!!selectedDocument} onOpenChange={(open) => !open && setSelectedDocumentId(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-[28px] border-slate-200 bg-white p-0 sm:max-w-4xl">
+          {selectedDocument && (
+            <>
+              <DialogHeader className="border-b border-slate-100 px-6 py-5 text-left">
+                <DialogTitle className="font-poppins text-2xl font-bold text-slate-900">
+                  {selectedDocument.label}
+                </DialogTitle>
+                <DialogDescription className="text-sm leading-6 text-slate-500">
+                  {selectedDocument.description}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5 px-6 py-6">
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm text-slate-500">Statut du document</p>
+                    <p className="text-base font-semibold text-slate-900">{selectedDocument.status}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => navigate("/client/settings")}
+                  >
+                    Modifier mes documents
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {selectedDocument.previews.map((preview) => (
+                    <DocumentImageCard key={preview.label} {...preview} />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
