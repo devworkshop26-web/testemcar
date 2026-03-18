@@ -28,11 +28,14 @@ const SettingsClientView = () => {
     handleDeletePhoto,
     previewCinRecto,
     previewCinVerso,
+    previewDrivingLicense,
     handleCinRectoUpload,
     handleCinVersoUpload,
+    handleDrivingLicenseUpload,
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
+    deleteDrivingLicense,
     register,
     onSubmit,
     errors,
@@ -127,11 +130,14 @@ const SettingsClientView = () => {
                   handleDeletePhoto={handleDeletePhoto}
                   previewCinRecto={previewCinRecto}
                   previewCinVerso={previewCinVerso}
+                  previewDrivingLicense={previewDrivingLicense}
                   handleCinRectoUpload={handleCinRectoUpload}
                   handleCinVersoUpload={handleCinVersoUpload}
+                  handleDrivingLicenseUpload={handleDrivingLicenseUpload}
                   deleteProfilePhoto={deleteProfilePhoto}
                   deleteCinRecto={deleteCinRecto}
                   deleteCinVerso={deleteCinVerso}
+                  deleteDrivingLicense={deleteDrivingLicense}
                   errors={errors}
                   user={user}
                 />

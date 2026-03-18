@@ -120,8 +120,10 @@ export const useClientSettings = () => {
 
   const [previewCinRecto, setPreviewCinRecto] = useState("");
   const [previewCinVerso, setPreviewCinVerso] = useState("");
+  const [previewDrivingLicense, setPreviewDrivingLicense] = useState("");
   const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
   const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
+  const [drivingLicenseFile, setDrivingLicenseFile] = useState<File | null>(null);
 
   const {
     register,
@@ -252,6 +254,23 @@ export const useClientSettings = () => {
     reader.readAsDataURL(file);
   };
 
+
+  const handleDrivingLicenseUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!validateImageFile(file)) {
+      e.target.value = "";
+      return;
+    }
+
+    setDrivingLicenseFile(file);
+
+    const reader = new FileReader();
+    reader.onload = () => setPreviewDrivingLicense(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const deleteProfilePhoto = async () => {
     if (!user?.id) return;
 
@@ -324,6 +343,31 @@ export const useClientSettings = () => {
     }
   };
 
+
+  const deleteDrivingLicense = async () => {
+    if (!user?.id) return;
+
+    try {
+      await usersAPI.clearDrivingLicense(user.id);
+
+      setPreviewDrivingLicense("");
+      setDrivingLicenseFile(null);
+
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+      toast({
+        title: "Permis supprimé",
+        description: "La photo du permis de conduire a été supprimée.",
+      });
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la photo du permis de conduire.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateMutation = useMutation({
     mutationFn: ({
       id,
@@ -337,6 +381,7 @@ export const useClientSettings = () => {
       setImageFile(null);
       setCinRectoFile(null);
       setCinVersoFile(null);
+      setDrivingLicenseFile(null);
 
       await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
@@ -380,6 +425,7 @@ export const useClientSettings = () => {
     setPreviewPhoto(toAbsoluteMediaUrl(user.image || ""));
     setPreviewCinRecto(toAbsoluteMediaUrl((user as any).cin_photo_recto || ""));
     setPreviewCinVerso(toAbsoluteMediaUrl((user as any).cin_photo_verso || ""));
+    setPreviewDrivingLicense(toAbsoluteMediaUrl((user as any).permis_conduire || ""));
 
     reset({
       first_name: user.first_name || "",
@@ -432,7 +478,8 @@ export const useClientSettings = () => {
     const hasFiles =
       imageFile instanceof File ||
       cinRectoFile instanceof File ||
-      cinVersoFile instanceof File;
+      cinVersoFile instanceof File ||
+      drivingLicenseFile instanceof File;
 
     let finalData: FormData | Record<string, string>;
 
@@ -455,6 +502,10 @@ export const useClientSettings = () => {
         formData.append("cin_photo_verso", cinVersoFile, cinVersoFile.name);
       }
 
+      if (drivingLicenseFile instanceof File) {
+        formData.append("permis_conduire", drivingLicenseFile, drivingLicenseFile.name);
+      }
+
       finalData = formData;
     } else {
       finalData = payload;
@@ -475,11 +526,14 @@ export const useClientSettings = () => {
     handleDeletePhoto,
     previewCinRecto,
     previewCinVerso,
+    previewDrivingLicense,
     handleCinRectoUpload,
     handleCinVersoUpload,
+    handleDrivingLicenseUpload,
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
+    deleteDrivingLicense,
     register,
     onSubmit,
     errors,
