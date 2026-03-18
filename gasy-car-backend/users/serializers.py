@@ -220,6 +220,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "cin_photo_recto",
             "cin_photo_verso",
             "permis_conduire",
+            "permis_conduire_recto",
+            "permis_conduire_verso",
             "image",
             "address",
             "date_of_birth",
@@ -255,6 +257,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "address",
             "date_of_birth",
             "is_company",
+            "permis_conduire",
+            "permis_conduire_recto",
+            "permis_conduire_verso",
         )
 
     def validate_phone(self, value):
@@ -271,6 +276,9 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
             "role",
             "is_active",
             "is_company",
+            "permis_conduire",
+            "permis_conduire_recto",
+            "permis_conduire_verso",
         )
 
     def validate_phone(self, value):

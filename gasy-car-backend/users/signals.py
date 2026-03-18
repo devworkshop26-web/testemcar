@@ -34,6 +34,9 @@ def user_pre_save(sender, instance, **kwargs):
     # CIN recto / verso
     _cleanup_old_file(instance, "cin_photo_recto", User)
     _cleanup_old_file(instance, "cin_photo_verso", User)
+    _cleanup_old_file(instance, "permis_conduire", User)
+    _cleanup_old_file(instance, "permis_conduire_recto", User)
+    _cleanup_old_file(instance, "permis_conduire_verso", User)
 
 
 @receiver(pre_delete, sender=User)
@@ -49,3 +52,12 @@ def delete_user_files(sender, instance, **kwargs):
 
     if instance.cin_photo_verso:
         delete_file(instance.cin_photo_verso.path)
+
+    if instance.permis_conduire:
+        delete_file(instance.permis_conduire.path)
+
+    if instance.permis_conduire_recto:
+        delete_file(instance.permis_conduire_recto.path)
+
+    if instance.permis_conduire_verso:
+        delete_file(instance.permis_conduire_verso.path)

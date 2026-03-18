@@ -89,6 +89,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         null=True
     )
+    permis_conduire_recto = models.ImageField(
+        upload_to="permis/photos/recto/",
+        blank=True,
+        null=True
+    )
+    permis_conduire_verso = models.ImageField(
+        upload_to="permis/photos/verso/",
+        blank=True,
+        null=True
+    )
 
     image = models.ImageField(upload_to="profile/photos/", blank=True, null=True)
 
