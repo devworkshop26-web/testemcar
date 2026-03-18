@@ -527,6 +527,8 @@ class UserProfileView(APIView):
             "cin_photo_recto",
             "cin_photo_verso",
             "permis_conduire",
+            "permis_conduire_recto",
+            "permis_conduire_verso",
         ]
 
         changed = False

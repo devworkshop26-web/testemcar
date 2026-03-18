@@ -7,24 +7,24 @@ export const usersAPI = {
   getUser: (id: string): Promise<{ data: User }> =>
     InstanceAxis.get(`/users/profile/${id}/`),
 
-updateUser: (
-  id: string,
-  userData: FormData | Record<string, any>
-): Promise<{ data: User }> => {
-  if (userData instanceof FormData) {
+  updateUser: (
+    id: string,
+    userData: FormData | Record<string, any>
+  ): Promise<{ data: User }> => {
+    if (userData instanceof FormData) {
+      return InstanceAxis.patch(`/users/profile/${id}/`, userData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    }
+
     return InstanceAxis.patch(`/users/profile/${id}/`, userData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": "application/json",
       },
     });
-  }
-
-  return InstanceAxis.patch(`/users/profile/${id}/`, userData, {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-},
+  },
 
   deleteUser: (
     id: string,
@@ -48,6 +48,17 @@ updateUser: (
 
   clearCinVerso: (user_id: string) =>
     InstanceAxis.patch(`/users/profile/${user_id}/`, { cin_photo_verso: null }),
+
+  clearDrivingLicenseRecto: (user_id: string) =>
+    InstanceAxis.patch(`/users/profile/${user_id}/`, {
+      permis_conduire: null,
+      permis_conduire_recto: null,
+    }),
+
+  clearDrivingLicenseVerso: (user_id: string) =>
+    InstanceAxis.patch(`/users/profile/${user_id}/`, {
+      permis_conduire_verso: null,
+    }),
 
   changePassword: (data: {
     old_password: string;
