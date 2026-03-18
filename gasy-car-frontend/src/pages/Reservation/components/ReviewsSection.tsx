@@ -134,7 +134,11 @@ const ReviewsSection: React.FC<{
       },
       {
         onSuccess: () => {
-          toast({ title: "Avis publié !", className: "bg-slate-900 text-white" });
+          toast({
+            title: "Avis envoyé",
+            description: "Votre avis a bien été transmis. Il sera publié après vérification par le support.",
+            className: "bg-slate-900 text-white",
+          });
         },
       },
     );
@@ -284,6 +288,9 @@ const ReviewsSection: React.FC<{
             </h3>
             <p className="mt-2 text-sm font-medium text-slate-300">
               Construisez la confiance au sein de notre communauté.
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-slate-400">
+              Chaque avis envoyé est d’abord vérifié par le support avant d’être publié sur la plateforme.
             </p>
           </div>
           {isEligible && (
