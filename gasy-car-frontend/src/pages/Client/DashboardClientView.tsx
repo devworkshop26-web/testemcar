@@ -12,6 +12,8 @@ const loyaltyPointsToNextTier = 50;
 
 type ExtendedUser = {
   permis_conduire?: string | null;
+  permis_conduire_recto?: string | null;
+  permis_conduire_verso?: string | null;
   cin_photo_recto?: string | null;
 };
 
@@ -50,7 +52,12 @@ const DashboardOverClientView = () => {
     {
       id: "permis",
       label: "Permis de conduire",
-      status: profile.permis_conduire ? "Validé" : "À compléter",
+      status:
+        profile.permis_conduire_recto ||
+        profile.permis_conduire_verso ||
+        profile.permis_conduire
+          ? "Validé"
+          : "À compléter",
       icon: <ShieldCheck className="h-4 w-4" />,
     },
     {
