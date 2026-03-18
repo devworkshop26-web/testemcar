@@ -4,6 +4,7 @@ import {
   Headset,
   ClipboardCheck,
   Heart,
+  Gift,
   LayoutDashboard,
   MessageSquare,
   Search,
@@ -31,6 +32,7 @@ export const menuItemsClient:ClientSidebarItem[] = [
   {id: "rentals", icon: CalendarDays,   label: "Mes Locations",   url: "/client/rentals",  },
   { id: "condition-report", icon: ClipboardCheck, label: "État des lieux", url: "/client/condition-report" },
   { id: "favorites", icon: Heart, label: "Favoris", url: "/client/favorites" },
+  { id: "loyalty", icon: Gift, label: "Fidélité", url: "/client/loyalty", badge: "New" },
   // {
   //   id: "reservation",
   //   icon: CalendarRange,

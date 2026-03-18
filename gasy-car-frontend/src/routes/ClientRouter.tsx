@@ -9,6 +9,7 @@ import BrowseCarsClientView from "@/pages/Client/BrowseCarsClientView";
 import BookingClientDetail from "@/pages/Client/BookingClientDetail";
 import FavoritesClientView from "@/pages/Client/FavoritesClientView";
 import SettingsClientView from "@/pages/Client/SettingsClientView";
+import LoyaltyClientView from "@/pages/Client/LoyaltyClientView";
 
 // SUPPORT PAGES
 import CreateTicketClient from "@/pages/Client/Support/CreateTicketClient";
@@ -31,6 +32,7 @@ export const ClientRoutes = () => {
           <Route path="condition-report" element={<VehicleConditionReportPage />} />
           <Route path="favorites" element={<FavoritesClientView />} />
           <Route path="settings" element={<SettingsClientView />} />
+          <Route path="loyalty" element={<LoyaltyClientView />} />
           <Route path="reservation/:vehicleId" element={<ReservationFormPage />} />
 
           {/* SUPPORT SYSTEM */}
