@@ -28,14 +28,17 @@ const SettingsClientView = () => {
     handleDeletePhoto,
     previewCinRecto,
     previewCinVerso,
-    previewDrivingLicense,
+    previewDrivingLicenseRecto,
+    previewDrivingLicenseVerso,
     handleCinRectoUpload,
     handleCinVersoUpload,
-    handleDrivingLicenseUpload,
+    handleDrivingLicenseRectoUpload,
+    handleDrivingLicenseVersoUpload,
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
-    deleteDrivingLicense,
+    deleteDrivingLicenseRecto,
+    deleteDrivingLicenseVerso,
     register,
     onSubmit,
     errors,
@@ -130,14 +133,17 @@ const SettingsClientView = () => {
                   handleDeletePhoto={handleDeletePhoto}
                   previewCinRecto={previewCinRecto}
                   previewCinVerso={previewCinVerso}
-                  previewDrivingLicense={previewDrivingLicense}
+                  previewDrivingLicenseRecto={previewDrivingLicenseRecto}
+                  previewDrivingLicenseVerso={previewDrivingLicenseVerso}
                   handleCinRectoUpload={handleCinRectoUpload}
                   handleCinVersoUpload={handleCinVersoUpload}
-                  handleDrivingLicenseUpload={handleDrivingLicenseUpload}
+                  handleDrivingLicenseRectoUpload={handleDrivingLicenseRectoUpload}
+                  handleDrivingLicenseVersoUpload={handleDrivingLicenseVersoUpload}
                   deleteProfilePhoto={deleteProfilePhoto}
                   deleteCinRecto={deleteCinRecto}
                   deleteCinVerso={deleteCinVerso}
-                  deleteDrivingLicense={deleteDrivingLicense}
+                  deleteDrivingLicenseRecto={deleteDrivingLicenseRecto}
+                  deleteDrivingLicenseVerso={deleteDrivingLicenseVerso}
                   errors={errors}
                   user={user}
                 />

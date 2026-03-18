@@ -12,19 +12,23 @@ interface ProfileFormProps {
   register: UseFormRegister<ClientSettingsFormValues>;
   handlePhotoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleDeletePhoto: () => void;
-
   previewCinRecto: string | null;
   previewCinVerso: string | null;
-  previewDrivingLicense: string | null;
+  previewDrivingLicenseRecto: string | null;
+  previewDrivingLicenseVerso: string | null;
   handleCinRectoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleCinVersoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  handleDrivingLicenseUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-
+  handleDrivingLicenseRectoUpload: (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => void;
+  handleDrivingLicenseVersoUpload: (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => void;
   deleteProfilePhoto: () => void;
   deleteCinRecto: () => void;
   deleteCinVerso: () => void;
-  deleteDrivingLicense: () => void;
-
+  deleteDrivingLicenseRecto: () => void;
+  deleteDrivingLicenseVerso: () => void;
   errors: FieldErrors<ClientSettingsFormValues>;
   user: User;
 }
@@ -36,17 +40,19 @@ export const ProfileForm = ({
   previewPhoto,
   register,
   handlePhotoUpload,
-  handleDeletePhoto,
   previewCinRecto,
   previewCinVerso,
-  previewDrivingLicense,
+  previewDrivingLicenseRecto,
+  previewDrivingLicenseVerso,
   handleCinRectoUpload,
   handleCinVersoUpload,
-  handleDrivingLicenseUpload,
+  handleDrivingLicenseRectoUpload,
+  handleDrivingLicenseVersoUpload,
   deleteProfilePhoto,
   deleteCinRecto,
   deleteCinVerso,
-  deleteDrivingLicense,
+  deleteDrivingLicenseRecto,
+  deleteDrivingLicenseVerso,
   errors,
   user,
 }: ProfileFormProps) => {
@@ -68,11 +74,11 @@ export const ProfileForm = ({
     <div className={documentUploadClasses}>
       {preview ? (
         <>
-          <img src={preview} alt={alt} className="w-full h-full object-cover" />
+          <img src={preview} alt={alt} className="h-full w-full object-cover" />
 
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-            <label className="p-2 bg-white rounded-full cursor-pointer hover:bg-slate-100 text-primary shadow-lg">
-              <Camera className="w-5 h-5" />
+          <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <label className="cursor-pointer rounded-full bg-white p-2 text-primary shadow-lg hover:bg-slate-100">
+              <Camera className="h-5 w-5" />
               <input
                 type="file"
                 accept="image/png,image/jpeg"
@@ -84,20 +90,20 @@ export const ProfileForm = ({
             <button
               type="button"
               onClick={onDelete}
-              className="p-2 bg-white rounded-full hover:bg-red-50 text-red-600 shadow-lg"
+              className="rounded-full bg-white p-2 text-red-600 shadow-lg hover:bg-red-50"
               title="Supprimer"
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </>
       ) : (
-        <label className="cursor-pointer flex flex-col items-center p-6 text-center">
-          <div className="mb-2 p-3 bg-white rounded-full shadow-sm text-slate-400">
-            <CreditCard className="w-6 h-6" />
+        <label className="flex cursor-pointer flex-col items-center p-6 text-center">
+          <div className="mb-2 rounded-full bg-white p-3 text-slate-400 shadow-sm">
+            <CreditCard className="h-6 w-6" />
           </div>
           <span className="text-sm font-medium text-slate-700">{addLabel}</span>
-          <span className="text-xs text-slate-400 mt-1">{helperText}</span>
+          <span className="mt-1 text-xs text-slate-400">{helperText}</span>
           <input
             type="file"
             accept="image/png,image/jpeg"
@@ -111,16 +117,16 @@ export const ProfileForm = ({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col items-center sm:items-start gap-4">
-        <div className="relative group">
-          <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center">
-            <div className="w-[104px] h-[104px] rounded-full overflow-hidden flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4 sm:items-start">
+        <div className="group relative">
+          <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
+            <div className="flex h-[104px] w-[104px] items-center justify-center overflow-hidden rounded-full">
               <AvatarClient user={user} previewPhoto={previewPhoto} size={104} />
             </div>
 
-            <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
-              <Camera className="w-8 h-8 mb-1" />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-center px-2">
+            <label className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="mb-1 h-8 w-8" />
+              <span className="px-2 text-center text-[10px] font-medium uppercase tracking-wider">
                 {previewPhoto || user?.image ? "Changer" : "Ajouter"}
               </span>
               <input
@@ -136,10 +142,10 @@ export const ProfileForm = ({
             <button
               type="button"
               onClick={deleteProfilePhoto}
-              className="absolute -top-1 -right-1 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 shadow-sm transition-colors"
+              className="absolute -right-1 -top-1 rounded-full bg-red-500 p-1.5 text-white shadow-sm transition-colors hover:bg-red-600"
               title="Supprimer la photo"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -150,23 +156,15 @@ export const ProfileForm = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Prénom</label>
-          <Input
-            {...register("first_name")}
-            className="rounded-xl"
-            placeholder="Prénom"
-          />
+          <Input {...register("first_name")} className="rounded-xl" placeholder="Prénom" />
         </div>
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-slate-700">Nom</label>
-          <Input
-            {...register("last_name")}
-            className="rounded-xl"
-            placeholder="Nom"
-          />
+          <Input {...register("last_name")} className="rounded-xl" placeholder="Nom" />
         </div>
 
         <div className="space-y-1.5">
@@ -187,18 +185,18 @@ export const ProfileForm = ({
             placeholder="Téléphone"
           />
           {errors?.phone && (
-            <p className="text-red-600 text-xs mt-1">{errors.phone.message}</p>
+            <p className="mt-1 text-xs text-red-600">{errors.phone.message}</p>
           )}
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 italic">
+          <label className="text-sm font-medium italic text-slate-700">
             Email (non modifiable)
           </label>
           <Input
             value={user?.email}
             disabled
-            className="bg-slate-50 border-slate-200 cursor-not-allowed rounded-xl text-slate-500"
+            className="cursor-not-allowed rounded-xl border-slate-200 bg-slate-50 text-slate-500"
           />
         </div>
 
@@ -216,7 +214,7 @@ export const ProfileForm = ({
             placeholder="N° CIN"
           />
           {errors?.cin_number && (
-            <p className="text-red-600 text-xs mt-1">{errors.cin_number.message}</p>
+            <p className="mt-1 text-xs text-red-600">{errors.cin_number.message}</p>
           )}
         </div>
 
@@ -230,31 +228,51 @@ export const ProfileForm = ({
         <label className="text-sm font-medium text-slate-700">Adresse complète</label>
         <Textarea
           {...register("address")}
-          className="rounded-xl min-h-[100px]"
+          className="min-h-[100px] rounded-xl"
           placeholder="Votre adresse..."
         />
       </div>
 
-      <div className="space-y-3 pt-2">
+      <div className="space-y-4 pt-2">
         <div>
           <label className="text-sm font-semibold text-slate-700">
             Permis de conduire
           </label>
           <p className="mt-1 text-xs text-slate-500">
-            Ajoutez ici la photo ou le scan de votre permis de conduire.
+            Ajoutez le recto et le verso de votre permis de conduire.
           </p>
         </div>
 
-        {renderUploadCard({
-          preview: previewDrivingLicense,
-          alt: "permis de conduire",
-          addLabel: "Ajouter le permis",
-          onUpload: handleDrivingLicenseUpload,
-          onDelete: deleteDrivingLicense,
-        })}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700">
+              Permis de conduire (Recto)
+            </label>
+            {renderUploadCard({
+              preview: previewDrivingLicenseRecto,
+              alt: "permis de conduire recto",
+              addLabel: "Ajouter le recto",
+              onUpload: handleDrivingLicenseRectoUpload,
+              onDelete: deleteDrivingLicenseRecto,
+            })}
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700">
+              Permis de conduire (Verso)
+            </label>
+            {renderUploadCard({
+              preview: previewDrivingLicenseVerso,
+              alt: "permis de conduire verso",
+              addLabel: "Ajouter le verso",
+              onUpload: handleDrivingLicenseVersoUpload,
+              onDelete: deleteDrivingLicenseVerso,
+            })}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+      <div className="grid grid-cols-1 gap-8 pt-2 md:grid-cols-2">
         <div className="space-y-3">
           <label className="text-sm font-semibold text-slate-700">
             Carte d'identité (Recto)
