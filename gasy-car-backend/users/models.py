@@ -84,6 +84,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         null=True
     )
+    residence_certificate = models.ImageField(
+        upload_to="residence/certificates/",
+        blank=True,
+        null=True
+    )
     permis_conduire = models.ImageField(
         upload_to="permis/photos/",
         blank=True,
@@ -104,6 +109,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     address = models.TextField(blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
+    nif = models.CharField(max_length=100, blank=True, null=True)
+    stat = models.CharField(max_length=100, blank=True, null=True)
 
     date_joined = models.DateTimeField(default=timezone.now)
     last_login = models.DateTimeField(null=True, blank=True)
