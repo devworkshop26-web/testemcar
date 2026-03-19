@@ -175,43 +175,50 @@ const DashboardOverClientView = () => {
   return (
     <>
       <div className="space-y-8 animate-in fade-in duration-500">
-        <Card className="overflow-hidden rounded-[28px] border border-slate-800/20 bg-[#1A2436] text-white shadow-[0_22px_65px_-40px_rgba(15,23,42,0.88)]">
-          <CardContent className="relative p-0">
-            <div className="absolute inset-y-0 right-0 w-[30%] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.08),_transparent_62%)]" />
-           <div className="absolute right-5 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full border border-white/8" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <Card className="overflow-hidden rounded-[28px] border-0 bg-[#182235] text-white shadow-[0_20px_55px_-35px_rgba(15,23,42,0.82)]">
+          <CardContent className="relative overflow-hidden p-0">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.08),_transparent_34%)]" />
+            <div className="absolute right-[-54px] top-1/2 h-[180px] w-[180px] -translate-y-1/2 rounded-full border border-white/12" />
+            <div className="absolute right-[-24px] top-1/2 h-[128px] w-[128px] -translate-y-1/2 rounded-full border border-white/8" />
 
-            <div className="relative z-10 p-7 sm:p-10">
-          <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                Espace Client
-              </div>
+            <div className="relative flex flex-col gap-8 p-6 sm:p-8 lg:justify-between">
+              <div className="max-w-3xl space-y-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="font-poppins text-2xl font-bold leading-tight text-white sm:text-[30px]">
+                    Bonjour, {user?.first_name || "Client"} {user?.last_name || ""} !
+                  </h2>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#F6C744]/25 bg-[#F6C744]/12 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#F6C744]">
+                    <Crown className="h-3.5 w-3.5" />
+                    Gold
+                  </span>
+                </div>
 
-              <h2 className="mt-4 text-2xl font-bold leading-tight sm:text-3xl md:text-4xl font-poppins">
-                Prêt pour votre prochaine aventure, {user?.first_name} ?
-              </h2>
+                <p className="max-w-2xl text-base font-semibold leading-8 text-white/90 sm:text-[18px]">
+                  Vous avez cumulé <span className="font-bold text-white">{loyaltyPoints} points</span>. Plus que {loyaltyPointsToNextTier} points pour atteindre le niveau
+                  Platinum et bénéficier de <span className="font-bold text-white">-10% sur toutes les locations</span>.
+                </p>
 
-              <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-base">
-                Explorez, comparez et réservez votre véhicule en quelques clics.
-              </p>
+                <div className="h-4 max-w-2xl overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-[#FFD21E] shadow-[0_0_18px_rgba(255,210,30,0.35)]"
+                    style={{ width: `${loyaltyProgress}%` }}
+                  />
+                </div>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Button
-                  className="rounded-xl bg-white text-slate-900 hover:bg-white/90 shadow-sm active:scale-[0.99]"
-                  onClick={() => navigate("/allCars")}
-                >
-                  Réserver une voiture
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="rounded-xl border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                  onClick={() => navigate("/client/rentals")}
-                >
-                  Voir mes réservations
-                </Button>
+                <div className="flex flex-wrap gap-3 pt-1">
+                  <Button
+                    className="h-12 min-w-[148px] rounded-2xl bg-white px-8 text-base font-bold text-slate-950 shadow-none hover:bg-white/95"
+                    onClick={() => navigate("/client/bookings")}
+                  >
+                    Voir mes réservations
+                  </Button>
+                  <Button
+                    className="h-12 min-w-[148px] rounded-2xl border border-white/20 bg-white/5 px-8 text-base font-bold text-white shadow-none hover:bg-white/10"
+                    onClick={() => navigate("/client/loyalty")}
+                  >
+                    Mes Points
+                  </Button>
+                </div>
               </div>
             </div>
 
