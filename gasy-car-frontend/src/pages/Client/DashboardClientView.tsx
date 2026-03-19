@@ -174,46 +174,49 @@ const DashboardOverClientView = () => {
   return (
     <>
       <div className="space-y-8 animate-in fade-in duration-500">
-        <Card className="overflow-hidden rounded-[28px] border-0 bg-[#182235] text-white shadow-[0_20px_55px_-35px_rgba(15,23,42,0.82)]">
+        <Card className="overflow-hidden rounded-[28px] border border-slate-800/20 bg-[#1A2436] text-white shadow-[0_22px_65px_-40px_rgba(15,23,42,0.88)]">
           <CardContent className="relative p-0">
-            <div className="absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.08),_transparent_45%)]" />
-            <div className="absolute -right-10 top-0 h-52 w-52 rounded-full border border-white/6" />
-            <div className="absolute -right-4 top-8 h-40 w-40 rounded-full border border-white/5" />
+            <div className="absolute inset-y-0 right-0 w-[30%] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.08),_transparent_62%)]" />
+            <div className="absolute -right-6 top-1/2 h-52 w-52 -translate-y-1/2 rounded-full border border-white/10" />
+            <div className="absolute right-5 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full border border-white/8" />
+            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            <div className="relative flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative flex flex-col gap-6 px-6 py-7 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-2xl font-bold font-poppins leading-tight text-white sm:text-[30px]">
+                  <h2 className="font-poppins text-2xl font-bold leading-tight text-white sm:text-[30px]">
                     Bonjour, {user?.first_name || "Client"} {user?.last_name || ""} !
                   </h2>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
                     <Crown className="h-3.5 w-3.5" />
                     Gold
                   </span>
                 </div>
 
-                <p className="max-w-2xl text-base leading-8 text-white/90 sm:text-[18px]">
-                  Vous avez cumulé <span className="font-bold text-white">{loyaltyPoints} points</span>. Plus que {loyaltyPointsToNextTier} points pour atteindre
-                  le niveau Platinum et bénéficier de <span className="font-bold text-white">-10% sur toutes les locations</span>.
+                <p className="max-w-3xl text-base font-medium leading-8 text-white/88 sm:text-[18px]">
+                  Vous avez cumulé <span className="font-bold text-white">{loyaltyPoints} points</span>. Plus que {loyaltyPointsToNextTier} points pour atteindre le niveau
+                  Platinum et bénéficier de <span className="font-bold text-white">-10% sur toutes les locations</span>.
                 </p>
 
-                <div className="h-4 max-w-2xl overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#FFD21E] via-[#FFD21E] to-[#E6B800]"
-                    style={{ width: `${loyaltyProgress}%` }}
-                  />
+                <div className="max-w-2xl">
+                  <div className="h-3.5 overflow-hidden rounded-full bg-white/12">
+                    <div
+                      className="h-full rounded-full bg-[#FFD21E] shadow-[0_0_18px_rgba(255,210,30,0.4)]"
+                      style={{ width: `${loyaltyProgress}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row lg:flex-col">
+              <div className="flex w-full shrink-0 flex-col gap-4 sm:w-auto sm:items-end">
                 <Button
-                  className="h-12 min-w-[136px] rounded-2xl bg-white px-6 text-base font-bold text-slate-950 hover:bg-white/95"
+                  className="h-12 min-w-[170px] rounded-2xl bg-white px-6 text-base font-bold text-slate-950 hover:bg-white/95"
                   onClick={() => navigate("/client/loyalty")}
                 >
                   Mes Points
                 </Button>
                 <Button
-                  className="h-12 min-w-[176px] rounded-2xl bg-[#316BFF] px-6 text-base font-bold text-white hover:bg-[#2558db]"
+                  className="h-12 min-w-[220px] rounded-2xl bg-[#316BFF] px-6 text-base font-bold text-white hover:bg-[#2558db]"
                   onClick={() => navigate("/client/loyalty")}
                 >
                   Parrainer un ami
