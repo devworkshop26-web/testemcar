@@ -13,6 +13,8 @@ export interface ClientSettingsFormValues {
   cin_number: string;
   address: string;
   date_of_birth: string;
+  nif: string;
+  stat: string;
   old_password?: string;
   new_password?: string;
   new_password_confirm: string;
@@ -117,6 +119,8 @@ export const useClientSettings = () => {
 
   const [previewCinRecto, setPreviewCinRecto] = useState("");
   const [previewCinVerso, setPreviewCinVerso] = useState("");
+  const [previewResidenceCertificate, setPreviewResidenceCertificate] =
+    useState("");
   const [previewDrivingLicenseRecto, setPreviewDrivingLicenseRecto] =
     useState("");
   const [previewDrivingLicenseVerso, setPreviewDrivingLicenseVerso] =
@@ -124,6 +128,8 @@ export const useClientSettings = () => {
 
   const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
   const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
+  const [residenceCertificateFile, setResidenceCertificateFile] =
+    useState<File | null>(null);
   const [drivingLicenseRectoFile, setDrivingLicenseRectoFile] =
     useState<File | null>(null);
   const [drivingLicenseVersoFile, setDrivingLicenseVersoFile] =
@@ -143,6 +149,8 @@ export const useClientSettings = () => {
       cin_number: "",
       address: "",
       date_of_birth: "",
+      nif: "",
+      stat: "",
       old_password: "",
       new_password: "",
       new_password_confirm: "",
@@ -249,6 +257,22 @@ export const useClientSettings = () => {
     readImageFile(file, setPreviewCinVerso);
   };
 
+
+  const handleResidenceCertificateUpload = (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!validateImageFile(file)) {
+      e.target.value = "";
+      return;
+    }
+
+    setResidenceCertificateFile(file);
+    readImageFile(file, setPreviewResidenceCertificate);
+  };
+
   const handleDrivingLicenseRectoUpload = (
     e: ChangeEvent<HTMLInputElement>
   ) => {
@@ -345,6 +369,29 @@ export const useClientSettings = () => {
     }
   };
 
+
+  const deleteResidenceCertificate = async () => {
+    if (!user?.id) return;
+
+    try {
+      await usersAPI.clearResidenceCertificate(user.id);
+      setPreviewResidenceCertificate("");
+      setResidenceCertificateFile(null);
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+      toast({
+        title: "Certificat supprimé",
+        description: "Le certificat de résidence a été supprimé.",
+      });
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le certificat de résidence.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteDrivingLicenseRecto = async () => {
     if (!user?.id) return;
 
@@ -402,6 +449,7 @@ export const useClientSettings = () => {
       setImageFile(null);
       setCinRectoFile(null);
       setCinVersoFile(null);
+      setResidenceCertificateFile(null);
       setDrivingLicenseRectoFile(null);
       setDrivingLicenseVersoFile(null);
 
@@ -452,6 +500,9 @@ export const useClientSettings = () => {
     setPreviewPhoto(toAbsoluteMediaUrl(user.image || ""));
     setPreviewCinRecto(toAbsoluteMediaUrl(user.cin_photo_recto || ""));
     setPreviewCinVerso(toAbsoluteMediaUrl(user.cin_photo_verso || ""));
+    setPreviewResidenceCertificate(
+      toAbsoluteMediaUrl(user.residence_certificate || "")
+    );
     setPreviewDrivingLicenseRecto(
       toAbsoluteMediaUrl(
         userWithDrivingLicense.permis_conduire_recto ||
@@ -470,6 +521,8 @@ export const useClientSettings = () => {
       cin_number: user.cin_number || "",
       address: user.address || "",
       date_of_birth: normalizeDateOfBirth(user.date_of_birth) || "",
+      nif: user.nif || "",
+      stat: user.stat || "",
       old_password: "",
       new_password: "",
       new_password_confirm: "",
@@ -505,6 +558,8 @@ export const useClientSettings = () => {
       phone: normalizePhoneForSubmit(values.phone),
       cin_number: values.cin_number?.trim() || "",
       address: values.address?.trim() || "",
+      nif: values.nif?.trim() || "",
+      stat: values.stat?.trim() || "",
     };
 
     if (normalizedDateOfBirth) {
@@ -515,6 +570,7 @@ export const useClientSettings = () => {
       imageFile instanceof File ||
       cinRectoFile instanceof File ||
       cinVersoFile instanceof File ||
+      residenceCertificateFile instanceof File ||
       drivingLicenseRectoFile instanceof File ||
       drivingLicenseVersoFile instanceof File;
 
@@ -537,6 +593,14 @@ export const useClientSettings = () => {
 
       if (cinVersoFile instanceof File) {
         formData.append("cin_photo_verso", cinVersoFile, cinVersoFile.name);
+      }
+
+      if (residenceCertificateFile instanceof File) {
+        formData.append(
+          "residence_certificate",
+          residenceCertificateFile,
+          residenceCertificateFile.name
+        );
       }
 
       if (drivingLicenseRectoFile instanceof File) {
@@ -580,15 +644,18 @@ export const useClientSettings = () => {
     handleDeletePhoto,
     previewCinRecto,
     previewCinVerso,
+    previewResidenceCertificate,
     previewDrivingLicenseRecto,
     previewDrivingLicenseVerso,
     handleCinRectoUpload,
     handleCinVersoUpload,
+    handleResidenceCertificateUpload,
     handleDrivingLicenseRectoUpload,
     handleDrivingLicenseVersoUpload,
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
+    deleteResidenceCertificate,
     deleteDrivingLicenseRecto,
     deleteDrivingLicenseVerso,
     register,

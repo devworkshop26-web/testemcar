@@ -16,8 +16,12 @@ interface ProfileFormProps {
   previewCinVerso: string | null;
   previewDrivingLicenseRecto: string | null;
   previewDrivingLicenseVerso: string | null;
+  previewResidenceCertificate: string | null;
   handleCinRectoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleCinVersoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  handleResidenceCertificateUpload: (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => void;
   handleDrivingLicenseRectoUpload: (
     event: React.ChangeEvent<HTMLInputElement>
   ) => void;
@@ -27,6 +31,7 @@ interface ProfileFormProps {
   deleteProfilePhoto: () => void;
   deleteCinRecto: () => void;
   deleteCinVerso: () => void;
+  deleteResidenceCertificate: () => void;
   deleteDrivingLicenseRecto: () => void;
   deleteDrivingLicenseVerso: () => void;
   errors: FieldErrors<ClientSettingsFormValues>;
@@ -44,13 +49,16 @@ export const ProfileForm = ({
   previewCinVerso,
   previewDrivingLicenseRecto,
   previewDrivingLicenseVerso,
+  previewResidenceCertificate,
   handleCinRectoUpload,
   handleCinVersoUpload,
+  handleResidenceCertificateUpload,
   handleDrivingLicenseRectoUpload,
   handleDrivingLicenseVersoUpload,
   deleteProfilePhoto,
   deleteCinRecto,
   deleteCinVerso,
+  deleteResidenceCertificate,
   deleteDrivingLicenseRecto,
   deleteDrivingLicenseVerso,
   errors,
@@ -272,31 +280,92 @@ export const ProfileForm = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 pt-2 md:grid-cols-2">
-        <div className="space-y-3">
+      <div className="space-y-4 pt-2">
+        <div>
           <label className="text-sm font-semibold text-slate-700">
-            Carte d'identité (Recto)
+            Carte d'identité
           </label>
-          {renderUploadCard({
-            preview: previewCinRecto,
-            alt: "cin recto",
-            addLabel: "Ajouter le recto",
-            onUpload: handleCinRectoUpload,
-            onDelete: deleteCinRecto,
-          })}
+          <p className="mt-1 text-xs text-slate-500">
+            Ajoutez le recto et le verso de votre carte d'identité.
+          </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700">
+              Carte d'identité (Recto)
+            </label>
+            {renderUploadCard({
+              preview: previewCinRecto,
+              alt: "cin recto",
+              addLabel: "Ajouter le recto",
+              onUpload: handleCinRectoUpload,
+              onDelete: deleteCinRecto,
+            })}
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700">
+              Carte d'identité (Verso)
+            </label>
+            {renderUploadCard({
+              preview: previewCinVerso,
+              alt: "cin verso",
+              addLabel: "Ajouter le verso",
+              onUpload: handleCinVersoUpload,
+              onDelete: deleteCinVerso,
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-2">
+        <div>
           <label className="text-sm font-semibold text-slate-700">
-            Carte d'identité (Verso)
+            Certificat de résidence
           </label>
-          {renderUploadCard({
-            preview: previewCinVerso,
-            alt: "cin verso",
-            addLabel: "Ajouter le verso",
-            onUpload: handleCinVersoUpload,
-            onDelete: deleteCinVerso,
-          })}
+          <p className="mt-1 text-xs text-slate-500">
+            Déposez un certificat de résidence de moins de 3 mois.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8">
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700">
+              Certificat de résidence (moins de 3 mois)
+            </label>
+            {renderUploadCard({
+              preview: previewResidenceCertificate,
+              alt: "certificat de résidence",
+              addLabel: "Ajouter le certificat",
+              onUpload: handleResidenceCertificateUpload,
+              onDelete: deleteResidenceCertificate,
+              helperText: "JPG ou PNG. Document daté de moins de 3 mois.",
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 border-t border-slate-200 pt-6">
+        <div>
+          <label className="text-sm font-semibold text-slate-700">
+            Infos fiscales
+          </label>
+          <p className="mt-1 text-xs text-slate-500">
+            Exemple uniquement. Ces informations sont optionnelles.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">NIF</label>
+            <Input {...register("nif")} className="rounded-xl" placeholder="Exemple : 4001234567" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">STAT</label>
+            <Input {...register("stat")} className="rounded-xl" placeholder="Exemple : 12345 11 2024 0 00001" />
+          </div>
         </div>
       </div>
     </div>

@@ -30,13 +30,16 @@ const SettingsClientView = () => {
     previewCinVerso,
     previewDrivingLicenseRecto,
     previewDrivingLicenseVerso,
+    previewResidenceCertificate,
     handleCinRectoUpload,
     handleCinVersoUpload,
+    handleResidenceCertificateUpload,
     handleDrivingLicenseRectoUpload,
     handleDrivingLicenseVersoUpload,
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
+    deleteResidenceCertificate,
     deleteDrivingLicenseRecto,
     deleteDrivingLicenseVerso,
     register,
@@ -135,13 +138,16 @@ const SettingsClientView = () => {
                   previewCinVerso={previewCinVerso}
                   previewDrivingLicenseRecto={previewDrivingLicenseRecto}
                   previewDrivingLicenseVerso={previewDrivingLicenseVerso}
+                  previewResidenceCertificate={previewResidenceCertificate}
                   handleCinRectoUpload={handleCinRectoUpload}
                   handleCinVersoUpload={handleCinVersoUpload}
+                  handleResidenceCertificateUpload={handleResidenceCertificateUpload}
                   handleDrivingLicenseRectoUpload={handleDrivingLicenseRectoUpload}
                   handleDrivingLicenseVersoUpload={handleDrivingLicenseVersoUpload}
                   deleteProfilePhoto={deleteProfilePhoto}
                   deleteCinRecto={deleteCinRecto}
                   deleteCinVerso={deleteCinVerso}
+                  deleteResidenceCertificate={deleteResidenceCertificate}
                   deleteDrivingLicenseRecto={deleteDrivingLicenseRecto}
                   deleteDrivingLicenseVerso={deleteDrivingLicenseVerso}
                   errors={errors}
