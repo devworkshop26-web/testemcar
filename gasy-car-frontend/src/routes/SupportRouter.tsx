@@ -1,8 +1,7 @@
-import { Routes, Route } from "react-router-dom";
+import { Route } from "react-router-dom";
 import { PrivateRoute } from "./PrivateRoute";
 
 import DashboardSupport from "@/pages/Support/DashboardSupport";
-import ReservationsView from "@/pages/Support/ReservationsView";
 import ClientsView from "@/pages/Support/ClientsView";
 import FleetView from "@/pages/Support/FleetView";
 import TicketsList from "@/pages/Support/TicketsList";
@@ -19,25 +18,22 @@ import ReviewsView from "@/pages/Support/ReviewsView";
 
 export const SupportRoutes = () => {
   return (
-    <>
-      <Route element={<PrivateRoute allowedRoles={["SUPPORT"]} />}>
-        <Route path="/support" element={<LayoutSupport />}>
-          <Route index element={<DashboardSupport />} />
-          {/* <Route path="reservations" element={<ReservationsView />} /> */}
-          <Route path="reservations" element={<SupportReservationPage />} />
-          <Route path="reservations/:id" element={<SupportReservationDetailPage />} />
-          <Route path="clients" element={<ClientsView />} />
-          <Route path="client/:id" element={<ClientDetailView />} />
-          <Route path="client/:id/edit" element={<ClientEditView />} />
-          <Route path="fleet" element={<FleetView />} />
-          <Route path="tickets" element={<TicketsList />} />
-          <Route path="ticket/:id" element={<TicketDetailsSupport />} />
-          <Route path="tickets/create" element={<CreateTicketSupport />} />
-          <Route path="settings" element={<SettingsView />} />
-          <Route path="/support/fleet/vehicule/:id" element={<VehiculeDetailView />} />
-          <Route path="reviews" element={<ReviewsView />} />
-        </Route>
+    <Route element={<PrivateRoute allowedRoles={["SUPPORT"]} />}>
+      <Route path="/support" element={<LayoutSupport />}>
+        <Route index element={<DashboardSupport />} />
+        <Route path="reservations" element={<SupportReservationPage />} />
+        <Route path="reservations/:id" element={<SupportReservationDetailPage />} />
+        <Route path="clients" element={<ClientsView />} />
+        <Route path="client/:id" element={<ClientDetailView />} />
+        <Route path="client/:id/edit" element={<ClientEditView />} />
+        <Route path="fleet" element={<FleetView />} />
+        <Route path="fleet/vehicule/:id" element={<VehiculeDetailView />} />
+        <Route path="tickets" element={<TicketsList />} />
+        <Route path="ticket/:id" element={<TicketDetailsSupport />} />
+        <Route path="tickets/create" element={<CreateTicketSupport />} />
+        <Route path="settings" element={<SettingsView />} />
+        <Route path="reviews" element={<ReviewsView />} />
       </Route>
-    </>
+    </Route>
   );
-}
+};

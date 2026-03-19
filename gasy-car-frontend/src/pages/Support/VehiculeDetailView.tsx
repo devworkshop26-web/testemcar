@@ -1,11 +1,22 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useVehiculeQuery } from "@/useQuery/vehiculeUseQuery";
+import { useVehicleDocumentsQuery } from "@/useQuery/vehicleDocumentsUseQuery";
 import { vehiculeAPI } from "@/Actions/vehiculeApi";
+import { vehicleDocumentsAPI } from "@/Actions/vehicleDocumentsApi";
+import { useToast } from "@/components/ui/use-toast";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+
+import type { VehicleDocument } from "@/types/vehicleDocumentsType";
 
 import {
   Eye,
@@ -20,14 +31,28 @@ import {
   CheckCircle2,
   XCircle,
   Heart,
+  Clock3,
+  FileWarning,
+  Loader2,
+  Send,
+  Info,
 } from "lucide-react";
 
 const LoadingSkeleton = () => (
   <div className="animate-pulse space-y-6 p-6">
-    <div className="h-96 bg-gray-200 rounded-3xl"></div>
-    <div className="grid grid-cols-3 gap-6">
-      <div className="h-64 bg-gray-200 rounded-2xl col-span-2"></div>
-      <div className="h-64 bg-gray-200 rounded-2xl"></div>
+    <div className="h-96 bg-gray-200 rounded-3xl" />
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="xl:col-span-8 space-y-6">
+        <div className="h-40 bg-gray-200 rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="h-72 bg-gray-200 rounded-3xl" />
+          <div className="h-72 bg-gray-200 rounded-3xl" />
+        </div>
+      </div>
+      <div className="xl:col-span-4 space-y-6">
+        <div className="h-64 bg-gray-200 rounded-3xl" />
+        <div className="h-64 bg-gray-200 rounded-3xl" />
+      </div>
     </div>
   </div>
 );
@@ -37,147 +62,220 @@ const DataRow = ({
   value,
   isMonospace = false,
   highlight = false,
-}: any) => (
-  <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
+}: {
+  label: string;
+  value: React.ReactNode;
+  isMonospace?: boolean;
+  highlight?: boolean;
+}) => (
+  <div className="flex justify-between items-center gap-4 py-2.5 border-b border-gray-100 last:border-0 text-sm px-2 rounded-lg hover:bg-gray-50/70 transition-colors">
     <span className="text-gray-500 font-medium">{label}</span>
     <span
-      className={`font-semibold text-gray-900 ${isMonospace ? "font-mono tracking-tight" : ""
-        } ${highlight ? "text-blue-600" : ""}`}
+      className={`font-semibold text-right text-gray-900 ${
+        isMonospace ? "font-mono tracking-tight" : ""
+      } ${highlight ? "text-blue-600" : ""}`}
     >
       {value || "—"}
     </span>
   </div>
 );
 
-function toNumberLikeString(input: string) {
-  // accepte "15000", "15000.00", "15 000", "15,000"
-  const cleaned = input.replace(/\s/g, "").replace(/,/g, ".");
-  return cleaned;
-}
+const formatDate = (value?: string | null) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("fr-FR");
+};
 
 export default function VehiculeDetailView() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { id } = useParams();
 
   const { data: vehicule, isLoading, isError } = useVehiculeQuery(id);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const { data: documents = [], isLoading: docsLoading } = useVehicleDocumentsQuery(id);
 
-  // ✅ champ caution éditable (support)
-  const [cautionDraft, setCautionDraft] = useState<string>("");
-  const [cautionTouched, setCautionTouched] = useState(false);
+  const document: VehicleDocument | null = useMemo(() => {
+    if (!Array.isArray(documents) || documents.length === 0) return null;
+    return [...documents].sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    )[0];
+  }, [documents]);
+
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [vehicleReason, setVehicleReason] = useState("");
+  const [documentReason, setDocumentReason] = useState("");
+  const [cautionDraft, setCautionDraft] = useState("");
 
   useEffect(() => {
     if (!vehicule) return;
-    // initialise le draft à partir du serveur
     setCautionDraft(
       vehicule.montant_caution !== undefined && vehicule.montant_caution !== null
         ? String(vehicule.montant_caution)
         : ""
     );
-    setCautionTouched(false);
   }, [vehicule]);
 
-  // ✅ Mutation Validation Admin
-  const validateMutation = useMutation({
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["vehicule-one", id] });
+    queryClient.invalidateQueries({ queryKey: ["vehicle-documents", id] });
+    queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
+    queryClient.invalidateQueries({ queryKey: ["vehicules-public"] });
+  };
+
+  const reviewVehicleMutation = useMutation({
     mutationFn: async ({
-      vehiculeId,
-      valide,
+      action,
+      reason,
     }: {
-      vehiculeId: string;
-      valide: boolean;
+      action: "approve" | "reject";
+      reason?: string;
     }) => {
-      const res = await vehiculeAPI.patch_vehicule(vehiculeId, { valide } as any);
-      return res.data;
+      return await vehiculeAPI.review_vehicle(id!, {
+        action,
+        review_comment: reason || "",
+      });
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    onSuccess: () => {
+      invalidateAll();
+      setVehicleReason("");
+      toast({
+        title: "Succès",
+        description: "Le statut du véhicule a été mis à jour.",
+      });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || "Impossible de traiter le véhicule.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
+      console.error("Erreur review véhicule support :", error?.response?.data || error);
     },
   });
 
-  // ✅ Mutation Certification
+  const reviewDocumentsMutation = useMutation({
+    mutationFn: async ({
+      action,
+      reason,
+    }: {
+      action: "approve" | "reject";
+      reason?: string;
+    }) => {
+      if (!document?.id) throw new Error("Aucun document disponible");
+      return await vehicleDocumentsAPI.review_document(document.id, {
+        action,
+        rejection_reason: reason || "",
+      });
+    },
+    onSuccess: () => {
+      invalidateAll();
+      setDocumentReason("");
+      toast({
+        title: "Succès",
+        description: "Le statut des documents a été mis à jour.",
+      });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || "Impossible de traiter les documents.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
+      console.error("Erreur review documents support :", error?.response?.data || error);
+    },
+  });
+
   const certifyMutation = useMutation({
-    mutationFn: async ({
-      vehiculeId,
-      est_certifie,
-    }: {
-      vehiculeId: string;
-      est_certifie: boolean;
-    }) => {
-      const res = await vehiculeAPI.patch_vehicule(vehiculeId, { est_certifie } as any);
-      return res.data;
+    mutationFn: async (est_certifie: boolean) => {
+      return await vehiculeAPI.patch_vehicule(id!, { est_certifie } as any);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Succès", description: "Certification mise à jour." });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || "Impossible de mettre à jour la certification.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
     },
   });
 
-  // ✅ Mutation Sponsoring
   const sponsorMutation = useMutation({
-    mutationFn: async ({
-      vehiculeId,
-      est_sponsorise,
-    }: {
-      vehiculeId: string;
-      est_sponsorise: boolean;
-    }) => {
-      const res = await vehiculeAPI.patch_vehicule(vehiculeId, { est_sponsorise } as any);
-      return res.data;
+    mutationFn: async (est_sponsorise: boolean) => {
+      return await vehiculeAPI.patch_vehicule(id!, { est_sponsorise } as any);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicles", "sponsored"] });
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Succès", description: "Sponsoring mis à jour." });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || "Impossible de mettre à jour le sponsoring.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
     },
   });
 
-  // ✅ Mutation Coup de cœur
   const coupDeCoeurMutation = useMutation({
-    mutationFn: async ({
-      vehiculeId,
-      est_coup_de_coeur,
-    }: {
-      vehiculeId: string;
-      est_coup_de_coeur: boolean;
-    }) => {
-      const res = await vehiculeAPI.patch_vehicule(vehiculeId, { est_coup_de_coeur } as any);
-      return res.data;
+    mutationFn: async (est_coup_de_coeur: boolean) => {
+      return await vehiculeAPI.patch_vehicule(id!, { est_coup_de_coeur } as any);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Succès", description: "Coup de cœur mis à jour." });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || "Impossible de mettre à jour le coup de cœur.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
     },
   });
 
-  // ✅ Mutation Caution
   const cautionMutation = useMutation({
-    mutationFn: async ({
-      vehiculeId,
-      montant_caution,
-    }: {
-      vehiculeId: string;
-      montant_caution: string;
-    }) => {
-      const payload = { montant_caution } as any;
-      const res = await vehiculeAPI.patch_vehicule(vehiculeId, payload);
-      return res.data;
+    mutationFn: async (montant_caution: string) => {
+      return await vehiculeAPI.patch_vehicule(id!, { montant_caution } as any);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      setCautionTouched(false);
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Succès", description: "Caution mise à jour." });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || "Impossible de mettre à jour la caution.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
     },
   });
 
   const busy =
-    validateMutation.isPending ||
+    reviewVehicleMutation.isPending ||
+    reviewDocumentsMutation.isPending ||
     certifyMutation.isPending ||
     sponsorMutation.isPending ||
     coupDeCoeurMutation.isPending ||
     cautionMutation.isPending;
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (isLoading || docsLoading) return <LoadingSkeleton />;
 
   if (isError || !vehicule) {
     return (
@@ -187,73 +285,220 @@ export default function VehiculeDetailView() {
     );
   }
 
-  // --- LOGIQUE DONNÉES ---
   const photosList = Array.isArray(vehicule.photos) ? vehicule.photos : [];
   const pricingGrid = Array.isArray(vehicule.pricing_grid) ? vehicule.pricing_grid : [];
   const availabilities = Array.isArray(vehicule.availabilities) ? vehicule.availabilities : [];
-  const equipments = Array.isArray(vehicule.equipements_details) ? vehicule.equipements_details : [];
+  const equipments = Array.isArray(vehicule.equipements_details)
+    ? vehicule.equipements_details
+    : [];
 
   const photos =
     photosList.length > 0
       ? photosList
-      : [{ image_url: "/placeholder.jpg", id: "default" }];
+      : [{ image_url: "/placeholder.jpg", image: "/placeholder.jpg", id: "default" } as any];
 
-  const mainPhoto = photos[selectedImageIndex]?.image_url;
+  const mainPhoto = photos[selectedImageIndex]?.image_url || photos[selectedImageIndex]?.image;
 
-  const urbain = pricingGrid.find((p: any) => p.zone_type === "URBAIN");
-  const province = pricingGrid.find((p: any) => p.zone_type === "PROVINCE");
+  const urbain = pricingGrid.find((p) => p.zone_type === "URBAIN");
+  const province = pricingGrid.find((p) => p.zone_type === "PROVINCE");
 
   const driver = vehicule.driver_data;
   const owner = vehicule.proprietaire_data;
 
+  const ownerName =
+    owner?.full_name ||
+    `${owner?.first_name || ""} ${owner?.last_name || ""}`.trim() ||
+    owner?.email ||
+    "Prestataire inconnu";
+
+  const ownerPhone =
+    (owner as { phone?: string; phone_number?: string } | null)?.phone ||
+    (owner as { phone?: string; phone_number?: string } | null)?.phone_number ||
+    "—";
+
+  const workflowStatus = vehicule.workflow_status || "DRAFT";
   const isValidated = !!vehicule.valide;
   const isCertified = !!vehicule.est_certifie;
   const isSponsored = !!vehicule.est_sponsorise;
   const isCoupDeCoeur = !!vehicule.est_coup_de_coeur;
+  const docsComplete = !!vehicule.documents_complete;
+  const docsValidated = !!vehicule.documents_validated || !!document?.is_valide;
 
-  const devise = vehicule.devise || "MGA";
+  const isPendingReview = workflowStatus === "PENDING_REVIEW";
+  const isPublished = workflowStatus === "PUBLISHED";
+  const isRejected = workflowStatus === "REJECTED";
+  const isDraft = workflowStatus === "DRAFT";
 
-  const serverCautionString =
-    vehicule.montant_caution !== undefined && vehicule.montant_caution !== null
-      ? String(vehicule.montant_caution)
-      : "";
+  const canApproveDocuments =
+    !!document && docsComplete && !docsValidated && isPendingReview && !busy;
 
-  const cautionChanged = useMemo(() => {
-    if (!cautionTouched) return false;
-    return toNumberLikeString(cautionDraft) !== toNumberLikeString(serverCautionString);
-  }, [cautionDraft, serverCautionString, cautionTouched]);
+  const canRejectDocuments =
+    !!document && !docsValidated && isPendingReview && !!documentReason.trim() && !busy;
 
-  const canSaveCaution = !!id && cautionChanged && !busy;
+  const canApproveVehicle =
+    isPendingReview && docsValidated && !isPublished && !busy;
+
+  const canRejectVehicle =
+    isPendingReview && !!vehicleReason.trim() && !isPublished && !busy;
+
+  const workflowBadge = (() => {
+    if (isPendingReview) {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
+          <Clock3 className="w-4 h-4" />
+          EN ATTENTE
+        </span>
+      );
+    }
+
+    if (isPublished) {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
+          <CheckCircle2 className="w-4 h-4" />
+          PUBLIÉ
+        </span>
+      );
+    }
+
+    if (isRejected) {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
+          <XCircle className="w-4 h-4" />
+          REJETÉ
+        </span>
+      );
+    }
+
+    return (
+      <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-700/90 text-white shadow-sm backdrop-blur-md">
+        BROUILLON
+      </span>
+    );
+  })();
+
+  const topBanner = (() => {
+    if (isPublished) {
+      return {
+        wrapper: "border-emerald-200 bg-emerald-50",
+        icon: <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5" />,
+        badgeClass: "bg-emerald-100 text-emerald-700",
+        badge: "Publié",
+        title: "Véhicule déjà publié",
+        description:
+          "Le véhicule est déjà validé et publié. Les actions de publication et de validation documentaire sont maintenant verrouillées.",
+        detail: "Vous pouvez encore gérer la caution, la certification, le sponsoring et le coup de cœur.",
+      };
+    }
+
+    if (isRejected) {
+      return {
+        wrapper: "border-red-200 bg-red-50",
+        icon: <XCircle className="w-5 h-5 text-red-600 mt-0.5" />,
+        badgeClass: "bg-red-100 text-red-700",
+        badge: "Rejeté",
+        title: "Dossier rejeté",
+        description:
+          "Le prestataire doit corriger le véhicule ou ses documents puis renvoyer le dossier avant une nouvelle décision.",
+        detail:
+          vehicule.review_comment?.trim() ||
+          document?.rejection_reason?.trim() ||
+          "Un motif de correction a été demandé.",
+      };
+    }
+
+    if (isPendingReview && !document) {
+      return {
+        wrapper: "border-orange-200 bg-orange-50",
+        icon: <FileWarning className="w-5 h-5 text-orange-600 mt-0.5" />,
+        badgeClass: "bg-orange-100 text-orange-700",
+        badge: "Dossier incomplet",
+        title: "Aucun document exploitable",
+        description:
+          "Le véhicule est passé en file de contrôle, mais aucun dossier documentaire n’a été trouvé pour cette fiche.",
+        detail: "Demande au prestataire de soumettre un dossier complet avant validation.",
+      };
+    }
+
+    if (isPendingReview && !docsComplete) {
+      return {
+        wrapper: "border-orange-200 bg-orange-50",
+        icon: <FileWarning className="w-5 h-5 text-orange-600 mt-0.5" />,
+        badgeClass: "bg-orange-100 text-orange-700",
+        badge: "Documents incomplets",
+        title: "Le dossier documentaire est incomplet",
+        description:
+          "Le support ne peut pas valider les documents tant que les 3 pièces obligatoires ne sont pas présentes.",
+        detail: "Carte grise, visite technique et assurance doivent être fournies.",
+      };
+    }
+
+    if (isPendingReview && docsComplete && !docsValidated) {
+      return {
+        wrapper: "border-blue-200 bg-blue-50",
+        icon: <Clock3 className="w-5 h-5 text-blue-600 mt-0.5" />,
+        badgeClass: "bg-blue-100 text-blue-700",
+        badge: "À contrôler",
+        title: "Documents à vérifier",
+        description:
+          "Le dossier est soumis et complet. La prochaine étape consiste à valider ou rejeter les documents.",
+        detail: `Dernière soumission : ${formatDate(document?.submitted_at || vehicule.submitted_at)}`,
+      };
+    }
+
+    if (isPendingReview && docsValidated) {
+      return {
+        wrapper: "border-indigo-200 bg-indigo-50",
+        icon: <Send className="w-5 h-5 text-indigo-600 mt-0.5" />,
+        badgeClass: "bg-indigo-100 text-indigo-700",
+        badge: "Prêt à publier",
+        title: "Documents validés, publication en attente",
+        description:
+          "Les documents sont conformes. Le support peut maintenant publier ou rejeter le véhicule.",
+        detail: "La publication n’est possible qu’après validation documentaire.",
+      };
+    }
+
+    if (isDraft) {
+      return {
+        wrapper: "border-slate-200 bg-slate-50",
+        icon: <Info className="w-5 h-5 text-slate-600 mt-0.5" />,
+        badgeClass: "bg-slate-200 text-slate-700",
+        badge: "Brouillon",
+        title: "Véhicule non soumis",
+        description:
+          "Le prestataire n’a pas encore envoyé officiellement ce véhicule en file de validation.",
+        detail: "Aucune décision finale ne devrait être prise tant que le dossier n’est pas soumis.",
+      };
+    }
+
+    return null;
+  })();
 
   return (
-    <div className="bg-gray-50/50 min-h-screen pb-20 font-sans text-slate-800 animate-in fade-in duration-500">
-      {/* HEADER DE NAVIGATION */}
+    <div className="bg-gray-50/60 min-h-screen pb-20 font-sans text-slate-800 animate-in fade-in duration-500">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <Link
           to="/support/fleet"
           className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-blue-600 transition"
         >
-          <ChevronLeft className="w-4 h-4" /> Retour à la flotte
+          <ChevronLeft className="w-4 h-4" />
+          Retour à la flotte
         </Link>
         <div className="text-xs text-gray-400 font-mono">
-          Dernière synchro: {new Date().toLocaleDateString()}
+          Dernière synchro : {new Date().toLocaleDateString("fr-FR")}
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* =========================================================================
-            COLONNE GAUCHE
-           ========================================================================= */}
         <div className="xl:col-span-8 space-y-6">
-          {/* CARTE PRINCIPALE */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden relative group">
-            {/* Badges */}
             <div className="absolute top-4 left-4 z-10 flex gap-2 flex-wrap">
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md ${vehicule.est_disponible
+                className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md ${
+                  vehicule.est_disponible
                     ? "bg-green-500/90 text-white"
                     : "bg-red-500/90 text-white"
-                  }`}
+                }`}
               >
                 {vehicule.est_disponible ? "DISPONIBLE" : "INDISPONIBLE"}
               </span>
@@ -262,19 +507,12 @@ export default function VehiculeDetailView() {
                 {vehicule.categorie_data?.nom || "Non classé"}
               </span>
 
-              {isValidated ? (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-600/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> VALIDÉ ADMIN
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
-                  <XCircle className="w-4 h-4" /> EN ATTENTE
-                </span>
-              )}
+              {workflowBadge}
 
               {isCertified ? (
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
-                  <BadgeCheck className="w-4 h-4" /> CERTIFIÉ
+                  <BadgeCheck className="w-4 h-4" />
+                  CERTIFIÉ
                 </span>
               ) : null}
 
@@ -286,153 +524,229 @@ export default function VehiculeDetailView() {
 
               {isCoupDeCoeur ? (
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
-                  <Heart className="w-3.5 h-3.5" /> COUP DE CŒUR
+                  <Heart className="w-3.5 h-3.5" />
+                  COUP DE CŒUR
                 </span>
               ) : null}
             </div>
 
-            {/* Image */}
             <div className="relative h-[500px] bg-gray-900 w-full flex items-center justify-center overflow-hidden">
               <img
                 src={mainPhoto}
                 alt="Vue véhicule"
                 className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                onError={(e) => (e.currentTarget.src = "/placeholder.jpg")}
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.jpg";
+                }}
               />
 
-              {/* hotspot demo */}
-              <div className="absolute top-[60%] left-[30%] group/eye">
-                <button className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:scale-110 transition animate-pulse">
+              <div className="absolute top-[58%] left-[30%]">
+                <div className="bg-blue-600 text-white p-2 rounded-full shadow-lg animate-pulse">
                   <Eye className="w-4 h-4" />
-                </button>
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-48 bg-gray-900/90 text-white text-xs p-2 rounded opacity-0 group-hover/eye:opacity-100 transition pointer-events-none text-center backdrop-blur">
-                  Zoom sur l&apos;aile avant
-                  <br />
-                  <span className="text-gray-400">Aucun défaut détecté</span>
                 </div>
               </div>
             </div>
 
-            {/* Bandeau Titre */}
-            <div className="p-6 border-t border-gray-100 flex justify-between items-end bg-white">
+            <div className="p-6 border-t border-gray-100 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between bg-white">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
                   {vehicule.marque_data?.nom}{" "}
                   <span className="text-blue-600">{vehicule.modele_data?.label}</span>
                 </h1>
-                <p className="text-gray-500 mt-1 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" /> {vehicule.ville}{" "}
-                  <span className="text-gray-300">|</span> {vehicule.zone}
+                <p className="text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                  <MapPin className="w-4 h-4" />
+                  {vehicule.ville} <span className="text-gray-300">|</span> {vehicule.zone}
                 </p>
               </div>
+
               <div className="text-right">
                 <p className="text-sm text-gray-400 uppercase font-bold tracking-wider">
                   Prix Standard
                 </p>
                 <p className="text-3xl font-bold text-gray-900">
                   {urbain?.prix_jour ?? "—"}{" "}
-                  <span className="text-base font-normal text-gray-500">Ar / jour</span>
+                  <span className="text-base font-normal text-gray-500">
+                    {vehicule.devise} / jour
+                  </span>
                 </p>
               </div>
             </div>
 
-            {/* Thumbnails */}
             <div className="px-6 pb-6 flex gap-3 overflow-x-auto scrollbar-hide">
               {photos.map((p: any, idx: number) => (
                 <button
                   key={p.id || idx}
                   onClick={() => setSelectedImageIndex(idx)}
-                  className={`relative flex-shrink-0 w-24 h-20 rounded-xl overflow-hidden border-2 transition-all ${selectedImageIndex === idx
+                  className={`relative flex-shrink-0 w-24 h-20 rounded-xl overflow-hidden border-2 transition-all ${
+                    selectedImageIndex === idx
                       ? "border-blue-600 ring-2 ring-blue-100"
                       : "border-transparent opacity-70 hover:opacity-100"
-                    }`}
+                  }`}
                 >
-                  <img src={p.image_url} className="w-full h-full object-cover" alt="thumb" />
+                  <img
+                    src={p.image_url || p.image}
+                    className="w-full h-full object-cover"
+                    alt={`Photo ${idx + 1}`}
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.jpg";
+                    }}
+                  />
                 </button>
               ))}
             </div>
           </div>
 
-          {/* GRILLE TECHNIQUE */}
+          {topBanner && (
+            <Card className={`${topBanner.wrapper} border shadow-sm`}>
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3">
+                  {topBanner.icon}
+                  <div className="space-y-2">
+                    <Badge className={topBanner.badgeClass}>{topBanner.badge}</Badge>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">{topBanner.title}</h3>
+                      <p className="text-sm text-slate-700 mt-1">{topBanner.description}</p>
+                      <p className="text-sm text-slate-600 mt-2">{topBanner.detail}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {vehicule.review_comment ? (
+            <Card className="border-red-200 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-red-700">Motif de rejet véhicule</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-line text-red-900">
+                  {vehicule.review_comment}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {document?.rejection_reason ? (
+            <Card className="border-red-200 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-red-700">Motif de rejet documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-line text-red-900">
+                  {document.rejection_reason}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Fiche Technique */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
-              <h3 className="flex items-center gap-2 text-lg font-bold mb-4 text-gray-800">
-                <FileText className="w-5 h-5 text-blue-500" /> Fiche Technique
-              </h3>
-              <div className="space-y-1">
+            <Card className="rounded-3xl shadow-sm border border-gray-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Fiche technique
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
                 <DataRow
                   label="Plaque Immat."
                   value={vehicule.numero_immatriculation}
                   isMonospace
                   highlight
                 />
-                <DataRow label="Numéro Série (VIN)" value={vehicule.numero_serie} isMonospace />
+                <DataRow
+                  label="Numéro Série (VIN)"
+                  value={vehicule.numero_serie}
+                  isMonospace
+                />
                 <DataRow label="Année" value={vehicule.annee} />
                 <DataRow label="Couleur" value={vehicule.couleur} />
                 <DataRow
                   label="Portes / Places"
                   value={`${vehicule.nombre_portes} portes / ${vehicule.nombre_places} places`}
                 />
-                <DataRow label="Kilométrage" value={`${vehicule.kilometrage_actuel_km} km`} />
-                <DataRow label="Carburant" value={vehicule.type_carburant_data?.nom} />
-                <DataRow label="Transmission" value={vehicule.transmission_data?.nom} />
-              </div>
-            </div>
-
-            {/* État & Options */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 flex flex-col">
-              <h3 className="flex items-center gap-2 text-lg font-bold mb-4 text-gray-800">
-                <ShieldCheck className="w-5 h-5 text-green-500" /> État & Options
-              </h3>
-
-              <div className="space-y-1 mb-6">
-                <DataRow label="Statut Technique" value={vehicule.statut_data?.nom} highlight />
-                <DataRow label="Certifié" value={vehicule.est_certifie ? "✅ Oui" : "Non"} />
-                <DataRow label="Sponsorisé" value={vehicule.est_sponsorise ? "✅ Oui" : "Non"} />
-                <DataRow label="Coup de cœur" value={vehicule.est_coup_de_coeur ? "✅ Oui" : "Non"} />
-                <DataRow label="Validé Admin" value={vehicule.valide ? "✅ Oui" : "Non"} />
                 <DataRow
-                  label="Caution"
-                  value={`${vehicule.montant_caution ?? "0.00"} ${devise}`}
-                  highlight
+                  label="Kilométrage"
+                  value={`${vehicule.kilometrage_actuel_km} km`}
                 />
-              </div>
+                <DataRow
+                  label="Carburant"
+                  value={vehicule.type_carburant_data?.nom}
+                />
+                <DataRow
+                  label="Transmission"
+                  value={vehicule.transmission_data?.nom}
+                />
+              </CardContent>
+            </Card>
 
-              <div className="mt-auto">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Équipements inclus</p>
-                <div className="flex flex-wrap gap-2">
-                  {equipments.length > 0 ? (
-                    equipments.map((eq: any) => (
-                      <span
-                        key={eq.id}
-                        className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md border border-gray-200"
-                      >
-                        {eq.label}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-400 italic">Aucun équipement listé</span>
-                  )}
+            <Card className="rounded-3xl shadow-sm border border-gray-200 flex flex-col">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
+                  <ShieldCheck className="w-5 h-5 text-green-500" />
+                  État & options
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="flex-1 flex flex-col">
+                <div className="space-y-1 mb-6">
+                  <DataRow label="Workflow" value={workflowStatus} highlight />
+                  <DataRow label="Validé métier" value={isValidated ? "✅ Oui" : "Non"} />
+                  <DataRow label="Docs complets" value={docsComplete ? "✅ Oui" : "Non"} />
+                  <DataRow label="Docs validés" value={docsValidated ? "✅ Oui" : "Non"} />
+                  <DataRow label="Certifié" value={isCertified ? "✅ Oui" : "Non"} />
+                  <DataRow label="Sponsorisé" value={isSponsored ? "✅ Oui" : "Non"} />
+                  <DataRow label="Coup de cœur" value={isCoupDeCoeur ? "✅ Oui" : "Non"} />
+                  <DataRow
+                    label="Caution"
+                    value={`${vehicule.montant_caution ?? "0.00"} ${vehicule.devise}`}
+                    highlight
+                  />
                 </div>
-              </div>
-            </div>
+
+                <div className="mt-auto">
+                  <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                    Équipements inclus
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {equipments.length > 0 ? (
+                      equipments.map((eq: any) => (
+                        <span
+                          key={eq.id}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md border border-gray-200"
+                        >
+                          {eq.label}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">
+                        Aucun équipement listé
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* SECTION CHAUFFEUR */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+          <Card className="rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-100 p-4 flex justify-between items-center">
               <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
-                <User className="w-5 h-5 text-purple-500" /> Chauffeur Assigné
+                <User className="w-5 h-5 text-purple-500" />
+                Chauffeur assigné
               </h3>
-              {driver && (
+              {driver ? (
                 <span
-                  className={`px-2 py-1 rounded text-xs font-bold ${driver.is_available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                    }`}
+                  className={`px-2 py-1 rounded text-xs font-bold ${
+                    driver.is_available
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
                 >
                   {driver.is_available ? "DISPONIBLE" : "OCCUPÉ"}
                 </span>
-              )}
+              ) : null}
             </div>
 
             {driver ? (
@@ -444,6 +758,9 @@ export default function VehiculeDetailView() {
                         src={driver.profile_photo || "/placeholder.jpg"}
                         className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
                         alt="Driver"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.jpg";
+                        }}
                       />
                       <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-[10px] px-1 rounded font-bold">
                         {driver.experience_years} ANS
@@ -453,9 +770,6 @@ export default function VehiculeDetailView() {
                       {driver.first_name} {driver.last_name}
                     </h4>
                     <p className="text-sm text-gray-500">{driver.phone_number}</p>
-                    <p className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {driver.license_category || "Permis B"}
-                    </p>
                   </div>
 
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
@@ -470,7 +784,7 @@ export default function VehiculeDetailView() {
                       </p>
                     </div>
 
-                    <div className="col-span-2 h-px bg-gray-100 my-2"></div>
+                    <div className="col-span-2 h-px bg-gray-100 my-2" />
 
                     <div>
                       <span className="text-gray-400 text-xs uppercase">Permis N°</span>
@@ -478,15 +792,9 @@ export default function VehiculeDetailView() {
                     </div>
                     <div>
                       <span className="text-gray-400 text-xs uppercase">Expiration</span>
-                      <p className="font-medium text-red-600">{driver.license_expiry_date}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-xs uppercase">CIN N°</span>
-                      <p className="font-mono">{driver.cin_number}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-xs uppercase">Date Naissance</span>
-                      <p className="font-medium">{driver.date_of_birth}</p>
+                      <p className="font-medium text-red-600">
+                        {driver.license_expiry_date}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -496,18 +804,15 @@ export default function VehiculeDetailView() {
                 Aucun chauffeur assigné à ce véhicule.
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
-        {/* =========================================================================
-            COLONNE DROITE
-           ========================================================================= */}
         <div className="xl:col-span-4 space-y-6">
-          {/* TARIFS */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+          <Card className="rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-slate-900 text-white p-4">
               <h3 className="font-bold flex items-center gap-2">
-                <Gauge className="w-5 h-5" /> Grille Tarifaire
+                <Gauge className="w-5 h-5" />
+                Grille tarifaire
               </h3>
             </div>
 
@@ -522,43 +827,35 @@ export default function VehiculeDetailView() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {[
-                    { l: "Heure", u: urbain?.prix_heure, p: province?.prix_heure },
-                    { l: "Jour", u: urbain?.prix_jour, p: province?.prix_jour, strong: true },
-                    { l: "Semaine", u: urbain?.prix_par_semaine, p: province?.prix_par_semaine },
-                    { l: "Mois", u: urbain?.prix_mois, p: province?.prix_mois },
-                  ].map((row, i) => (
-                    <tr key={i} className={row.strong ? "bg-blue-50/50 font-semibold" : ""}>
-                      <td className="px-4 py-3 text-gray-600 font-medium">{row.l}</td>
-                      <td className="px-4 py-3">{row.u ? `${row.u} Ar` : "—"}</td>
-                      <td className="px-4 py-3">{row.p ? `${row.p} Ar` : "—"}</td>
+                    { label: "Heure", urbainValue: urbain?.prix_heure, provinceValue: province?.prix_heure },
+                    { label: "Jour", urbainValue: urbain?.prix_jour, provinceValue: province?.prix_jour, strong: true },
+                    { label: "Semaine", urbainValue: urbain?.prix_par_semaine, provinceValue: province?.prix_par_semaine },
+                    { label: "Mois", urbainValue: urbain?.prix_mois, provinceValue: province?.prix_mois },
+                  ].map((row) => (
+                    <tr
+                      key={row.label}
+                      className={row.strong ? "bg-blue-50/50 font-semibold" : ""}
+                    >
+                      <td className="px-4 py-3 text-gray-600 font-medium">{row.label}</td>
+                      <td className="px-4 py-3">
+                        {row.urbainValue ? `${row.urbainValue} ${vehicule.devise}` : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.provinceValue ? `${row.provinceValue} ${vehicule.devise}` : "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              <div className="p-4 bg-gray-50 text-xs text-gray-500 border-t border-gray-200 space-y-1">
-                <div className="flex justify-between">
-                  <span>Remise Longue Durée (Urbain):</span>
-                  <span className="font-bold text-green-600">
-                    {urbain?.remise_longue_duree_pourcent || 0}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Remise Longue Durée (Prov):</span>
-                  <span className="font-bold text-green-600">
-                    {province?.remise_longue_duree_pourcent || 0}%
-                  </span>
-                </div>
-              </div>
             </div>
-          </div>
+          </Card>
 
-          {/* DISPONIBILITÉS */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
+          <Card className="rounded-3xl shadow-sm border border-gray-200 p-6">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-orange-500" /> Calendrier
+              <Calendar className="w-5 h-5 text-orange-500" />
+              Calendrier
             </h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
               {availabilities.length > 0 ? (
                 availabilities.map((a: any) => (
                   <div
@@ -567,10 +864,10 @@ export default function VehiculeDetailView() {
                   >
                     <div className="flex flex-col">
                       <span className="font-bold text-gray-700">
-                        {new Date(a.start_date).toLocaleDateString()}
+                        {formatDate(a.start_date)}
                       </span>
                       <span className="text-xs text-gray-400">
-                        au {new Date(a.end_date).toLocaleDateString()}
+                        au {formatDate(a.end_date)}
                       </span>
                     </div>
                     <span className="text-xs font-bold uppercase bg-white border px-2 py-1 rounded text-gray-600">
@@ -579,16 +876,17 @@ export default function VehiculeDetailView() {
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-400 italic">Aucune indisponibilité prévue.</p>
+                <p className="text-sm text-gray-400 italic">
+                  Aucune indisponibilité prévue.
+                </p>
               )}
             </div>
-          </div>
+          </Card>
 
-          {/* PROPRIÉTAIRE */}
-          {owner && (
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
+          {owner ? (
+            <Card className="rounded-3xl shadow-sm border border-gray-200 p-6">
               <h3 className="font-bold text-xs uppercase text-gray-400 mb-4 tracking-widest">
-                Prestataire / Proprio
+                Prestataire / propriétaire
               </h3>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
@@ -596,261 +894,331 @@ export default function VehiculeDetailView() {
                   {owner.last_name?.[0]}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <p className="font-bold text-gray-900 truncate">
-                    {owner.first_name} {owner.last_name}
-                  </p>
+                  <p className="font-bold text-gray-900 truncate">{ownerName}</p>
                   <p className="text-xs text-gray-500 truncate">{owner.email}</p>
                 </div>
-                <div
-                  className={`w-3 h-3 rounded-full ${owner.is_active ? "bg-green-500" : "bg-red-500"
-                    }`}
-                ></div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
-                <span className="text-gray-500">Tel:</span>
-                <a href={`tel:${owner.phone}`} className="font-mono text-blue-600 hover:underline">
-                  {owner.phone}
-                </a>
+                <span className="text-gray-500">Tél :</span>
+                {ownerPhone !== "—" ? (
+                  <a
+                    href={`tel:${ownerPhone}`}
+                    className="font-mono text-blue-600 hover:underline"
+                  >
+                    {ownerPhone}
+                  </a>
+                ) : (
+                  <span className="font-mono text-gray-400">—</span>
+                )}
               </div>
-            </div>
-          )}
+            </Card>
+          ) : null}
 
-          {/* DESCRIPTION TEXTE */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-800 mb-2">Conditions & Notes</h3>
-            <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">
-              {vehicule.conditions_particulieres ||
-                vehicule.description ||
-                "Aucune note particulière pour ce véhicule."}
-            </p>
-          </div>
+          <Card className="rounded-3xl shadow-sm border border-gray-200 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-gray-800">Documents du véhicule</CardTitle>
+            </CardHeader>
 
-          {/* ✅ ACTIONS SUPPORT (sous Conditions & Notes) */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" />
-              Actions Support
-            </h3>
-
-            {/* Validation Admin */}
-            <div className="rounded-2xl border border-gray-200 p-4 mb-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Validation Admin</p>
-
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-gray-700">
-                  Statut :{" "}
-                  <span className={`font-bold ${isValidated ? "text-purple-700" : "text-yellow-700"}`}>
-                    {isValidated ? "Validé" : "En attente"}
-                  </span>
-                </span>
-
-                <div className="flex gap-2">
-                  {isValidated ? (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => validateMutation.mutate({ vehiculeId: id!, valide: false })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-                        }`}
-                    >
-                      Annuler
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        disabled={busy || !id}
-                        onClick={() => validateMutation.mutate({ vehiculeId: id!, valide: true })}
-                        className={`px-3 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-700 ${busy ? "opacity-60 cursor-not-allowed" : ""
-                          }`}
+            <CardContent className="p-0 space-y-4">
+              {!document ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">
+                  Aucun document trouvé pour ce véhicule.
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3">
+                    {[
+                      { label: "Carte grise", url: document.carte_grise },
+                      { label: "Visite technique", url: document.visite_technique },
+                      { label: "Assurance", url: document.assurance },
+                    ].map((docItem) => (
+                      <div
+                        key={docItem.label}
+                        className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-3 bg-white"
                       >
-                        Valider
-                      </button>
-                      <button
-                        disabled={busy || !id}
-                        onClick={() => validateMutation.mutate({ vehiculeId: id!, valide: false })}
-                        className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-                          }`}
+                        <span className="text-sm font-medium">{docItem.label}</span>
+                        {docItem.url ? (
+                          <a
+                            href={docItem.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 text-sm hover:underline"
+                          >
+                            Ouvrir
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">Non fourni</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {!docsComplete ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+                        <FileWarning className="w-3.5 h-3.5" />
+                        Documents incomplets
+                      </span>
+                    ) : null}
+
+                    {docsValidated ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Documents validés
+                      </span>
+                    ) : isPendingReview ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                        <Clock3 className="w-3.5 h-3.5" />
+                        Dossier à contrôler
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-100">
+                        <Info className="w-3.5 h-3.5" />
+                        Hors file de validation
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Motif de rejet des documents
+                      </p>
+                      <Input
+                        value={documentReason}
+                        onChange={(e) => setDocumentReason(e.target.value)}
+                        placeholder="Expliquer précisément pourquoi les documents sont rejetés"
+                        disabled={docsValidated || isPublished || !isPendingReview || busy}
+                      />
+                    </div>
+
+                    {!isPendingReview ? (
+                      <p className="text-xs text-slate-500">
+                        Les actions documentaires sont disponibles uniquement quand le véhicule est en attente de validation.
+                      </p>
+                    ) : null}
+
+                    {docsValidated ? (
+                      <p className="text-xs text-emerald-600">
+                        Les documents sont déjà validés. Les boutons de contrôle sont verrouillés.
+                      </p>
+                    ) : null}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        onClick={() => reviewDocumentsMutation.mutate({ action: "approve" })}
+                        disabled={!canApproveDocuments}
+                        className="bg-emerald-600 hover:bg-emerald-700"
                       >
-                        Refuser
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+                        {reviewDocumentsMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Validation...
+                          </>
+                        ) : (
+                          "Valider les documents"
+                        )}
+                      </Button>
 
-              {validateMutation.isError ? (
-                <p className="text-xs text-red-500 mt-2">Erreur pendant la validation.</p>
-              ) : null}
-            </div>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          reviewDocumentsMutation.mutate({
+                            action: "reject",
+                            reason: documentReason,
+                          })
+                        }
+                        disabled={!canRejectDocuments}
+                      >
+                        {reviewDocumentsMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Rejet...
+                          </>
+                        ) : (
+                          "Rejeter les documents"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Certification */}
-            <div className="rounded-2xl border border-gray-200 p-4 mb-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Certification</p>
+          <Card className="rounded-3xl shadow-sm border border-gray-200 p-6">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                Actions support
+              </CardTitle>
+            </CardHeader>
 
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-gray-700">
-                  Statut :{" "}
-                  <span className={`font-bold ${isCertified ? "text-blue-700" : "text-gray-600"}`}>
-                    {isCertified ? "Certifié" : "Non certifié"}
-                  </span>
-                </span>
+            <CardContent className="p-0 space-y-6">
+              <div className="rounded-2xl border border-gray-200 p-4 bg-gray-50/40">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                  Motif de rejet véhicule
+                </p>
 
-                <div className="flex gap-2">
-                  {isCertified ? (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => certifyMutation.mutate({ vehiculeId: id!, est_certifie: false })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
-                        }`}
-                    >
-                      Retirer
-                    </button>
-                  ) : (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => certifyMutation.mutate({ vehiculeId: id!, est_certifie: true })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 ${busy ? "opacity-60 cursor-not-allowed" : ""
-                        }`}
-                    >
-                      Certifier
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {certifyMutation.isError ? (
-                <p className="text-xs text-red-500 mt-2">Erreur pendant la certification.</p>
-              ) : null}
-            </div>
-
-            {/* Sponsoring */}
-            <div className="rounded-2xl border border-gray-200 p-4 mb-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Sponsoring</p>
-
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-gray-700">
-                  Statut :{" "}
-                  <span className={`font-bold ${isSponsored ? "text-amber-700" : "text-gray-600"}`}>
-                    {isSponsored ? "Sponsorisé" : "Non sponsorisé"}
-                  </span>
-                </span>
-
-                <div className="flex gap-2">
-                  {isSponsored ? (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => sponsorMutation.mutate({ vehiculeId: id!, est_sponsorise: false })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
-                    >
-                      Retirer
-                    </button>
-                  ) : (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => sponsorMutation.mutate({ vehiculeId: id!, est_sponsorise: true })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >
-                      Sponsoriser
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {sponsorMutation.isError ? (
-                <p className="text-xs text-red-500 mt-2">Erreur pendant la mise à jour du sponsoring.</p>
-              ) : null}
-            </div>
-
-            {/* Coup de cœur */}
-            <div className="rounded-2xl border border-gray-200 p-4 mb-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Coups de cœur</p>
-
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-gray-700">
-                  Statut :{" "}
-                  <span className={`font-bold ${isCoupDeCoeur ? "text-rose-700" : "text-gray-600"}`}>
-                    {isCoupDeCoeur ? "Coup de cœur" : "Non coup de cœur"}
-                  </span>
-                </span>
-
-                <div className="flex gap-2">
-                  {isCoupDeCoeur ? (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => coupDeCoeurMutation.mutate({ vehiculeId: id!, est_coup_de_coeur: false })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold border ${busy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
-                    >
-                      Retirer
-                    </button>
-                  ) : (
-                    <button
-                      disabled={busy || !id}
-                      onClick={() => coupDeCoeurMutation.mutate({ vehiculeId: id!, est_coup_de_coeur: true })}
-                      className={`px-3 py-2 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >
-                      Mettre en coup de cœur
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {coupDeCoeurMutation.isError ? (
-                <p className="text-xs text-red-500 mt-2">Erreur pendant la mise à jour du coup de cœur.</p>
-              ) : null}
-            </div>
-
-            {/* ✅ Modification Caution */}
-            <div className="rounded-2xl border border-gray-200 p-4">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-2">
-                Caution ({devise})
-              </p>
-
-              <div className="space-y-2">
-                <input
-                  value={cautionDraft}
-                  onChange={(e) => {
-                    setCautionDraft(e.target.value);
-                    setCautionTouched(true);
-                  }}
-                  placeholder="Ex: 150000.00"
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-blue-200"
+                <Input
+                  value={vehicleReason}
+                  onChange={(e) => setVehicleReason(e.target.value)}
+                  placeholder="Expliquer précisément pourquoi le véhicule est rejeté"
+                  disabled={isPublished || !isPendingReview || busy}
                 />
 
-                <button
-                  disabled={!canSaveCaution}
-                  onClick={() =>
-                    cautionMutation.mutate({
-                      vehiculeId: id!,
-                      montant_caution: toNumberLikeString(cautionDraft),
-                    })
-                  }
-                  className={`w-full px-3 py-2 rounded-xl text-sm font-semibold text-white ${canSaveCaution
-                      ? "bg-slate-900 hover:bg-slate-800"
-                      : "bg-slate-900/40 cursor-not-allowed"
-                    }`}
-                >
-                  Enregistrer
-                </button>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Button
+                    disabled={!canApproveVehicle}
+                    onClick={() => reviewVehicleMutation.mutate({ action: "approve" })}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {reviewVehicleMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Publication...
+                      </>
+                    ) : (
+                      "Publier le véhicule"
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    disabled={!canRejectVehicle}
+                    onClick={() =>
+                      reviewVehicleMutation.mutate({
+                        action: "reject",
+                        reason: vehicleReason,
+                      })
+                    }
+                  >
+                    {reviewVehicleMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Rejet...
+                      </>
+                    ) : (
+                      "Rejeter le véhicule"
+                    )}
+                  </Button>
+                </div>
+
+                {isPublished ? (
+                  <p className="text-xs text-emerald-600 mt-3">
+                    Le véhicule est déjà publié. Les actions de validation finale sont verrouillées.
+                  </p>
+                ) : null}
+
+                {!isPendingReview ? (
+                  <p className="text-xs text-slate-500 mt-3">
+                    La publication ou le rejet du véhicule ne doit être effectué que lorsqu’il est en attente de validation.
+                  </p>
+                ) : null}
+
+                {isPendingReview && !docsValidated ? (
+                  <p className="text-xs text-amber-600 mt-3">
+                    Les documents doivent être validés avant publication du véhicule.
+                  </p>
+                ) : null}
               </div>
 
-              <div className="mt-2 flex justify-between text-xs text-gray-500">
-                <span>
-                  Actuel: {serverCautionString || "0.00"} {devise}
-                </span>
-                {cautionChanged ? <span className="text-blue-600 font-semibold">Modifié</span> : null}
+              <Separator />
+
+              <div className="grid gap-4">
+                <div className="rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                    Certification
+                  </p>
+                  <Button
+                    disabled={busy}
+                    onClick={() => certifyMutation.mutate(!vehicule.est_certifie)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {certifyMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : vehicule.est_certifie ? (
+                      "Retirer certification"
+                    ) : (
+                      "Certifier"
+                    )}
+                  </Button>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                    Sponsoring
+                  </p>
+                  <Button
+                    disabled={busy}
+                    onClick={() => sponsorMutation.mutate(!vehicule.est_sponsorise)}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    {sponsorMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : vehicule.est_sponsorise ? (
+                      "Retirer sponsoring"
+                    ) : (
+                      "Sponsoriser"
+                    )}
+                  </Button>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                    Coup de cœur
+                  </p>
+                  <Button
+                    disabled={busy}
+                    onClick={() => coupDeCoeurMutation.mutate(!vehicule.est_coup_de_coeur)}
+                    className="bg-rose-600 hover:bg-rose-700"
+                  >
+                    {coupDeCoeurMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : vehicule.est_coup_de_coeur ? (
+                      "Retirer coup de cœur"
+                    ) : (
+                      "Mettre en coup de cœur"
+                    )}
+                  </Button>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 p-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase mb-2">Caution</p>
+
+                  <Input
+                    value={cautionDraft}
+                    onChange={(e) => setCautionDraft(e.target.value)}
+                    placeholder="Montant caution"
+                  />
+
+                  <Button
+                    disabled={busy}
+                    onClick={() => cautionMutation.mutate(cautionDraft)}
+                    className="w-full mt-3 bg-slate-900 hover:bg-slate-800"
+                  >
+                    {cautionMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      "Enregistrer la caution"
+                    )}
+                  </Button>
+                </div>
               </div>
-
-              {cautionMutation.isError ? (
-                <p className="text-xs text-red-500 mt-2">
-                  Erreur pendant la mise à jour de la caution.
-                </p>
-              ) : null}
-
-              {cautionMutation.isSuccess ? (
-                <p className="text-xs text-green-600 mt-2">✅ Caution mise à jour.</p>
-              ) : null}
-            </div>
-
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
