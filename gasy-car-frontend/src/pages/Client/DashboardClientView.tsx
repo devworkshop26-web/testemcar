@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Car } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -177,52 +178,51 @@ const DashboardOverClientView = () => {
         <Card className="overflow-hidden rounded-[28px] border border-slate-800/20 bg-[#1A2436] text-white shadow-[0_22px_65px_-40px_rgba(15,23,42,0.88)]">
           <CardContent className="relative p-0">
             <div className="absolute inset-y-0 right-0 w-[30%] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.08),_transparent_62%)]" />
-            <div className="absolute -right-6 top-1/2 h-52 w-52 -translate-y-1/2 rounded-full border border-white/10" />
-            <div className="absolute right-5 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full border border-white/8" />
+           <div className="absolute right-5 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full border border-white/8" />
             <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            <div className="relative flex flex-col gap-6 px-6 py-7 sm:px-8 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-3xl space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="font-poppins text-2xl font-bold leading-tight text-white sm:text-[30px]">
-                    Bonjour, {user?.first_name || "Client"} {user?.last_name || ""} !
-                  </h2>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
-                    <Crown className="h-3.5 w-3.5" />
-                    Gold
-                  </span>
-                </div>
-
-                <p className="max-w-3xl text-base font-medium leading-8 text-white/88 sm:text-[18px]">
-                  Vous avez cumulé <span className="font-bold text-white">{loyaltyPoints} points</span>. Plus que {loyaltyPointsToNextTier} points pour atteindre le niveau
-                  Platinum et bénéficier de <span className="font-bold text-white">-10% sur toutes les locations</span>.
-                </p>
-
-                <div className="max-w-2xl">
-                  <div className="h-3.5 overflow-hidden rounded-full bg-white/12">
-                    <div
-                      className="h-full rounded-full bg-[#FFD21E] shadow-[0_0_18px_rgba(255,210,30,0.4)]"
-                      style={{ width: `${loyaltyProgress}%` }}
-                    />
-                  </div>
-                </div>
+            <div className="relative z-10 p-7 sm:p-10">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                Espace Client
               </div>
 
-              <div className="flex w-full shrink-0 flex-col gap-4 sm:w-auto sm:items-end">
+              <h2 className="mt-4 text-2xl font-bold leading-tight sm:text-3xl md:text-4xl font-poppins">
+                Prêt pour votre prochaine aventure, {user?.first_name} ?
+              </h2>
+
+              <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-base">
+                Explorez, comparez et réservez votre véhicule en quelques clics.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Button
-                  className="h-12 min-w-[170px] rounded-2xl bg-white px-6 text-base font-bold text-slate-950 hover:bg-white/95"
-                  onClick={() => navigate("/client/loyalty")}
+                  className="rounded-xl bg-white text-slate-900 hover:bg-white/90 shadow-sm active:scale-[0.99]"
+                  onClick={() => navigate("/allCars")}
                 >
-                  Mes Points
+                  Réserver une voiture
                 </Button>
+
                 <Button
-                  className="h-12 min-w-[220px] rounded-2xl bg-[#316BFF] px-6 text-base font-bold text-white hover:bg-[#2558db]"
-                  onClick={() => navigate("/client/loyalty")}
+                  variant="outline"
+                  className="rounded-xl border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                  onClick={() => navigate("/client/rentals")}
                 >
-                  Parrainer un ami
+                  Voir mes réservations
                 </Button>
               </div>
             </div>
+
+            <div className="hidden md:flex items-center justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-white/10 blur-2xl" />
+                <Car className="relative h-28 w-28 text-white/35" />
+              </div>
+            </div>
+          </div>
+        </div>
           </CardContent>
         </Card>
 
