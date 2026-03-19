@@ -197,7 +197,7 @@ const DashboardOverClientView = () => {
                 Explorez, comparez et réservez votre véhicule en quelques clics.
               </p>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button
                   className="rounded-xl bg-white text-slate-900 hover:bg-white/90 shadow-sm active:scale-[0.99]"
                   onClick={() => navigate("/allCars")}
@@ -211,6 +211,14 @@ const DashboardOverClientView = () => {
                   onClick={() => navigate("/client/rentals")}
                 >
                   Voir mes réservations
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                  onClick={() => navigate("/client/loyalty")}
+                >
+                  Mes points
                 </Button>
               </div>
             </div>
