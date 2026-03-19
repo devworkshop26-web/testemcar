@@ -190,8 +190,8 @@ const DashboardOverClientView = () => {
       },
       {
         id: "fiscal",
-        label: "Infos fiscales",
-        status: profile.nif || profile.stat ? "Renseignées" : "À compléter",
+        label: "Infos fiscales (optionnelles)",
+        status: profile.nif || profile.stat ? "Renseignées" : "Optionnelles",
         icon: <ReceiptText className="h-4 w-4" />,
         description:
           "Consultez ici les informations fiscales enregistrées sur votre profil.",
