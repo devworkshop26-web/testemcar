@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Car } from "lucide-react";
+import { Car, Home, ReceiptText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,9 @@ type ExtendedUser = {
   permis_conduire_verso?: string | null;
   cin_photo_recto?: string | null;
   cin_photo_verso?: string | null;
+  residence_certificate?: string | null;
+  nif?: string | null;
+  stat?: string | null;
 };
 
 type DocumentPreview = {
@@ -41,13 +44,19 @@ type DocumentPreview = {
   src: string | null;
 };
 
+type DocumentDetail = {
+  label: string;
+  value: string;
+};
+
 type DocumentItem = {
-  id: "permis" | "cin";
+  id: "permis" | "cin" | "residence" | "fiscal";
   label: string;
   status: string;
   icon: JSX.Element;
   description: string;
-  previews: DocumentPreview[];
+  previews?: DocumentPreview[];
+  details?: DocumentDetail[];
 };
 
 const rawBaseUrl = String(InstanceAxis.defaults.baseURL || "");
@@ -162,6 +171,38 @@ const DashboardOverClientView = () => {
           {
             label: "CIN / Passeport - Verso",
             src: toAbsoluteMediaUrl(profile.cin_photo_verso || null),
+          },
+        ],
+      },
+      {
+        id: "residence",
+        label: "Certificat de résidence",
+        status: profile.residence_certificate ? "Validé" : "À compléter",
+        icon: <Home className="h-4 w-4" />,
+        description:
+          "Consultez ici le certificat de résidence de moins de 3 mois enregistré sur votre compte.",
+        previews: [
+          {
+            label: "Certificat de résidence",
+            src: toAbsoluteMediaUrl(profile.residence_certificate || null),
+          },
+        ],
+      },
+      {
+        id: "fiscal",
+        label: "Infos fiscales",
+        status: profile.nif || profile.stat ? "Renseignées" : "À compléter",
+        icon: <ReceiptText className="h-4 w-4" />,
+        description:
+          "Consultez ici les informations fiscales enregistrées sur votre profil.",
+        details: [
+          {
+            label: "NIF",
+            value: profile.nif || "Non renseigné",
+          },
+          {
+            label: "STAT",
+            value: profile.stat || "Non renseigné",
           },
         ],
       },
@@ -394,11 +435,27 @@ const DashboardOverClientView = () => {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  {selectedDocument.previews.map((preview) => (
-                    <DocumentImageCard key={preview.label} {...preview} />
-                  ))}
-                </div>
+                {selectedDocument.previews?.length ? (
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {selectedDocument.previews.map((preview) => (
+                      <DocumentImageCard key={preview.label} {...preview} />
+                    ))}
+                  </div>
+                ) : null}
+
+                {selectedDocument.details?.length ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {selectedDocument.details.map((detail) => (
+                      <div
+                        key={detail.label}
+                        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                      >
+                        <p className="text-sm text-slate-500">{detail.label}</p>
+                        <p className="mt-2 text-base font-semibold text-slate-900">{detail.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </>
           )}
