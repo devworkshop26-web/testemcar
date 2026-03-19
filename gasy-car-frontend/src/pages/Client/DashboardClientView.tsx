@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Car } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -220,6 +221,15 @@ const DashboardOverClientView = () => {
                 </div>
               </div>
             </div>
+
+            <div className="hidden md:flex items-center justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-white/10 blur-2xl" />
+                <Car className="relative h-28 w-28 text-white/35" />
+              </div>
+            </div>
+          </div>
+        </div>
           </CardContent>
         </Card>
 
