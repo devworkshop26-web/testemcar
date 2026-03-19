@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Car } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -220,6 +221,8 @@ const DashboardOverClientView = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
           </CardContent>
         </Card>
 
