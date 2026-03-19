@@ -1,5 +1,6 @@
 import React from "react";
 import { useLocation, useParams, Link } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -35,10 +36,15 @@ import {
   ReceiptText,
   Home,
   Building2,
+  Loader2,
+  BadgeCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { useClientDetail } from "@/useQuery/support/useClientDetail";
 import { InstanceAxis } from "@/helper/InstanceAxios";
 import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
+import { useToast } from "@/components/ui/use-toast";
+import { usersAPI } from "@/Actions/usersApi";
 
 type ClientSummary = {
   id?: string;
@@ -70,12 +76,29 @@ type ClientSummary = {
   email_verified?: boolean;
   phone_verified?: boolean;
   is_active?: boolean;
+  is_verified?: boolean;
+  verified?: boolean;
+  is_certified?: boolean;
+  certified?: boolean;
+  account_verified?: boolean;
+  documents_verified?: boolean;
   is_superuser?: boolean;
   date_joined?: string;
   updated_at?: string;
 };
 
+const ACCOUNT_CERTIFICATION_FIELDS = [
+  "account_verified",
+  "is_verified",
+  "verified",
+  "is_certified",
+  "certified",
+  "documents_verified",
+] as const;
+
 export default function ClientDetailView() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { id } = useParams();
   const location = useLocation();
   const summary = (location.state as { clientSummary?: ClientSummary } | undefined)?.clientSummary;
@@ -84,6 +107,9 @@ export default function ClientDetailView() {
   const { data: fetchedClient, isLoading } = useClientDetail(profileId);
   const client = (fetchedClient ?? summary) as (ClientSummary & Record<string, any>) | undefined;
   const reservationClientId = String(client?.user_id || client?.id || profileId || "");
+  const accountCertificationField =
+    ACCOUNT_CERTIFICATION_FIELDS.find((field) => typeof client?.[field] === "boolean") ?? "is_verified";
+  const isAccountCertified = Boolean(client?.[accountCertificationField]);
   const {
     data: reservationHistory = [],
     isLoading: isReservationHistoryLoading,
@@ -149,6 +175,38 @@ export default function ClientDetailView() {
     if (status === "REJECTED") return "Refusé";
     return "En attente";
   };
+
+  const invalidateClientQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["client-detail", profileId] });
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+  };
+
+  const accountCertificationMutation = useMutation({
+    mutationFn: async (nextValue: boolean) => {
+      if (!profileId) throw new Error("Identifiant client introuvable");
+      return usersAPI.updateUser(profileId, { [accountCertificationField]: nextValue });
+    },
+    onSuccess: (_, nextValue) => {
+      invalidateClientQueries();
+      toast({
+        title: nextValue ? "Compte certifié" : "Certification annulée",
+        description: nextValue
+          ? "Le client est maintenant marqué comme vérifié par le support."
+          : "Le compte client n'est plus marqué comme certifié.",
+      });
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        "Impossible de mettre à jour la certification du compte.";
+      toast({
+        title: "Erreur",
+        description: detail,
+        variant: "destructive",
+      });
+    },
+  });
 
   const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | React.ReactNode }) => (
     <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
@@ -300,6 +358,69 @@ export default function ClientDetailView() {
                     </Button>
                   )}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={`border shadow-sm ${isAccountCertified ? "border-blue-200 bg-blue-50/70" : "border-amber-200 bg-amber-50/70"}`}>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                {isAccountCertified ? (
+                  <BadgeCheck className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <ShieldAlert className="w-5 h-5 text-amber-600" />
+                )}
+                Compte certifié
+              </CardTitle>
+              <CardDescription>
+                Seul le support peut confirmer ou retirer la vérification documentaire du client.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge
+                  variant="outline"
+                  className={isAccountCertified
+                    ? "border-blue-200 bg-blue-100 text-blue-700"
+                    : "border-amber-200 bg-amber-100 text-amber-700"}
+                >
+                  {isAccountCertified ? "Vérifié par le support" : "En attente de vérification"}
+                </Badge>
+                <p className="text-sm text-slate-600">
+                  {isAccountCertified
+                    ? "Les documents sont marqués comme valides. Le client peut être considéré comme certifié."
+                    : "Le support peut certifier ce compte après contrôle des documents transmis."}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  type="button"
+                  onClick={() => accountCertificationMutation.mutate(true)}
+                  disabled={accountCertificationMutation.isPending || isAccountCertified}
+                  className="gap-2"
+                >
+                  {accountCertificationMutation.isPending && !isAccountCertified ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <BadgeCheck className="w-4 h-4" />
+                  )}
+                  Marquer comme vérifié
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => accountCertificationMutation.mutate(false)}
+                  disabled={accountCertificationMutation.isPending || !isAccountCertified}
+                  className="gap-2 border-slate-300"
+                >
+                  {accountCertificationMutation.isPending && isAccountCertified ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="w-4 h-4" />
+                  )}
+                  Annuler la vérification
+                </Button>
               </div>
             </CardContent>
           </Card>
