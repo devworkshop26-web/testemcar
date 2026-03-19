@@ -32,6 +32,9 @@ import {
   CircleDollarSign,
   ArrowUpRight,
   IdCard,
+  ReceiptText,
+  Home,
+  Building2,
 } from "lucide-react";
 import { useClientDetail } from "@/useQuery/support/useClientDetail";
 import { InstanceAxis } from "@/helper/InstanceAxios";
@@ -56,8 +59,14 @@ type ClientSummary = {
   permis_conduire?: string;
   permis_conduire_recto?: string;
   permis_conduire_verso?: string;
+  residence_certificate?: string;
   role?: string;
   total_rentals?: number;
+  nif?: string;
+  stat?: string;
+  company_name?: string;
+  rcs?: string;
+  cif?: string;
   email_verified?: boolean;
   phone_verified?: boolean;
   is_active?: boolean;
@@ -101,6 +110,7 @@ export default function ClientDetailView() {
     buildMediaUrl(client?.permis_conduire_recto) ??
     buildMediaUrl(client?.permis_conduire);
   const licenseVerso = buildMediaUrl(client?.permis_conduire_verso);
+  const residenceCertificate = buildMediaUrl(client?.residence_certificate);
 
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
@@ -392,6 +402,43 @@ export default function ClientDetailView() {
                     );
                   })
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <ReceiptText className="w-5 h-5 text-blue-600" />
+                Informations fiscales
+              </CardTitle>
+              <CardDescription>Informations fiscales et administratives disponibles sur le profil client.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InfoRow icon={ReceiptText} label="NIF" value={client.nif || "Non renseigné"} />
+                <InfoRow icon={Building2} label="STAT" value={client.stat || "Non renseigné"} />
+                <InfoRow icon={Building2} label="Entreprise" value={client.company_name || "Non renseignée"} />
+                <InfoRow icon={ReceiptText} label="RCS" value={client.rcs || "Non renseigné"} />
+                <InfoRow icon={ReceiptText} label="CIF" value={client.cif || "Non renseigné"} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Home className="w-5 h-5 text-blue-600" />
+                Certificat de résidence
+              </CardTitle>
+              <CardDescription>Certificat de résidence de moins de 3 mois transmis par le client.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <p className="mb-3 text-sm font-medium text-slate-700 ml-1">Certificat de résidence (moins de 3 mois)</p>
+                  <DocumentPreview title={`Certificat de résidence - ${client.last_name || client.first_name || "client"}`} url={residenceCertificate} />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
