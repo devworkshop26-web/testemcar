@@ -1,5 +1,4 @@
-// src/hooks/support/useTicketSocket.ts
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { resolveWsBaseUrl, WS_BASE_URL } from "@/helper/InstanceAxios";
 import type { TicketMessage } from "@/types/supportTypes";
@@ -18,7 +17,12 @@ function getUserIdFromAccessToken(): string | null {
   }
 }
 
-// Extraction robuste sender id
+function getCurrentUserId(queryClient: ReturnType<typeof useQueryClient>): string | null {
+  const currentUser = queryClient.getQueryData<any>(["currentUser"]);
+  if (currentUser?.id) return String(currentUser.id);
+  return getUserIdFromAccessToken();
+}
+
 function extractSenderId(d: any): string {
   const raw =
     d?.sender_id ??
@@ -33,7 +37,6 @@ function extractSenderId(d: any): string {
   return raw ? String(raw) : "";
 }
 
-// Extraction robuste sender name (si le backend l’envoie)
 function extractSenderName(d: any): string {
   return (
     (d?.sender_name && String(d.sender_name).trim()) ||
@@ -51,7 +54,6 @@ function extractSenderName(d: any): string {
   );
 }
 
-// Extraction robuste avatar
 function extractSenderAvatar(d: any): string | null {
   return (
     d?.sender_avatar ??
@@ -71,7 +73,6 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
   const { markUnread } = useUnreadTickets();
   const [isConnected, setIsConnected] = useState(false);
 
-  // messages envoyés localement en attente de confirmation WS
   const pendingRef = useRef<
     Array<{ tempId: string; message: string; sender: string; ts: number }>
   >([]);
@@ -82,15 +83,13 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
 
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        console.warn("WS non connecté, impossible d'envoyer.");
         return false;
       }
 
       const msg = text.trim();
       if (!msg) return false;
 
-      // ✅ optimistic
-      const senderId = getUserIdFromAccessToken() ?? "me";
+      const senderId = getCurrentUserId(queryClient) ?? "me";
       const tempId = `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       const nowIso = new Date().toISOString();
 
@@ -123,13 +122,11 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
   );
 
   useEffect(() => {
-    if (!enabled) return;
-    if (!ticketId) return;
+    if (!enabled || !ticketId) return;
 
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    // ferme l'ancien socket si existant (évite double connexion en dev)
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -143,84 +140,84 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
 
     ws.onopen = () => {
       setIsConnected(true);
-      console.log("✅ SUPPORT WS connecté :", url);
     };
 
-    ws.onerror = (e) => {
+    ws.onerror = () => {
       setIsConnected(false);
-      console.log("❌ SUPPORT WS error", e);
     };
 
     ws.onclose = () => {
       setIsConnected(false);
-      console.log("🔌 SUPPORT WS fermé", ticketId);
     };
 
     ws.onmessage = (event) => {
       let payload: any;
+
       try {
         payload = JSON.parse(event.data);
       } catch {
         return;
       }
 
-      // Supporte: { event: "NEW_TICKET_MESSAGE", data: {...} }
-      // ou payload direct
       const eventName = payload?.event;
       const d = payload?.data ?? payload?.message ?? payload;
 
-      // -------- STATUS_CHANGED (optionnel)
       if (eventName === "STATUS_CHANGED") {
-        queryClient.invalidateQueries({ queryKey: ["support-ticket-detail", ticketId] });
-        queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+        queryClient.invalidateQueries({
+          queryKey: ["support-ticket-detail", ticketId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["support-tickets"],
+        });
         return;
       }
 
-      // -------- NEW MESSAGE
-      // Si ton backend n'envoie pas eventName, on tente quand même si d ressemble à un message
       const isNewMessage =
         eventName === "NEW_TICKET_MESSAGE" ||
-        (!!d?.message && (d?.ticket_id || d?.ticket || d?.id));
+        (!!d?.message && (d?.ticket_id || d?.ticket || d?.id || d?.message_id));
 
       if (!isNewMessage) return;
 
-      // ✅ FIX CRITIQUE: ne jamais injecter un message d’un autre ticket
       const incomingTicketId = String(d?.ticket_id ?? d?.ticket ?? "").trim();
+      const currentUserId = getCurrentUserId(queryClient);
+      const incomingSenderId = extractSenderId(d);
+
       if (incomingTicketId && String(incomingTicketId) !== String(ticketId)) {
-        // on peut juste marquer unread (liste), mais on n'ajoute PAS au chat ouvert
-        markUnread(String(incomingTicketId));
+        if (incomingSenderId && String(incomingSenderId) !== String(currentUserId ?? "")) {
+          markUnread(String(incomingTicketId));
+        }
+        queryClient.invalidateQueries({
+          queryKey: ["support-tickets"],
+        });
         return;
       }
 
-      // construit le message
-      const senderId = extractSenderId(d);
       const senderName = extractSenderName(d);
       const senderAvatar = extractSenderAvatar(d);
 
       const newMsg: TicketMessage = {
-        id: d.id,
+        id: d.id ?? d.message_id,
         ticket: String(d.ticket ?? d.ticket_id ?? ticketId) as any,
-        sender: (senderId || String(d.sender ?? "")) as any,
+        sender: (incomingSenderId || String(d.sender ?? "")) as any,
         sender_name: senderName || undefined,
         sender_avatar: senderAvatar || undefined,
         sender_role: d.sender_role ?? d.sender?.role ?? undefined,
         is_support: d.is_support ?? undefined,
         message: d.message,
-        created_at: d.created_at,
-        updated_at: d.updated_at,
+        created_at: d.created_at ?? new Date().toISOString(),
+        updated_at: d.updated_at ?? d.created_at ?? new Date().toISOString(),
         attachment_url: d.attachment_url ?? null,
       } as any;
 
       if (!newMsg?.id) return;
 
-      // ✅ inject dans le cache de CE ticket seulement
       queryClient.setQueryData<TicketMessage[]>(
         ticketMessagesKey(ticketId),
         (old = []) => {
-          // anti duplicate
-          if (old.some((m) => String(m.id) === String(newMsg.id))) return old;
+          if (old.some((m) => String(m.id) === String(newMsg.id))) {
+            return old;
+          }
 
-          // replace optimistic si match
           const pIndex = pendingRef.current.findIndex((p) => {
             const sameText = p.message === newMsg.message;
             const sameSender = String(p.sender) === String(newMsg.sender);
@@ -237,6 +234,13 @@ export function useTicketSocket(ticketId: string, enabled: boolean = true) {
           return [...old, newMsg];
         }
       );
+
+      queryClient.invalidateQueries({
+        queryKey: ["support-ticket-detail", ticketId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["support-tickets"],
+      });
     };
 
     return () => {

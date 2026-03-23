@@ -1,4 +1,3 @@
-// src/useQuery/support/useTicketDetail.ts
 import { useQuery } from "@tanstack/react-query";
 import { supportAPI } from "@/Actions/supportApi";
 import type { SupportTicket } from "@/types/supportTypes";
@@ -11,6 +10,7 @@ export const useTicketDetail = (ticketId: string) => {
       return res.data;
     },
     enabled: Boolean(ticketId),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: true,
   });
 };

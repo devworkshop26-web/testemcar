@@ -1,4 +1,3 @@
-// src/useQuery/support/useDeleteTicket.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supportAPI } from "@/Actions/supportApi";
 

@@ -16,7 +16,8 @@ interface NotificationMessage {
   is_read: boolean;
   reservation?: string | null;
   vehicle?: string | null;
-  target_url?: string | null;
+  vehicle_document?: string | null;
+  action_url?: string | null;
   extra_data?: Record<string, any> | null;
 }
 

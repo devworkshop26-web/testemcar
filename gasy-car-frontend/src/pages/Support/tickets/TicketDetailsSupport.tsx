@@ -1,120 +1,147 @@
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { useEffect, useMemo, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquareText } from "lucide-react";
 
+import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
 import { useTicketDetail } from "@/useQuery/support/useTicketDetail";
 import { useTicketMessages } from "@/useQuery/support/useTicketMessages";
 import { useClients } from "@/useQuery/support/useClients";
 import { useChatProfiles } from "@/useQuery/support/useChatProfiles";
-
-import { TicketHeader } from "@/pages/Support/TicketHeader";
-import { ConversationBox } from "@/components/support/ConversationBox";
-import { MessageInput } from "@/components/support/MessageInput";
 import { useTicketSocket } from "@/hooks/support/useTicketSocket";
 import { useSendMessage } from "@/useQuery/support/useSendMessage";
+
+import { SupportTicketDetailsHeader } from "@/components/support/SupportTicketDetailHeader";
+import { SupportTicketConversationPanel } from "@/components/support/SupportTicketConversationPanel";
+
 import type { User } from "@/types/userType";
 
-function getUserIdFromAccessToken(): string {
-  try {
-    const token = localStorage.getItem("access_token");
-    if (!token) return "";
-    const payload = token.split(".")[1];
-    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    return String(json.user_id ?? json.id ?? json.sub ?? "");
-  } catch {
-    return "";
-  }
-}
+import {
+  formatTicketFullDateTime,
+  getTicketRelevantDate,
+  getTicketRoleLabel,
+} from "@/features/support/supportUi";
 
 export default function TicketDetailsSupport() {
   const { id } = useParams();
-  const ticketId = id ?? "";
+  const ticketId = String(id ?? "").trim();
 
-  const myUserId = useMemo(() => getUserIdFromAccessToken(), []);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const { data: currentUser } = useCurrentUserQuery();
+  const currentUserId = String(currentUser?.id ?? "").trim();
 
   const { data: ticket, isLoading: loadingTicket } = useTicketDetail(ticketId);
-  const { data: messages, isLoading: loadingMessages } = useTicketMessages(ticketId, true);
+  const { data: messages = [], isLoading: loadingMessages } =
+    useTicketMessages(ticketId, true);
 
   const clientsQuery = useClients();
   const users = (clientsQuery.data ?? []) as User[];
 
   const senderIds = useMemo(() => {
     const ids: string[] = [];
-    for (const m of (messages ?? []) as any[]) {
+    for (const msg of messages as any[]) {
       const raw =
-        m?.sender_id ??
-        m?.sender?.id ??
-        m?.user_id ??
-        m?.user?.id ??
-        m?.sender ??
-        m?.user ??
+        msg?.sender_id ??
+        msg?.sender?.id ??
+        msg?.user_id ??
+        msg?.user?.id ??
+        msg?.sender ??
+        msg?.user ??
         "";
       if (raw) ids.push(String(raw));
     }
-    if (myUserId) ids.push(myUserId);
+    if (currentUserId) ids.push(currentUserId);
     return ids;
-  }, [messages, myUserId]);
+  }, [messages, currentUserId]);
 
-  const { byId, byEmail, isLoading: loadingProfiles } = useChatProfiles(senderIds, users);
+  const { byId, byEmail, isLoading: loadingProfiles } = useChatProfiles(
+    senderIds,
+    users
+  );
 
-  // ✅ support toujours autorisé
   const { sendMessage } = useTicketSocket(ticketId, true);
-  const { mutate: sendMessageFallback, isPending: sendingFallback } = useSendMessage();
+  const { mutate: sendMessageFallback, isPending: sendingFallback } =
+    useSendMessage();
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const loading =
+    loadingTicket || loadingMessages || clientsQuery.isLoading || loadingProfiles;
 
-  const loading = loadingTicket || loadingMessages || clientsQuery.isLoading || loadingProfiles;
-
-  if (!ticketId) return <div className="p-4 text-red-500">Ticket introuvable</div>;
+  if (!ticketId) {
+    return <div className="p-6 text-red-500">Ticket introuvable</div>;
+  }
 
   if (loading) {
     return (
-      <div className="flex justify-center p-10">
-        <Loader2 className="animate-spin" />
+      <div className="flex justify-center p-12">
+        <Loader2 className="h-7 w-7 animate-spin" />
       </div>
     );
   }
 
-  if (!ticket) return <div className="p-4">Ticket introuvable</div>;
+  if (!ticket) {
+    return <div className="p-6">Ticket introuvable</div>;
+  }
 
-  const ticketUser = users.find((u: any) => String(u?.id) === String((ticket as any)?.user)) ?? null;
+  const requester =
+    users.find((u) => String(u?.id) === String(ticket.user)) ?? null;
+  const requesterName = requester
+    ? `${requester.first_name ?? ""} ${requester.last_name ?? ""}`.trim() ||
+      requester.email ||
+      "Utilisateur"
+    : "Utilisateur";
+
+  const requesterRole = getTicketRoleLabel(requester?.role);
 
   const onSend = (text: string) => {
-    const msg = text.trim();
-    if (!msg) return;
+    const value = text.trim();
+    if (!value) return;
 
-    const sentBySocket = sendMessage(msg);
-    if (sentBySocket) {
-      setTimeout(scrollToBottom, 50);
-      return;
-    }
+    const sentBySocket = sendMessage(value);
+    if (sentBySocket) return;
 
-    sendMessageFallback(
-      { ticket: ticketId, message: msg },
-      { onSuccess: () => setTimeout(scrollToBottom, 50) }
-    );
+    sendMessageFallback({ ticket: ticketId, message: value });
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white shadow-xl">
-      <TicketHeader ticket={ticket as any} user={ticketUser} />
+    <div className="min-h-full bg-gradient-to-b from-slate-50 to-slate-100/50 p-4 md:p-6">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <SupportTicketDetailsHeader
+          ticket={ticket}
+          backHref="/support/tickets"
+          backLabel="Retour à la liste support"
+          eyebrow={`Ticket #${ticket.id.slice(0, 8)}`}
+          topBadgeLabel="Vue support"
+          requesterLabel="Demandeur"
+          requesterName={requesterName}
+          requesterSecondaryText={requesterRole}
+          contextIcon={MessageSquareText}
+          sideTitle="Suivi du ticket"
+          referenceText={`#${ticket.id.slice(0, 8)}`}
+          sideItems={[
+            {
+              label: "Dernière activité",
+              value: formatTicketFullDateTime(getTicketRelevantDate(ticket)),
+            },
+            {
+              label: "Assignation",
+              value: ticket.assigned_admin ? "Ticket assigné" : "Non assigné",
+            },
+            {
+              label: "Conseil de traitement",
+              value:
+                "Répondez dans ce fil pour centraliser les échanges et garder l’historique complet.",
+            },
+          ]}
+        />
 
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-100">
-        <ConversationBox
-          messages={messages ?? []}
-          currentUserId={myUserId}
+        <SupportTicketConversationPanel
+          title="Conversation support"
+          description="Répondez au demandeur et suivez l’historique du ticket."
+          messages={messages}
+          currentUserId={currentUserId}
           profilesById={byId}
           profilesByEmail={byEmail}
+          onSend={onSend}
+          disabled={sendingFallback}
         />
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="border-t p-3 bg-white">
-        <MessageInput disabled={sendingFallback} onSend={onSend} />
       </div>
     </div>
   );

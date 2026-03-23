@@ -1,56 +1,40 @@
-import { useParams, Link } from "react-router-dom";
-import { useEffect, useMemo, useRef } from "react";
-import { Loader2, ArrowLeft, UserIcon } from "lucide-react";
+import { useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { Loader2, MessageSquareText } from "lucide-react";
 
+import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
 import { useTicketDetail } from "@/useQuery/support/useTicketDetail";
 import { useTicketMessages } from "@/useQuery/support/useTicketMessages";
 import { useClients } from "@/useQuery/support/useClients";
 import { useChatProfiles } from "@/useQuery/support/useChatProfiles";
-
-import { ConversationBox } from "@/components/support/ConversationBox";
-import { MessageInput } from "@/components/support/MessageInput";
 import { useTicketSocket } from "@/hooks/support/useTicketSocket";
 import { useSendMessage } from "@/useQuery/support/useSendMessage";
 
+import { SupportTicketDetailsHeader } from "@/components/support/SupportTicketDetailHeader";
+import { SupportTicketConversationPanel } from "@/components/support/SupportTicketConversationPanel";
+
 import type { User } from "@/types/userType";
 
-function getUserIdFromAccessToken(): string {
-  try {
-    const token = localStorage.getItem("access_token");
-    if (!token) return "";
-    const payload = token.split(".")[1];
-    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    return String(json.user_id ?? json.id ?? json.sub ?? "");
-  } catch {
-    return "";
-  }
-}
-
-const statusColors: Record<string, string> = {
-  OPEN: "bg-blue-100/80 text-blue-700 border border-blue-200",
-  IN_PROGRESS: "bg-orange-100/80 text-orange-700 border border-orange-200",
-  RESOLVED: "bg-emerald-100/80 text-emerald-700 border border-emerald-200",
-  CLOSED: "bg-slate-100/80 text-slate-600 border border-slate-200",
-};
+import {
+  formatTicketFullDateTime,
+  getTicketRelevantDate,
+} from "@/features/support/supportUi";
 
 export default function TicketDetailsClient() {
   const { id } = useParams();
   const ticketId = String(id ?? "").trim();
 
-  const myUserId = useMemo(() => getUserIdFromAccessToken(), []);
-
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = () =>
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const { data: currentUser } = useCurrentUserQuery();
+  const currentUserId = String(currentUser?.id ?? "").trim();
 
   const { data: ticket, isLoading: loadingTicket } = useTicketDetail(ticketId);
 
   const isOwner = useMemo(() => {
-    if (!ticket || !myUserId) return false;
-    return String((ticket as any).user) === String(myUserId);
-  }, [ticket, myUserId]);
+    if (!ticket || !currentUserId) return false;
+    return String(ticket.user) === String(currentUserId);
+  }, [ticket, currentUserId]);
 
-  const { data: messages, isLoading: loadingMessages } = useTicketMessages(
+  const { data: messages = [], isLoading: loadingMessages } = useTicketMessages(
     ticketId,
     isOwner
   );
@@ -60,20 +44,20 @@ export default function TicketDetailsClient() {
 
   const senderIds = useMemo(() => {
     const ids: string[] = [];
-    for (const m of (messages ?? []) as any[]) {
+    for (const msg of messages as any[]) {
       const raw =
-        m?.sender_id ??
-        m?.sender?.id ??
-        m?.user_id ??
-        m?.user?.id ??
-        m?.sender ??
-        m?.user ??
+        msg?.sender_id ??
+        msg?.sender?.id ??
+        msg?.user_id ??
+        msg?.user?.id ??
+        msg?.sender ??
+        msg?.user ??
         "";
       if (raw) ids.push(String(raw));
     }
-    if (myUserId) ids.push(myUserId);
+    if (currentUserId) ids.push(currentUserId);
     return ids;
-  }, [messages, myUserId]);
+  }, [messages, currentUserId]);
 
   const { byId, byEmail, isLoading: loadingProfiles } = useChatProfiles(
     senderIds,
@@ -81,30 +65,31 @@ export default function TicketDetailsClient() {
   );
 
   const { sendMessage } = useTicketSocket(ticketId, isOwner);
-  const { mutate: sendMessageFallback, isPending: sendingFallback } = useSendMessage();
+  const { mutate: sendMessageFallback, isPending: sendingFallback } =
+    useSendMessage();
 
-  useEffect(() => {
-    if (isOwner) scrollToBottom();
-  }, [isOwner, messages]);
-
-  if (!ticketId) return <div className="p-4 text-red-500">Ticket introuvable</div>;
+  if (!ticketId) {
+    return <div className="p-6 text-red-500">Ticket introuvable</div>;
+  }
 
   if (loadingTicket || clientsQuery.isLoading) {
     return (
-      <div className="flex justify-center p-10">
-        <Loader2 className="animate-spin" />
+      <div className="flex justify-center p-12">
+        <Loader2 className="h-7 w-7 animate-spin" />
       </div>
     );
   }
 
-  if (!ticket) return <div className="p-4">Ticket introuvable</div>;
+  if (!ticket) {
+    return <div className="p-6">Ticket introuvable</div>;
+  }
 
   if (!isOwner) {
     return (
       <div className="p-6">
-        <div className="rounded-xl border bg-white p-4">
+        <div className="rounded-3xl border border-red-200 bg-white p-6">
           <p className="font-semibold text-red-600">Accès refusé</p>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="mt-2 text-sm text-slate-600">
             Ce ticket ne vous appartient pas.
           </p>
         </div>
@@ -114,104 +99,63 @@ export default function TicketDetailsClient() {
 
   if (loadingMessages || loadingProfiles) {
     return (
-      <div className="flex justify-center p-10">
-        <Loader2 className="animate-spin" />
+      <div className="flex justify-center p-12">
+        <Loader2 className="h-7 w-7 animate-spin" />
       </div>
     );
   }
 
+  const me = users.find((u) => String(u.id) === String(currentUserId)) ?? null;
+  const myName = me
+    ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim()
+    : "Vous";
+
   const onSend = (text: string) => {
-    const msg = text.trim();
-    if (!msg) return;
+    const value = text.trim();
+    if (!value) return;
 
-    const sentBySocket = sendMessage(msg);
-    if (sentBySocket) {
-      setTimeout(scrollToBottom, 50);
-      return;
-    }
+    const sentBySocket = sendMessage(value);
+    if (sentBySocket) return;
 
-    sendMessageFallback(
-      { ticket: ticketId, message: msg },
-      { onSuccess: () => setTimeout(scrollToBottom, 50) }
-    );
+    sendMessageFallback({ ticket: ticketId, message: value });
   };
 
-  // ✅ si tu veux afficher le nom du client (toi) :
-  const me = users.find((u) => String(u.id) === String(myUserId)) ?? null;
-  const myName = me ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() : "";
-
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white shadow-xl">
-      {/* ✅ HEADER DU TICKET (AJOUTÉ) */}
-      <div className="p-4 border-b bg-white">
-        <Link
-          to="/client/supports/my-tickets"
-          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour
-        </Link>
+    <div className="min-h-full bg-gradient-to-b from-slate-50 to-slate-100/50 p-4 md:p-6">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <SupportTicketDetailsHeader
+          ticket={ticket}
+          backHref="/client/supports/my-tickets"
+          backLabel="Retour à mes tickets"
+          eyebrow="Ticket support"
+          requesterLabel="Créé par"
+          requesterName={myName || "Vous"}
+          contextIcon={MessageSquareText}
+          sideTitle="Référence"
+          referenceText={`#${ticket.id.slice(0, 8)}`}
+          sideItems={[
+            {
+              label: "Dernière activité",
+              value: formatTicketFullDateTime(getTicketRelevantDate(ticket)),
+            },
+            {
+              label: "Conseil",
+              value:
+                "Répondez directement dans la conversation pour garder tout l’historique au même endroit.",
+            },
+          ]}
+        />
 
-        <div className="mt-4 rounded-2xl border bg-gradient-to-br from-white to-slate-50 p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-xl font-bold truncate">{(ticket as any).title}</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Créé le{" "}
-                {new Date((ticket as any).created_at).toLocaleDateString("fr-FR")}
-              </p>
-            </div>
-
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                statusColors[(ticket as any).status] ?? statusColors.OPEN
-              }`}
-            >
-              {String((ticket as any).status ?? "OPEN").replace("_", " ")}
-            </span>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3 p-3 rounded-xl bg-slate-100/60">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Ticket créé par</p>
-              <p className="text-sm font-semibold truncate">
-                {myName || "Vous"}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <p className="text-xs uppercase tracking-widest font-semibold text-muted-foreground">
-              Description
-            </p>
-            <p className="text-sm mt-1 text-foreground/80 whitespace-pre-wrap">
-              {(ticket as any).description}
-            </p>
-          </div>
-
-          <p className="mt-4 text-xs text-muted-foreground font-mono">
-            #{String((ticket as any).id).slice(0, 8)}
-          </p>
-        </div>
-      </div>
-
-      {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-100">
-        <ConversationBox
-          messages={messages ?? []}
-          currentUserId={myUserId}
+        <SupportTicketConversationPanel
+          title="Conversation"
+          description="Suivez l’évolution du ticket et échangez avec le support."
+          messages={messages}
+          currentUserId={currentUserId}
           profilesById={byId}
           profilesByEmail={byEmail}
+          onSend={onSend}
+          disabled={sendingFallback}
         />
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* INPUT */}
-      <div className="border-t p-3 bg-white">
-        <MessageInput disabled={sendingFallback} onSend={onSend} />
       </div>
     </div>
   );

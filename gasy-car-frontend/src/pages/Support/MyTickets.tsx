@@ -1,227 +1,187 @@
-import { useSupportQuery } from "@/useQuery/supportUseQuery";
-import { useQueryClient } from "@tanstack/react-query";
-import { User } from "@/types/userType";
-
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-
-import { Loader2, MessageSquare, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useMySupportTickets } from "@/useQuery/support/useMySupportTickets";
+import { Loader2, MessageSquare, Plus } from "lucide-react";
+
 import { useUnreadTickets } from "@/hooks/support/useUnreadTickets";
 import { useTicketsListSocket } from "@/hooks/support/useTicketsListSocket";
 
+import { Button } from "@/components/ui/button";
+import { TicketCard } from "@/components/support/TicketCard";
+import { SupportStatsCards } from "@/components/support/SupportStatsCard";
+import { SupportTicketFilters } from "@/components/support/SupportTicketFilter";
+import { SupportEmptyState } from "@/components/support/SupportEmptyState";
+
+import { isTicketMatchingDateFilter } from "@/features/support/supportUi";
+
 export default function MyTickets() {
-  // ---------------------------
-  // Hooks (toujours tout en haut)
-  // ---------------------------
-  const queryClient = useQueryClient();
-  const currentUser = queryClient.getQueryData<User>(["currentUser"]);
-  const { ticketsData } = useSupportQuery();
+  const { tickets: myTickets, isLoading } = useMySupportTickets();
   const { unreadTickets } = useUnreadTickets();
-useTicketsListSocket();
+
+  useTicketsListSocket();
 
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+
   const itemsPerPage = 6;
 
-  // ---------------------------
-  // Loading
-  // ---------------------------
-  if (!ticketsData) {
+  const filteredTickets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return myTickets.filter((ticket) => {
+      const matchesSearch =
+        !q ||
+        ticket.title.toLowerCase().includes(q) ||
+        ticket.description.toLowerCase().includes(q) ||
+        String(ticket.id).toLowerCase().includes(q);
+
+      const matchesDate = isTicketMatchingDateFilter(ticket, dateFilter);
+      const matchesStatus =
+        statusFilter === "all" || ticket.status === statusFilter;
+
+      return matchesSearch && matchesDate && matchesStatus;
+    });
+  }, [myTickets, search, dateFilter, statusFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, dateFilter, statusFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTickets.length / itemsPerPage)
+  );
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * itemsPerPage;
+  const paginatedTickets = filteredTickets.slice(start, start + itemsPerPage);
+
+  const stats = useMemo(() => {
+    return [
+      {
+        label: "Total tickets",
+        value: myTickets.length,
+      },
+      {
+        label: "En cours",
+        value: myTickets.filter(
+          (t) => t.status === "OPEN" || t.status === "IN_PROGRESS"
+        ).length,
+        valueClassName: "text-blue-700",
+      },
+      {
+        label: "Résolus / fermés",
+        value: myTickets.filter(
+          (t) => t.status === "RESOLVED" || t.status === "CLOSED"
+        ).length,
+        valueClassName: "text-emerald-700",
+      },
+      {
+        label: "Nouveaux messages",
+        value: myTickets.filter((t) => unreadTickets.includes(t.id)).length,
+        valueClassName: "text-rose-700",
+      },
+    ];
+  }, [myTickets, unreadTickets]);
+
+  if (isLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
       </div>
     );
   }
 
-  // ---------------------------
-  // Data filtering (NO HOOKS INSIDE)
-  // ---------------------------
-
-  // 1. Tickets du user
-  const myTickets = ticketsData.filter((t) => t.user === currentUser?.id);
-
-  // 2. Filtre search
-  let filtered = myTickets.filter((t) =>
-    t.title.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // 3. Filtre date
-  filtered = filtered.filter((ticket) => {
-    if (!dateFilter) return true;
-
-    const created = new Date(ticket.created_at);
-    const now = new Date();
-
-    if (dateFilter === "today") {
-      return created.toDateString === now.toDateString;
-    }
-
-    if (dateFilter === "week") {
-      const weekAgo = new Date();
-      weekAgo.setDate(now.getDate() - 7);
-      return created >= weekAgo;
-    }
-
-    if (dateFilter === "month") {
-      return (
-        created.getMonth() === now.getMonth() &&
-        created.getFullYear() === now.getFullYear()
-      );
-    }
-
-    if (dateFilter === "year") {
-      return created.getFullYear() === now.getFullYear();
-    }
-
-    return true;
-  });
-
-  // ---------------------------
-  // Pagination
-  // ---------------------------
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const start = (page - 1) * itemsPerPage;
-  const paginated = filtered.slice(start, start + itemsPerPage);
-
-  // ---------------------------
-  // RENDER
-  // ---------------------------
   return (
-    <div className="p-4 space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Mes tickets</h2>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/40 p-4 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
+          <div className="h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500" />
 
-        <Link to="/client/supports/create">
-          <Button>+ Nouveau Ticket</Button>
-        </Link>
-      </div>
+          <div className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+            <div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                <MessageSquare className="h-3.5 w-3.5" />
+                Espace support client
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                Mes tickets
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-slate-600 md:text-base">
+                Suivez vos demandes d’assistance, consultez les réponses du
+                support et gardez tout votre historique au même endroit.
+              </p>
+            </div>
 
-      {/* SEARCH & DATE FILTER */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Rechercher un ticket..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            <Link to="/client/supports/create">
+              <Button className="h-12 gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 text-white hover:from-blue-700 hover:to-indigo-700">
+                <Plus className="h-4 w-4" />
+                Nouveau ticket
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <SupportStatsCards items={stats} />
+
+        <SupportTicketFilters
+          search={search}
+          onSearchChange={setSearch}
+          dateFilter={dateFilter}
+          onDateFilterChange={setDateFilter}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          searchPlaceholder="Rechercher par titre ou description..."
+        />
+
+        {filteredTickets.length === 0 ? (
+          <SupportEmptyState
+            title="Aucun ticket trouvé"
+            description="Essayez de modifier vos filtres ou créez une nouvelle demande."
           />
-        </div>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+            {paginatedTickets.map((ticket) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                href={`/client/supports/ticket/${ticket.id}`}
+                unread={unreadTickets.includes(ticket.id)}
+                variant="client"
+                actionLabel="Voir"
+              />
+            ))}
+          </div>
+        )}
 
-        {/* Date filter */}
-        <Select
-          onValueChange={(v) => {
-            setPage(1);
-            setDateFilter(v);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Période" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Aujourd’hui</SelectItem>
-            <SelectItem value="week">Cette semaine</SelectItem>
-            <SelectItem value="month">Ce mois</SelectItem>
-            <SelectItem value="year">Cette année</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* EMPTY STATE */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
-          Aucun ticket trouvé.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {paginated.map((ticket) => (
-            <Card
-              key={ticket.id}
-              className="shadow-sm hover:shadow-md transition rounded-xl"
+        {filteredTickets.length > itemsPerPage && (
+          <div className="flex flex-col items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row">
+            <Button
+              variant="outline"
+              className="rounded-xl border-slate-200"
+              disabled={safePage === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              <CardContent className="p-4 flex items-start gap-4">
-                {/* Icon */}
-                <div className="w-12 h-12 bg-blue-600 text-white flex items-center justify-center rounded-xl">
-                  <MessageSquare />
-                </div>
+              ← Précédent
+            </Button>
 
-                {/* Content */}
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-lg">
-                    {ticket.title}
+            <div className="text-sm text-slate-500">
+              Page <span className="font-semibold text-slate-900">{safePage}</span>{" "}
+              sur <span className="font-semibold text-slate-900">{totalPages}</span>
+            </div>
 
-                    {unreadTickets.includes(ticket.id) && (
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-600 text-white">
-                        Nouveau
-                      </span>
-                    )}
-                  </h3>
-
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {ticket.description}
-                  </p>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">
-                      {new Date(ticket.created_at).toLocaleDateString()}
-                    </span>
-
-                    <Link
-                      to={`/client/supports/ticket/${ticket.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Voir
-                    </Link>
-
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* PAGINATION */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-3 mt-6">
-          <Button
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage(page - 1)}
-          >
-            ← Précédent
-          </Button>
-
-          <span>
-            Page {page} / {totalPages}
-          </span>
-
-          <Button
-            variant="outline"
-            disabled={page === totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            Suivant →
-          </Button>
-        </div>
-      )}
+            <Button
+              variant="outline"
+              className="rounded-xl border-slate-200"
+              disabled={safePage === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Suivant →
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

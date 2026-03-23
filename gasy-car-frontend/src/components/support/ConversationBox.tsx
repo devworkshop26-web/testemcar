@@ -2,10 +2,11 @@
 
 import type React from "react";
 import { useEffect, useRef } from "react";
-import type { TicketMessage } from "@/types/supportTypes";
-import type { User } from "@/types/userType";
+import { Paperclip, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InstanceAxis } from "@/helper/InstanceAxios";
+import type { TicketMessage } from "@/types/supportTypes";
+import type { User } from "@/types/userType";
 
 interface Props {
   messages: TicketMessage[];
@@ -60,19 +61,27 @@ export const ConversationBox: React.FC<Props> = ({
     return raw ? String(raw).trim().toLowerCase() : "";
   };
 
-  const formatTime = (value: any) => {
+  const formatTime = (value: string) => {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  const initials = (name: string) => (name?.trim()?.[0] ?? "U").toUpperCase();
+  const initials = (name: string) => {
+    const parts = (name || "U").trim().split(" ").filter(Boolean);
+    return `${parts[0]?.[0] ?? "U"}${parts[1]?.[0] ?? ""}`.toUpperCase();
+  };
 
   const resolveProfile = (msg: any) => {
     const senderId = getSenderId(msg);
     const senderEmail = getSenderEmail(msg);
 
-    // 1) backend fournit direct
     const directName = msg?.sender_name ? String(msg.sender_name).trim() : "";
     const directAvatar = msg?.sender_avatar ?? null;
 
@@ -83,7 +92,6 @@ export const ConversationBox: React.FC<Props> = ({
       };
     }
 
-    // 2) resolve via maps
     let u: any = null;
 
     if (senderId && looksLikeEmail(senderId)) u = profilesByEmail[senderId.toLowerCase()] ?? null;
@@ -97,9 +105,11 @@ export const ConversationBox: React.FC<Props> = ({
       };
     }
 
-    // 3) fallback propre (pas email)
-    const isSupport = !!(msg?.is_support || msg?.sender_role === "SUPPORT");
-    return { name: isSupport ? "Support" : "Utilisateur", avatar: null };
+    const isSupport = msg?.sender_role === "SUPPORT" || msg?.sender_role === "ADMIN" || msg?.is_support;
+    return {
+      name: isSupport ? "Support" : "Utilisateur",
+      avatar: null,
+    };
   };
 
   useEffect(() => {
@@ -107,46 +117,88 @@ export const ConversationBox: React.FC<Props> = ({
   }, [messages]);
 
   return (
-    <div className="space-y-3 overflow-x-hidden">
+    <div className="space-y-4">
       {messages.map((msg: any, idx: number) => {
         const senderId = getSenderId(msg);
         const isMine = senderId && String(senderId) === String(currentUserId);
-
-        const p = resolveProfile(msg);
+        const profile = resolveProfile(msg);
+        const isSupport = msg?.sender_role === "SUPPORT" || msg?.sender_role === "ADMIN" || msg?.is_support;
 
         return (
           <div
             key={String(msg?.id ?? `msg-${idx}`)}
-            className={cn("flex w-full animate-slide-up", isMine ? "justify-end" : "justify-start")}
+            className={cn("flex w-full", isMine ? "justify-end" : "justify-start")}
           >
-            <div
-              className={cn(
-                "rounded-2xl px-4 py-3 max-w-[70%] text-sm shadow-sm break-words overflow-hidden whitespace-pre-wrap",
-                isMine
-                  ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-br-sm"
-                  : "bg-card border border-border text-foreground rounded-bl-sm"
-              )}
-            >
-              <div className="flex items-center gap-2 mb-1">
+            <div className={cn("max-w-[85%] md:max-w-[75%]", isMine ? "items-end" : "items-start")}>
+              <div className={cn("mb-1 flex items-center gap-2 px-1", isMine ? "justify-end" : "justify-start")}>
                 {!isMine && (
-                  <div className="w-7 h-7 rounded-full bg-muted overflow-hidden flex items-center justify-center shrink-0">
-                    {p.avatar ? (
-                      <img src={p.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-bold text-slate-700">
+                    {profile.avatar ? (
+                      <img src={profile.avatar} alt={profile.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xs font-bold">{initials(p.name)}</span>
+                      initials(profile.name)
                     )}
                   </div>
                 )}
-                <p className={cn("text-xs font-semibold", isMine ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                  {isMine ? "Vous" : p.name}
-                </p>
+
+                <span className="text-xs font-semibold text-slate-700">
+                  {isMine ? "Vous" : profile.name}
+                </span>
+
+                {isSupport && !isMine && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-700">
+                    <Shield className="h-3 w-3" />
+                    Support
+                  </span>
+                )}
+
+                {msg?.is_internal && (
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+                    Interne
+                  </span>
+                )}
               </div>
 
-              <p className="break-words whitespace-pre-wrap max-w-full font-medium">{msg?.message}</p>
+              <div
+                className={cn(
+                  "overflow-hidden rounded-3xl border px-4 py-3 shadow-sm",
+                  isMine
+                    ? "rounded-br-md border-blue-600 bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
+                    : "rounded-bl-md border-slate-200 bg-white text-slate-900"
+                )}
+              >
+                <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                  {msg?.message}
+                </p>
 
-              <p className={cn("text-xs mt-2 pt-2 border-t", isMine ? "border-primary/30 text-primary-foreground/70" : "border-border text-muted-foreground")}>
-                {formatTime(msg?.created_at)}
-              </p>
+                {msg?.attachment_url && (
+                  <a
+                    href={msg.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      "mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium",
+                      isMine
+                        ? "bg-white/15 text-white hover:bg-white/20"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    )}
+                  >
+                    <Paperclip className="h-3.5 w-3.5" />
+                    Pièce jointe
+                  </a>
+                )}
+
+                <div
+                  className={cn(
+                    "mt-3 border-t pt-2 text-[11px]",
+                    isMine
+                      ? "border-white/15 text-white/80"
+                      : "border-slate-200 text-slate-500"
+                  )}
+                >
+                  {formatTime(msg?.created_at)}
+                </div>
+              </div>
             </div>
           </div>
         );

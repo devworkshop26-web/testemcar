@@ -30,7 +30,8 @@ type AppNotification = {
   created_at: string;
   reservation?: string | null;
   vehicle?: string | null;
-  target_url?: string | null;
+  vehicle_document?: string | null;
+  action_url?: string | null;
   extra_data?: Record<string, any> | null;
 };
 
@@ -76,6 +77,7 @@ const NotificationBell = () => {
 
     if (user.role === "SUPPORT") {
       navigate(`/support/reservations/${reservationId}`);
+      return;
     }
   };
 
@@ -105,8 +107,8 @@ const NotificationBell = () => {
       markRead.mutate(notification.id);
     }
 
-    if (notification.target_url) {
-      navigate(notification.target_url);
+    if (notification.action_url) {
+      navigate(notification.action_url);
       setIsOpen(false);
       return;
     }

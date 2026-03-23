@@ -1,31 +1,41 @@
-// src/Actions/supportApi.ts
 import { InstanceAxis } from "@/helper/InstanceAxios";
+import type {
+  CreateSupportTicketPayload,
+  CreateTicketMessagePayload,
+} from "@/types/supportTypes";
+
+type TicketQueryParams = Record<string, string | number | boolean | undefined>;
 
 export const supportAPI = {
-  // Tous les tickets
-  get_all_tickets: () => InstanceAxis.get("/support/support-tickets/"),
+  get_all_tickets: (params?: TicketQueryParams) =>
+    InstanceAxis.get("/support/support-tickets/", { params }),
 
-  // Détail d’un ticket
   get_ticket_detail: (id: string) =>
     InstanceAxis.get(`/support/support-tickets/${id}/`),
 
-  // Messages d’un ticket (filtrés)
-  get_ticket_messages: (ticketId: string) =>
-    InstanceAxis.get(`/support/tickets-message/?ticket=${ticketId}`),
+  get_ticket_messages: (
+    ticketId: string,
+    params?: Record<string, string | number | boolean | undefined>
+  ) =>
+    InstanceAxis.get("/support/tickets-message/", {
+      params: {
+        ticket: ticketId,
+        ...params,
+      },
+    }),
 
-  // Créer un ticket
-  create_ticket: (payload: any) =>
+  create_ticket: (payload: CreateSupportTicketPayload) =>
     InstanceAxis.post("/support/support-tickets/", payload),
 
-  // Modifier un ticket
-  update_ticket: (id: string, payload: any) =>
+  update_ticket: (id: string, payload: Record<string, unknown>) =>
     InstanceAxis.patch(`/support/support-tickets/${id}/`, payload),
 
-  // Créer un message
-  create_message: (payload: any) =>
+  resolve_ticket: (id: string) =>
+    InstanceAxis.post(`/support/support-tickets/${id}/resolve/`),
+
+  create_message: (payload: CreateTicketMessagePayload) =>
     InstanceAxis.post("/support/tickets-message/", payload),
 
-  // ⭐ SUPPRESSION — manquait dans ton code ⭐
   delete_ticket: (id: string) =>
     InstanceAxis.delete(`/support/support-tickets/${id}/`),
 };

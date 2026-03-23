@@ -1,40 +1,60 @@
-"use client"
+"use client";
 
-import { useParams } from "react-router-dom"
-import { useRef, useEffect, useMemo } from "react"
+import { useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { Car, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { useTicketDetail } from "@/useQuery/support/useTicketDetail"
-import { useTicketMessages } from "@/useQuery/support/useTicketMessages"
-import { useSendMessage } from "@/useQuery/support/useSendMessage"
-import { useAllUsers } from "@/useQuery/useAllUsers"
-import type { User } from "@/types/userType"
-import { useChatProfiles } from "@/useQuery/support/useChatProfiles"
-import { useQueryClient } from "@tanstack/react-query"
+import { useCurrentUserQuery } from "@/useQuery/useCurrentUserQuery";
+import { useTicketDetail } from "@/useQuery/support/useTicketDetail";
+import { useTicketMessages } from "@/useQuery/support/useTicketMessages";
+import { useSendMessage } from "@/useQuery/support/useSendMessage";
+import { useAllUsers } from "@/useQuery/useAllUsers";
+import { useChatProfiles } from "@/useQuery/support/useChatProfiles";
+import { useTicketSocket } from "@/hooks/support/useTicketSocket";
 
-import { Loader2 } from "lucide-react"
-import { TicketHeader } from "@/pages/Support/TicketHeader"
-import { ConversationBox } from "@/components/support/ConversationBox"
-import { MessageInput } from "@/components/support/MessageInput"
-import { useTicketSocket } from "@/hooks/support/useTicketSocket"
+import { SupportTicketDetailsHeader } from "@/components/support/SupportTicketDetailHeader";
+import { SupportTicketConversationPanel } from "@/components/support/SupportTicketConversationPanel";
+
+import type { User } from "@/types/userType";
+
+import {
+  formatTicketFullDateTime,
+  getTicketRelevantDate,
+} from "@/features/support/supportUi";
 
 export default function TicketDetailsPrestataire() {
-  const { id } = useParams()
-  const ticketId = String(id ?? "").trim()
-  const queryClient = useQueryClient()
-  const currentUser = queryClient.getQueryData<User>(["currentUser"])
-  const currentUserId = String(currentUser?.id ?? "").trim()
+  const { id } = useParams();
+  const ticketId = String(id ?? "").trim();
 
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  const queryClient = useQueryClient();
+  const cachedUser = queryClient.getQueryData<User>(["currentUser"]);
 
-  const { data: ticket, isLoading: loadingTicket } = useTicketDetail(ticketId)
-  const { data: messages, isLoading: loadingMessages } = useTicketMessages(ticketId)
-  const { data: users } = useAllUsers()
-  const { mutate: sendMessage, isPending: sending } = useSendMessage()
+  const { data: currentUser } = useCurrentUserQuery();
+  const currentUserId = String(currentUser?.id ?? cachedUser?.id ?? "").trim();
+
+  const { data: ticket, isLoading: loadingTicket } = useTicketDetail(ticketId);
+
+  const isOwner = useMemo(() => {
+    if (!ticket || !currentUserId) return false;
+    return String(ticket.user) === String(currentUserId);
+  }, [ticket, currentUserId]);
+
+  const { data: messages = [], isLoading: loadingMessages } = useTicketMessages(
+    ticketId,
+    isOwner
+  );
+
+  const { data: users } = useAllUsers();
+  const allUsers = (users ?? []) as User[];
+
+  const { mutate: sendMessageFallback, isPending: sending } =
+    useSendMessage();
+  const { sendMessage } = useTicketSocket(ticketId, isOwner);
 
   const senderIds = useMemo(() => {
-    const ids: string[] = []
-    for (const msg of (messages ?? []) as any[]) {
+    const ids: string[] = [];
+    for (const msg of messages as any[]) {
       const raw =
         msg?.sender_id ??
         msg?.sender?.id ??
@@ -42,83 +62,102 @@ export default function TicketDetailsPrestataire() {
         msg?.user?.id ??
         msg?.sender ??
         msg?.user ??
-        ""
-      if (raw) ids.push(String(raw))
+        "";
+      if (raw) ids.push(String(raw));
     }
-    if (currentUserId) ids.push(currentUserId)
-    return ids
-  }, [messages, currentUserId])
+    if (currentUserId) ids.push(currentUserId);
+    return ids;
+  }, [messages, currentUserId]);
 
   const { byId, byEmail, isLoading: loadingProfiles } = useChatProfiles(
     senderIds,
-    (users ?? []) as User[]
-  )
+    allUsers
+  );
 
-  const loading = loadingTicket || loadingMessages || loadingProfiles
+  const loading = loadingTicket || loadingMessages || loadingProfiles;
 
-  useEffect(() => scrollToBottom(), [messages])
-
-  const ticketUser = useMemo(() => {
-    if (!ticket || !users) return null
-    return (users as User[]).find((u) => u.id === ticket.user) || null
-  }, [ticket, users])
-
-  const onSend = (text: string) => {
-    if (!text.trim()) return
-    sendMessage({ ticket: ticketId, message: text }, { onSuccess: () => setTimeout(scrollToBottom, 50) })
+  if (!ticketId) {
+    return <div className="p-6 text-red-500">Ticket introuvable</div>;
   }
 
-  useTicketSocket(ticketId)
-
-  if (!ticketId)
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3">
-          <div className="text-red-500 text-lg font-semibold">Ticket introuvable</div>
-          <p className="text-sm text-muted-foreground">Impossible de charger ce ticket support</p>
+      <div className="flex justify-center p-12">
+        <Loader2 className="h-7 w-7 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!ticket) {
+    return <div className="p-6">Ticket introuvable</div>;
+  }
+
+  if (!isOwner) {
+    return (
+      <div className="p-6">
+        <div className="rounded-3xl border border-red-200 bg-white p-6">
+          <p className="font-semibold text-red-600">Accès refusé</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Ce ticket ne vous appartient pas.
+          </p>
         </div>
       </div>
-    )
+    );
+  }
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="animate-spin text-primary w-8 h-8" />
-          <p className="text-sm text-muted-foreground">Chargement du ticket...</p>
-        </div>
-      </div>
-    )
+  const me =
+    allUsers.find((u) => String(u.id) === String(currentUserId)) ?? null;
+  const myName = me
+    ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim()
+    : "Vous";
 
-  if (!ticket)
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3">
-          <div className="text-lg font-semibold text-foreground">Ticket introuvable</div>
-          <p className="text-sm text-muted-foreground">Ce ticket n'existe pas ou a été supprimé</p>
-        </div>
-      </div>
-    )
+  const onSend = (text: string) => {
+    const value = text.trim();
+    if (!value) return;
+
+    const sentBySocket = sendMessage(value);
+    if (sentBySocket) return;
+
+    sendMessageFallback({ ticket: ticketId, message: value });
+  };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-muted/10 rounded-2xl border border-border/50 shadow-sm">
-      <div className="border-b border-border/50 p-6 bg-background/50 backdrop-blur-sm animate-fade-in">
-        <TicketHeader ticket={ticket} user={ticketUser} />
-      </div>
+    <div className="min-h-full bg-gradient-to-b from-slate-50 to-slate-100/50 p-4 md:p-6">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <SupportTicketDetailsHeader
+          ticket={ticket}
+          backHref="/prestataire/supports/my-tickets"
+          backLabel="Retour à mes tickets"
+          eyebrow="Ticket support prestataire"
+          requesterLabel="Créé par"
+          requesterName={myName}
+          contextIcon={Car}
+          sideTitle="Référence"
+          referenceText={`#${ticket.id.slice(0, 8)}`}
+          sideItems={[
+            {
+              label: "Dernière activité",
+              value: formatTicketFullDateTime(getTicketRelevantDate(ticket)),
+            },
+            {
+              label: "Astuce",
+              value:
+                "Gardez toutes les réponses dans ce fil pour faciliter le suivi du support.",
+            },
+          ]}
+        />
 
-      <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-background/50 to-muted/5 space-y-4">
-        <ConversationBox
-          messages={messages ?? []}
-          currentUserId={currentUserId || String(ticket.user ?? "")}
+        <SupportTicketConversationPanel
+          title="Conversation"
+          description="Retrouvez ici les échanges entre vous et le support."
+          messages={messages}
+          currentUserId={currentUserId}
           profilesById={byId}
           profilesByEmail={byEmail}
+          onSend={onSend}
+          disabled={sending}
         />
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="border-t border-border/50 p-6 bg-background/50 backdrop-blur-sm">
-        <MessageInput disabled={sending} onSend={onSend} />
       </div>
     </div>
-  )
+  );
 }

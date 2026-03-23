@@ -1,25 +1,27 @@
-// src/useQuery/support/useSendMessage.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supportAPI } from "@/Actions/supportApi";
-import { useCurentuser } from "@/useQuery/authUseQuery";
+
+type SendMessagePayload = {
+  ticket: string;
+  message: string;
+  attachment_url?: string;
+  is_internal?: boolean;
+};
 
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
-  const { user } = useCurentuser(); // <<< UTILISER LE BON HOOK
 
   return useMutation({
-    mutationFn: async (payload: { ticket: string; message: string }) => {
-      if (!user?.id) {
-        throw new Error("Utilisateur non authentifié — sender manquant");
-      }
-
+    mutationFn: async (payload: SendMessagePayload) => {
       const body = {
-        message: payload.message,
         ticket: payload.ticket,
-        sender: user.id, // <<< MAINTENANT OK POUR SUPPORT + CLIENT
+        message: payload.message,
+        attachment_url: payload.attachment_url ?? "",
+        ...(payload.is_internal ? { is_internal: true } : {}),
       };
 
-      return supportAPI.create_message(body);
+      const res = await supportAPI.create_message(body);
+      return res.data;
     },
 
     onSuccess: (_data, variables) => {
@@ -29,7 +31,9 @@ export const useSendMessage = () => {
       queryClient.invalidateQueries({
         queryKey: ["support-ticket-detail", variables.ticket],
       });
-      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      queryClient.invalidateQueries({
+        queryKey: ["support-tickets"],
+      });
     },
   });
 };

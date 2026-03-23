@@ -63,11 +63,12 @@ export default function CreateTicketClient() {
         setIsLoading(true);
 
         const payload = {
-            ...form,
-            user: currentUser.id,
-            assigned_admin: null,
+            title: form.title,
+            description: form.description,
+            ticket_type: form.ticket_type,
+            priority: form.priority,
             reservation: scope === "RESERVATION" ? form.reservation : null,
-            vehicule: null, // Client never links vehicle
+            vehicule: null,
         };
 
         createTicketMutation.mutate(payload, {
@@ -118,7 +119,7 @@ export default function CreateTicketClient() {
 
                 <div className="space-y-1">
                     <Label className="text-xs font-semibold text-slate-600 uppercase">Concerne</Label>
-                    <Select 
+                    <Select
                         value={scope}
                         onValueChange={(v) => {
                             setScope(v as TicketScope);

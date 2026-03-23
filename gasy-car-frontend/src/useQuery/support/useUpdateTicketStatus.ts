@@ -1,7 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { InstanceAxis } from "@/helper/InstanceAxios";
 
 export function useUpdateTicketStatus() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({
       ticketId,
@@ -13,5 +15,14 @@ export function useUpdateTicketStatus() {
       InstanceAxis.patch(`/support/support-tickets/${ticketId}/`, {
         status,
       }),
+
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["support-tickets"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["support-ticket-detail", variables.ticketId],
+      });
+    },
   });
 }
