@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
+  AlertCircle,
   ArrowRight,
   CheckCircle2,
   Crown,
@@ -35,7 +36,7 @@ type LoyaltyHistoryItem = {
   title: string;
   date: string;
   points: number;
-  status: "earned" | "redeemed" | "pending";
+  status: "earned" | "redeemed" | "pending" | "cancelled";
   description: string;
 };
 
@@ -66,12 +67,15 @@ export type LoyaltyProgramContentProps = {
   history: LoyaltyHistoryItem[];
   tiers: LoyaltyTier[];
   actions: LoyaltyAction[];
+  isLoading?: boolean;
+  isError?: boolean;
 };
 
 const historyStatusStyles: Record<LoyaltyHistoryItem["status"], string> = {
   earned: "bg-emerald-50 text-emerald-700 border-emerald-200",
   redeemed: "bg-amber-50 text-amber-700 border-amber-200",
   pending: "bg-slate-100 text-slate-600 border-slate-200",
+  cancelled: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
 export function LoyaltyProgramContent({
@@ -88,6 +92,8 @@ export function LoyaltyProgramContent({
   history,
   tiers,
   actions,
+  isLoading = false,
+  isError = false,
 }: LoyaltyProgramContentProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -187,11 +193,30 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Mes mouvements fidélité</CardTitle>
                 <CardDescription>
-                  Un aperçu frontend des points gagnés, en attente et utilisés.
+                  Historique synchronisé entre le frontend et le backend fidélité.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {history.map((item) => (
+                {isLoading && (
+                  <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+                    Chargement des mouvements fidélité…
+                  </div>
+                )}
+
+                {!isLoading && isError && (
+                  <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Impossible de charger les données fidélité depuis le backend.</span>
+                  </div>
+                )}
+
+                {!isLoading && !isError && history.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+                    Aucun mouvement fidélité pour le moment. Terminez une location ou laissez un avis pour commencer.
+                  </div>
+                )}
+
+                {!isLoading && !isError && history.map((item) => (
                   <div
                     key={item.id}
                     className="flex flex-col gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -209,7 +234,9 @@ export function LoyaltyProgramContent({
                             ? "gagné"
                             : item.status === "redeemed"
                               ? "utilisé"
-                              : "en attente"}
+                              : item.status === "cancelled"
+                                ? "annulé"
+                                : "en attente"}
                         </span>
                       </div>
                       <p className="text-sm text-slate-500">{item.description}</p>
@@ -219,10 +246,14 @@ export function LoyaltyProgramContent({
                       <p
                         className={cn(
                           "text-lg font-bold",
-                          item.points >= 0 ? "text-emerald-600" : "text-amber-600"
+                          item.points > 0
+                            ? "text-emerald-600"
+                            : item.points < 0
+                              ? "text-amber-600"
+                              : "text-slate-500"
                         )}
                       >
-                        {item.points >= 0 ? "+" : ""}
+                        {item.points > 0 ? "+" : ""}
                         {item.points} pts
                       </p>
                     </div>
@@ -262,7 +293,7 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Niveaux du programme</CardTitle>
                 <CardDescription>
-                  Une présentation claire des paliers, réutilisable ensuite avec les vraies données backend.
+                  Paliers calculés automatiquement à partir des points réellement synchronisés.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -313,7 +344,7 @@ export function LoyaltyProgramContent({
             <CardHeader>
               <CardTitle className="text-xl font-bold text-slate-900">Comment gagner des points ?</CardTitle>
               <CardDescription>
-                Version frontend uniquement, prête à être branchée au backend plus tard.
+                Cette section est maintenant connectée à la logique backend réelle.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -325,18 +356,18 @@ export function LoyaltyProgramContent({
                 },
                 {
                   title: "Laisser un avis vérifié",
-                  description: "Un bonus fidélité peut récompenser les retours utiles après une location.",
+                  description: "Un bonus fidélité est créé dès qu’un avis est publié, puis synchronisé avec la modération.",
                   icon: <Star className="h-4 w-4" />,
                 },
                 {
-                  title: "Parrainer un ami",
-                  description: "Invitez un proche et débloquez des points lorsqu’il réalise sa première location.",
-                  icon: <Users className="h-4 w-4" />,
+                  title: "Compléter votre profil",
+                  description: "Un bonus ponctuel est accordé quand le profil client est entièrement complété.",
+                  icon: <CheckCircle2 className="h-4 w-4" />,
                 },
                 {
-                  title: "Compléter votre profil",
-                  description: "Documents validés et compte complété peuvent ouvrir des bonus ponctuels.",
-                  icon: <CheckCircle2 className="h-4 w-4" />,
+                  title: "Progression automatique",
+                  description: "Le niveau est recalculé automatiquement depuis les données backend disponibles.",
+                  icon: <Users className="h-4 w-4" />,
                 },
               ].map((rule) => (
                 <div key={rule.title} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
@@ -356,15 +387,15 @@ export function LoyaltyProgramContent({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl font-bold">
                 <Sparkles className="h-5 w-5" />
-                Prochaine étape
+                Communication frontend/backend
               </CardTitle>
               <CardDescription className="text-white/80">
-                Quand le backend sera prêt, cette page pourra afficher les vrais soldes et l’historique réel.
+                Cette page consomme désormais les vraies données de fidélité exposées par le backend.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl bg-white/10 p-4 text-sm leading-6 text-white/85">
-                En attendant, cette interface permet déjà de valider l’emplacement du bouton, le design et l’expérience client sans supprimer les éléments existants.
+                La communication est OK : le frontend récupère maintenant le solde, l’historique et les niveaux via les API fidélité.
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button asChild className="rounded-xl bg-white text-primary hover:bg-white/90">
