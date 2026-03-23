@@ -52,6 +52,12 @@ type LoyaltyAction = {
   variant?: "default" | "outline";
 };
 
+type LoyaltyRule = {
+  title: string;
+  description: string;
+  enabled: boolean;
+};
+
 export type LoyaltyProgramContentProps = {
   title: string;
   subtitle: string;
@@ -66,6 +72,7 @@ export type LoyaltyProgramContentProps = {
   history: LoyaltyHistoryItem[];
   tiers: LoyaltyTier[];
   actions: LoyaltyAction[];
+  earningRules: LoyaltyRule[];
 };
 
 const historyStatusStyles: Record<LoyaltyHistoryItem["status"], string> = {
@@ -88,6 +95,7 @@ export function LoyaltyProgramContent({
   history,
   tiers,
   actions,
+  earningRules,
 }: LoyaltyProgramContentProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -123,9 +131,13 @@ export function LoyaltyProgramContent({
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">Progression vers {nextTierLabel}</p>
+                    <p className="text-sm font-semibold text-white">
+                      {pointsToNextTier > 0 ? `Progression vers ${nextTierLabel}` : "Palier maximal atteint"}
+                    </p>
                     <p className="text-xs text-white/65">
-                      Encore {pointsToNextTier} points pour débloquer le prochain niveau.
+                      {pointsToNextTier > 0
+                        ? `Encore ${pointsToNextTier} points pour débloquer le prochain niveau.`
+                        : "Vous êtes déjà au niveau le plus élevé du programme."}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-amber-300">{Math.round(progress)}%</p>
@@ -187,7 +199,7 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Mes mouvements fidélité</CardTitle>
                 <CardDescription>
-                  Un aperçu frontend des points gagnés, en attente et utilisés.
+                  Vos mouvements fidélité calculés depuis le backend.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -237,7 +249,7 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Pourquoi accumuler des points ?</CardTitle>
                 <CardDescription>
-                  Des blocs réutilisables pour expliquer simplement la fidélité dans l’espace client.
+                  Les avantages visibles dépendent de votre progression réelle dans le programme.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -262,7 +274,7 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Niveaux du programme</CardTitle>
                 <CardDescription>
-                  Une présentation claire des paliers, réutilisable ensuite avec les vraies données backend.
+                  Les paliers sont calculés automatiquement selon votre total de points.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -313,42 +325,38 @@ export function LoyaltyProgramContent({
             <CardHeader>
               <CardTitle className="text-xl font-bold text-slate-900">Comment gagner des points ?</CardTitle>
               <CardDescription>
-                Version frontend uniquement, prête à être branchée au backend plus tard.
+                Règles actuellement prises en compte par le backend fidélité.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                {
-                  title: "Réserver et terminer une location",
-                  description: "Les points sont crédités quand la location se termine correctement.",
-                  icon: <Trophy className="h-4 w-4" />,
-                },
-                {
-                  title: "Laisser un avis vérifié",
-                  description: "Un bonus fidélité peut récompenser les retours utiles après une location.",
-                  icon: <Star className="h-4 w-4" />,
-                },
-                {
-                  title: "Parrainer un ami",
-                  description: "Invitez un proche et débloquez des points lorsqu’il réalise sa première location.",
-                  icon: <Users className="h-4 w-4" />,
-                },
-                {
-                  title: "Compléter votre profil",
-                  description: "Documents validés et compte complété peuvent ouvrir des bonus ponctuels.",
-                  icon: <CheckCircle2 className="h-4 w-4" />,
-                },
-              ].map((rule) => (
-                <div key={rule.title} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    {rule.icon}
+              {earningRules.map((rule) => {
+                const icon = rule.title.includes("location")
+                  ? <Trophy className="h-4 w-4" />
+                  : rule.title.includes("avis")
+                    ? <Star className="h-4 w-4" />
+                    : rule.title.includes("Parrainer")
+                      ? <Users className="h-4 w-4" />
+                      : <CheckCircle2 className="h-4 w-4" />;
+
+                return (
+                  <div key={rule.title} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      {icon}
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-slate-900">{rule.title}</p>
+                        {!rule.enabled && (
+                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                            Hors périmètre
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">{rule.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-slate-900">{rule.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">{rule.description}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
 
@@ -359,12 +367,12 @@ export function LoyaltyProgramContent({
                 Prochaine étape
               </CardTitle>
               <CardDescription className="text-white/80">
-                Quand le backend sera prêt, cette page pourra afficher les vrais soldes et l’historique réel.
+                Cette page affiche désormais vos soldes, niveaux et historiques calculés depuis le backend.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl bg-white/10 p-4 text-sm leading-6 text-white/85">
-                En attendant, cette interface permet déjà de valider l’emplacement du bouton, le design et l’expérience client sans supprimer les éléments existants.
+                Le parrainage reste volontairement hors scope pour l’instant, mais le reste du programme fidélité est maintenant connecté.
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button asChild className="rounded-xl bg-white text-primary hover:bg-white/90">
