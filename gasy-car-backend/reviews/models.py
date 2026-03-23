@@ -69,6 +69,19 @@ class Review(models.Model):
         help_text="True si l'avis est lié à une réservation réellement effectuée.",
     )
 
+    class ModerationStatus(models.TextChoices):
+        PENDING = "PENDING", "En attente"
+        APPROVED = "APPROVED", "Approuvé"
+        REJECTED = "REJECTED", "Rejeté"
+
+    moderation_status = models.CharField(
+        max_length=20,
+        choices=ModerationStatus.choices,
+        default=ModerationStatus.PENDING,
+        db_index=True,
+        help_text="Statut de modération par le support avant publication.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

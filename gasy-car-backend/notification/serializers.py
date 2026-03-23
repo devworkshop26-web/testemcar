@@ -1,13 +1,25 @@
-# serialisers.py
 from rest_framework import serializers
-# models
-from .models import Notification,TicketNotification
+from .models import Notification, TicketNotification
+
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ['id', 'notification_type', 'title', 'body', 'is_read', 'created_at', 'reservation']
-        read_only_fields = ['id', 'created_at']
+        fields = [
+            "id",
+            "notification_type",
+            "title",
+            "body",
+            "is_read",
+            "created_at",
+            "read_at",
+            "reservation",
+            "vehicle",
+            "vehicle_document",
+            "action_url",
+            "extra_data",
+        ]
+        read_only_fields = ["id", "created_at", "read_at"]
 
 
 class TicketNotificationSerializer(serializers.ModelSerializer):

@@ -10,6 +10,7 @@ export interface Review {
   rating: number; // 1 à 5
   comment: string;
   is_verified: boolean;
+  moderation_status: "PENDING" | "APPROVED" | "REJECTED";
   created_at: string;
   updated_at: string;
 }
@@ -26,4 +27,8 @@ export interface CreateReviewPayload {
 export interface UpdateReviewPayload {
   rating?: number;
   comment?: string;
+}
+
+export interface ModerateReviewPayload {
+  moderation_status: "PENDING" | "APPROVED" | "REJECTED";
 }

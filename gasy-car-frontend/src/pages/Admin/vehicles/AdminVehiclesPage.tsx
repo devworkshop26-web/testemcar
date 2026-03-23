@@ -1,10 +1,12 @@
-// src/pages/admin/vehicles/AdminVehiclesPage.tsx
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueries } from "@tanstack/react-query";
+import { useState } from "react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,48 +16,123 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { AdminPageShell } from "@/components/admin/AdminPageShell"
-import { useVehiculesQuery, useDeleteVehiculeMutation } from "@/useQuery/vehiculeUseQuery"
-import { useToast } from "@/components/ui/use-toast"
-import { Eye, Edit, Trash2, Plus, Loader2 } from "lucide-react"
-import { Vehicule } from "@/types/vehiculeType"
+} from "@/components/ui/alert-dialog";
+
+import { AdminPageShell } from "@/components/admin/AdminPageShell";
+import { useVehiculesQuery, useDeleteVehiculeMutation } from "@/useQuery/vehiculeUseQuery";
+import { useToast } from "@/components/ui/use-toast";
+import { Eye, Edit, Trash2, Plus, Loader2, Clock3, CheckCircle2, XCircle, FileWarning } from "lucide-react";
+import { Vehicule } from "@/types/vehiculeType";
+import { vehiculeAPI } from "@/Actions/vehiculeApi";
 
 export function AdminVehiclesPage() {
-  const navigate = useNavigate()
-  const { toast } = useToast()
-  const { data: vehicles = [], isLoading, isFetching } = useVehiculesQuery()
-  const deleteMutation = useDeleteVehiculeMutation()
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: vehicles = [], isLoading, isFetching } = useVehiculesQuery();
+  const deleteMutation = useDeleteVehiculeMutation();
 
-  
-  
-  const [vehicleToDelete, setVehicleToDelete] = useState<Vehicule | null>(null)
+  const detailQueries = useQueries({
+    queries: (vehicles || []).map((vehicle) => ({
+      queryKey: ["vehicule-one", vehicle.id],
+      queryFn: async () => (await vehiculeAPI.get_one_vehicule(vehicle.id)).data,
+      enabled: !!vehicle.id,
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    })),
+  });
+
+  const detailedById = useMemo(() => {
+    const map = new Map<string, Vehicule>();
+    for (const q of detailQueries) {
+      if (q.data?.id) map.set(q.data.id, q.data);
+    }
+    return map;
+  }, [detailQueries]);
+
+  const [vehicleToDelete, setVehicleToDelete] = useState<Vehicule | null>(null);
 
   const handleDelete = async () => {
-    if (!vehicleToDelete) return
+    if (!vehicleToDelete) return;
 
     try {
-      await deleteMutation.mutateAsync(vehicleToDelete.id)
+      await deleteMutation.mutateAsync(vehicleToDelete.id);
       toast({
         title: "Véhicule supprimé",
         description: "Le véhicule a été supprimé avec succès.",
-      })
-      setVehicleToDelete(null)
-    } catch (error) {
+      });
+      setVehicleToDelete(null);
+    } catch {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le véhicule.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
-  const getStatusBadge = (vehicle: Vehicule) => {
-    if (vehicle.est_disponible) {
-      return <Badge className="bg-emerald-100 text-emerald-700">Disponible</Badge>
+  const getWorkflowBadge = (vehicle: Vehicule) => {
+    const detail = detailedById.get(vehicle.id);
+    const workflow = detail?.workflow_status;
+
+    if (workflow === "PENDING_REVIEW") {
+      return (
+        <Badge className="bg-amber-100 text-amber-700 gap-1">
+          <Clock3 className="h-3.5 w-3.5" />
+          En attente
+        </Badge>
+      );
     }
-    return <Badge className="bg-gray-100 text-gray-700">Indisponible</Badge>
-  }
+
+    if (workflow === "PUBLISHED") {
+      return (
+        <Badge className="bg-emerald-100 text-emerald-700 gap-1">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Publié
+        </Badge>
+      );
+    }
+
+    if (workflow === "REJECTED") {
+      return (
+        <Badge className="bg-red-100 text-red-700 gap-1">
+          <XCircle className="h-3.5 w-3.5" />
+          Rejeté
+        </Badge>
+      );
+    }
+
+    return <Badge className="bg-slate-100 text-slate-700">Brouillon</Badge>;
+  };
+
+  const getDocsBadge = (vehicle: Vehicule) => {
+    const detail = detailedById.get(vehicle.id);
+
+    if (!detail) {
+      return <Badge variant="outline">Chargement…</Badge>;
+    }
+
+    if (!detail.documents_complete) {
+      return (
+        <Badge className="bg-orange-100 text-orange-700 gap-1">
+          <FileWarning className="h-3.5 w-3.5" />
+          Incomplets
+        </Badge>
+      );
+    }
+
+    if (!detail.documents_validated) {
+      return <Badge className="bg-slate-100 text-slate-700">À vérifier</Badge>;
+    }
+
+    return <Badge className="bg-indigo-100 text-indigo-700">Validés</Badge>;
+  };
+
+  const getAvailabilityBadge = (vehicle: Vehicule) => {
+    if (vehicle.est_disponible) {
+      return <Badge className="bg-emerald-100 text-emerald-700">Disponible</Badge>;
+    }
+    return <Badge className="bg-gray-100 text-gray-700">Indisponible</Badge>;
+  };
 
   return (
     <AdminPageShell
@@ -72,6 +149,7 @@ export function AdminVehiclesPage() {
         <CardHeader>
           <CardTitle>Véhicules listés ({vehicles.length})</CardTitle>
         </CardHeader>
+
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center items-center py-8">
@@ -91,30 +169,36 @@ export function AdminVehiclesPage() {
                   </div>
                 </div>
               )}
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Véhicule</TableHead>
                       <TableHead>Marque/Modèle</TableHead>
-                      <TableHead>Année</TableHead>
                       <TableHead>Ville</TableHead>
                       <TableHead>Prix/Jour</TableHead>
-                      <TableHead>Statut</TableHead>
+                      <TableHead>Disponibilité</TableHead>
+                      <TableHead>Workflow</TableHead>
+                      <TableHead>Documents</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
                     {vehicles.map((vehicle) => (
                       <TableRow key={vehicle.id}>
                         <TableCell className="font-medium">{vehicle.titre}</TableCell>
                         <TableCell>
-                          {vehicle.marque?.nom || "N/A"} {vehicle.modele?.label || ""}
+                          {vehicle.marque_data?.nom || "N/A"} {vehicle.modele_data?.label || ""}
                         </TableCell>
-                        <TableCell>{vehicle.annee}</TableCell>
-                        <TableCell>{vehicle.ville}</TableCell>
-                        <TableCell>{vehicle.prix_jour} {vehicle.devise}</TableCell>
-                        <TableCell>{getStatusBadge(vehicle)}</TableCell>
+                        <TableCell>{vehicle.ville || "—"}</TableCell>
+                        <TableCell>
+                          {vehicle.prix_jour} {vehicle.devise}
+                        </TableCell>
+                        <TableCell>{getAvailabilityBadge(vehicle)}</TableCell>
+                        <TableCell>{getWorkflowBadge(vehicle)}</TableCell>
+                        <TableCell>{getDocsBadge(vehicle)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -124,6 +208,7 @@ export function AdminVehiclesPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+
                             <Button
                               variant="ghost"
                               size="sm"
@@ -131,6 +216,7 @@ export function AdminVehiclesPage() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+
                             <Button
                               variant="ghost"
                               size="sm"
@@ -151,7 +237,6 @@ export function AdminVehiclesPage() {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!vehicleToDelete} onOpenChange={() => setVehicleToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -161,6 +246,7 @@ export function AdminVehiclesPage() {
               Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
@@ -181,6 +267,5 @@ export function AdminVehiclesPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AdminPageShell>
-  )
+  );
 }
-

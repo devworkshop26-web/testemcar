@@ -29,7 +29,7 @@ import AdminVehicleEquipments from "@/pages/Admin/vehicles/AdminVehicleEquipment
 import AdminReservationsPage from "@/pages/Admin/reservation/AdminReservation";
 import { AdminReservationDetail } from "@/pages/Admin/reservation";
 
-import { Routes, Route } from "react-router-dom";
+import { Route } from "react-router-dom";
 import { PrivateRoute } from "./PrivateRoute";
 import AdminCreateVehiculePage from "@/pages/Admin/vehicles/AdminCreateVehiculePage";
 import AdminEditVehiculePage from "@/pages/Admin/vehicles/AdminEditVehiculePage";
@@ -40,20 +40,13 @@ import AdminUpdateBlogPage from "@/pages/Admin/AdminUpdateBlogPage";
 export const AdminRoutes = () => {
   return (
     <>
-      {/* PROTECTION TOTALE DE L'ADMIN */}
       <Route element={<PrivateRoute allowedRoles={["ADMIN"]} />}>
         <Route path="/admin" element={<LayoutAdmin />}>
-
-          {/* Dashboard */}
           <Route index element={<AdminDashboardPage />} />
 
-          {/* Inbox */}
           <Route path="inbox" element={<AdminInboxPage />} />
-
-          {/* Analytics */}
           <Route path="analytics" element={<AdminAnalyticsPage />} />
 
-          {/* Users */}
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="users/clients" element={<AdminClientsPage />} />
           <Route path="users/owners" element={<AdminOwnersPage />} />
@@ -62,18 +55,14 @@ export const AdminRoutes = () => {
           <Route path="users/drivers/:id/edit" element={<AdminDriverEditPage />} />
           <Route path="users/support" element={<AdminSupportUsersPage />} />
 
-          {/* Vehicles */}
           <Route path="vehicles" element={<AdminVehiclesPage />} />
           <Route path="vehicles/create" element={<AdminCreateVehiculePage />} />
           <Route path="vehicles/:id" element={<AdminVehicleDetailPage />} />
-          <Route path="vehicles/:id" element={<AdminVehicleDetailPage />} />
           <Route path="vehicles/:id/edit" element={<AdminEditVehiculePage />} />
-          <Route path="vehicles/certifications" element={<AdminVehicleCertificationsPage />} />
           <Route path="vehicles/certifications" element={<AdminVehicleCertificationsPage />} />
           <Route path="vehicles/maintenance" element={<AdminVehicleMaintenancePage />} />
           <Route path="vehicles/disputes" element={<AdminVehicleDisputesPage />} />
 
-          {/* VEHICLE SETTINGS BAR */}
           <Route path="vehicles/marques" element={<AdminMarquesPage />} />
           <Route path="vehicles/categories" element={<AdminCategoriesPage />} />
           <Route path="vehicles/transmissions" element={<AdminTransmissionsPage />} />
@@ -83,21 +72,17 @@ export const AdminRoutes = () => {
           <Route path="vehicles/equipements" element={<AdminVehicleEquipments />} />
           <Route path="vehicles/equipements/:id" element={<AdminVehicleEquipments />} />
 
-          {/* Create Vehicule */}
           <Route path="vehcule-create" element={<AdminCreateVehiculePage />} />
 
-          {/* Actions */}
           <Route path="marketing" element={<AdminMarketingPage />} />
           <Route path="reservations" element={<AdminReservationsPage />} />
           <Route path="reservations/:id" element={<AdminReservationDetail />} />
 
-          {/* Platform */}
           <Route path="mode-payments" element={<AdminModePaymentsPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="trust-safety" element={<AdminTrustSafetyPage />} />
 
-          {/* blogs */}
           <Route path="blogs" element={<AdminBlogPage />} />
           <Route path="blogs/new" element={<AdminAddBlogPage />} />
           <Route path="blogs/edit/:id" element={<AdminUpdateBlogPage />} />
@@ -105,4 +90,4 @@ export const AdminRoutes = () => {
       </Route>
     </>
   );
-}
+};

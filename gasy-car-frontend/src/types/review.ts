@@ -7,6 +7,7 @@ export interface Review {
     rating: number;
     comment: string;
     is_verified: boolean;
+    moderation_status: "PENDING" | "APPROVED" | "REJECTED";
     created_at: string;
     updated_at: string;
     // Expanded fields if backend sends them (check serializer)

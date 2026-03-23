@@ -1,8 +1,11 @@
 import uuid
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from rest_framework import permissions, serializers, status, viewsets
@@ -13,6 +16,7 @@ from rest_framework.views import APIView
 
 from drf_yasg.utils import swagger_auto_schema
 
+from notification.models import Notification
 from reservations.models import Reservation
 from users.models import User
 from users.serializers import UserProfileSerializer
@@ -57,324 +61,158 @@ from .serializers import (
 )
 
 
+STAFF_ROLES = ["ADMIN", "SUPPORT"]
+
+
+def is_staff_user(user):
+    return bool(
+        user
+        and user.is_authenticated
+        and (getattr(user, "role", None) in STAFF_ROLES or user.is_staff)
+    )
+
+
+def build_vehicle_action_url(user, vehicle):
+    role = getattr(user, "role", None)
+
+    if role == "ADMIN":
+        return f"/admin/vehicles/{vehicle.id}"
+    if role == "SUPPORT":
+        return f"/support/fleet/vehicule/{vehicle.id}"
+    if role == "PRESTATAIRE" and vehicle.proprietaire_id == user.id:
+        return f"/prestataire/vehicle/{vehicle.id}/manage"
+    return f"/vehicule/{vehicle.id}"
+
+
+def push_notification(notification):
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    payload = {
+        "id": str(notification.id),
+        "title": notification.title,
+        "body": notification.body,
+        "notification_type": notification.notification_type,
+        "created_at": notification.created_at.isoformat(),
+        "is_read": notification.is_read,
+        "reservation": str(notification.reservation_id) if notification.reservation_id else None,
+        "vehicle": str(notification.vehicle_id) if notification.vehicle_id else None,
+        "vehicle_document": str(notification.vehicle_document_id) if notification.vehicle_document_id else None,
+        "action_url": notification.action_url,
+        "extra_data": notification.extra_data or {},
+    }
+
+    async_to_sync(channel_layer.group_send)(
+        f"user_{notification.user_id}",
+        {
+            "type": "notification_message",
+            "message": payload,
+        },
+    )
+
+
+def notify_users(users, notification_type, title, body, vehicle=None, vehicle_document=None, action_url_builder=None, extra_data=None):
+    for user in users:
+        action_url = ""
+        if callable(action_url_builder):
+            action_url = action_url_builder(user)
+
+        notif = Notification.objects.create(
+            user=user,
+            notification_type=notification_type,
+            title=title,
+            body=body,
+            vehicle=vehicle,
+            vehicle_document=vehicle_document,
+            action_url=action_url,
+            extra_data=extra_data or {},
+        )
+        push_notification(notif)
+
+
+def filter_publicly_visible(qs):
+    return qs.filter(
+        valide=True,
+        workflow_status=Vehicule.WorkflowStatus.PUBLISHED,
+        documents__is_valide=True,
+    ).distinct()
+
+
+def reset_vehicle_review_state(vehicle):
+    vehicle.valide = False
+    vehicle.workflow_status = Vehicule.WorkflowStatus.DRAFT
+    vehicle.review_comment = ""
+    vehicle.reviewed_by = None
+    vehicle.reviewed_at = None
+    vehicle.submitted_at = None
+    vehicle.published_at = None
+    vehicle.save(
+        update_fields=[
+            "valide",
+            "workflow_status",
+            "review_comment",
+            "reviewed_by",
+            "reviewed_at",
+            "submitted_at",
+            "published_at",
+            "updated_at",
+        ]
+    )
+
+
 class MarqueViewSet(viewsets.ModelViewSet):
     queryset = Marque.objects.all().order_by("-created_at")
     serializer_class = MarqueSerializer
-
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des marques",
-        responses={200: MarqueSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Crée une nouvelle marque",
-        request_body=MarqueSerializer,
-        responses={201: MarqueSerializer},
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Récupère une marque par son ID",
-        responses={200: MarqueSerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour une marque",
-        request_body=MarqueSerializer,
-        responses={200: MarqueSerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement une marque",
-        request_body=MarqueSerializer,
-        responses={200: MarqueSerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime une marque",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by("-created_at")
     serializer_class = CategorySerializer
 
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des catégories",
-        responses={200: CategorySerializer(many=True)},
-    )
     def list(self, request, *args, **kwargs):
         self.serializer_class = FastCategorySerializer
         return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Crée une nouvelle catégorie",
-        request_body=CategorySerializer,
-        responses={201: CategorySerializer},
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Récupère une catégorie par son ID",
-        responses={200: CategorySerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour une catégorie",
-        request_body=CategorySerializer,
-        responses={200: CategorySerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement une catégorie",
-        request_body=CategorySerializer,
-        responses={200: CategorySerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime une catégorie",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
 
 
 class TransmissionViewSet(viewsets.ModelViewSet):
     queryset = Transmission.objects.all().order_by("-created_at")
     serializer_class = TransmissionSerializer
 
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des transmissions",
-        responses={200: TransmissionSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Crée une nouvelle transmission",
-        request_body=TransmissionSerializer,
-        responses={201: TransmissionSerializer},
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Récupère une transmission par son ID",
-        responses={200: TransmissionSerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour une transmission",
-        request_body=TransmissionSerializer,
-        responses={200: TransmissionSerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement une transmission",
-        request_body=TransmissionSerializer,
-        responses={200: TransmissionSerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime une transmission",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-
 
 class FuelTypeViewSet(viewsets.ModelViewSet):
     queryset = FuelType.objects.all().order_by("-created_at")
     serializer_class = FuelTypeSerializer
-
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des types de carburant",
-        responses={200: FuelTypeSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Crée un nouveau type de carburant",
-        request_body=FuelTypeSerializer,
-        responses={201: FuelTypeSerializer},
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Récupère un type de carburant par son ID",
-        responses={200: FuelTypeSerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour un type de carburant",
-        request_body=FuelTypeSerializer,
-        responses={200: FuelTypeSerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement un type de carburant",
-        request_body=FuelTypeSerializer,
-        responses={200: FuelTypeSerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime un type de carburant",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
 
 
 class StatusViewSet(viewsets.ModelViewSet):
     queryset = StatusVehicule.objects.all().order_by("-created_at")
     serializer_class = StatusSerializer
 
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des statuts",
-        responses={200: StatusSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Crée un nouveau statut",
-        request_body=StatusSerializer,
-        responses={201: StatusSerializer},
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Récupère un statut par son ID",
-        responses={200: StatusSerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour un statut",
-        request_body=StatusSerializer,
-        responses={200: StatusSerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement un statut",
-        request_body=StatusSerializer,
-        responses={200: StatusSerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime un statut",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-
 
 class ModeleVehiculeViewSet(viewsets.ModelViewSet):
     queryset = ModeleVehicule.objects.all().order_by("-created_at")
     serializer_class = ModeleVehiculeSerializer
 
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des modèles de véhicule",
-        responses={200: ModeleVehiculeSerializer(many=True)},
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Crée un nouveau modèle de véhicule",
-        request_body=ModeleVehiculeSerializer,
-        responses={201: ModeleVehiculeSerializer},
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Récupère un modèle de véhicule par son ID",
-        responses={200: ModeleVehiculeSerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour un modèle de véhicule",
-        request_body=ModeleVehiculeSerializer,
-        responses={200: ModeleVehiculeSerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement un modèle de véhicule",
-        request_body=ModeleVehiculeSerializer,
-        responses={200: ModeleVehiculeSerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime un modèle de véhicule",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-
 
 class VehiculeApiViewSet(viewsets.ModelViewSet):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
+    def get_permissions(self):
+        if self.action in ["list", "retrieve", "public_list"]:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
     def get_serializer_class(self):
-        if self.action == "list":
+        if self.action in ["list", "review_queue", "public_list"]:
             return VehiculeCardSerializer
         return VehiculeSerializer
 
     def get_queryset(self):
-        base_qs = (
+        return (
             Vehicule.objects.all()
             .annotate(_reservation_count=Count("reservations", distinct=True))
-            .order_by("-created_at")
-        )
-
-        if self.action in ["retrieve", "update", "partial_update"]:
-            return base_qs.select_related(
+            .select_related(
                 "proprietaire",
                 "marque",
                 "modele",
@@ -383,37 +221,16 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
                 "type_carburant",
                 "statut",
                 "driver",
-            ).prefetch_related(
+                "reviewed_by",
+            )
+            .prefetch_related(
                 "photos",
                 "equipements",
                 "availabilities",
                 "pricing_grid",
+                "documents",
             )
-
-        return base_qs.select_related("marque", "modele").prefetch_related(
-            models.Prefetch(
-                "photos",
-                queryset=VehiclePhoto.objects.only("id", "vehicle", "image", "is_primary"),
-            ),
-            models.Prefetch(
-                "pricing_grid",
-                queryset=VehiclePricing.objects.only("id", "vehicle", "zone_type", "prix_jour"),
-            ),
-        ).only(
-            "id",
-            "titre",
-            "marque",
-            "modele",
-            "annee",
-            "nombre_places",
-            "note_moyenne",
-            "nombre_locations",
-            "est_certifie",
-            "est_disponible",
-            "est_sponsorise",
-            "est_coup_de_coeur",
-            "ville",
-            "created_at",
+            .order_by("-created_at")
         )
 
     @staticmethod
@@ -424,12 +241,62 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
                 item.nombre_locations = int(computed)
         return items
 
-    @swagger_auto_schema(
-        operation_description="Récupère la liste des véhicules. Filtres: ?type_vehicule=UTILITAIRE ou TOURISME",
-        responses={200: VehiculeListSerializer(many=True)},
-    )
+    def _can_manage_vehicle(self, user, vehicle):
+        if is_staff_user(user):
+            return True
+        return bool(user.is_authenticated and vehicle.proprietaire_id == user.id)
+
+    def _staff_users(self):
+        return User.objects.filter(Q(role="ADMIN") | Q(role="SUPPORT") | Q(is_staff=True)).distinct()
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+
+        type_vehicule = request.query_params.get("type_vehicule")
+        if type_vehicule:
+            queryset = queryset.filter(type_vehicule=type_vehicule)
+
+        est_sponsorise = request.query_params.get("est_sponsorise")
+        if est_sponsorise is not None:
+            queryset = queryset.filter(
+                est_sponsorise=str(est_sponsorise).lower() in ["1", "true", "yes"]
+            )
+
+        est_disponible = request.query_params.get("est_disponible")
+        if est_disponible is not None:
+            queryset = queryset.filter(
+                est_disponible=str(est_disponible).lower() in ["1", "true", "yes"]
+            )
+
+        est_coup_de_coeur = request.query_params.get("est_coup_de_coeur")
+        if est_coup_de_coeur is not None:
+            queryset = queryset.filter(
+                est_coup_de_coeur=str(est_coup_de_coeur).lower() in ["1", "true", "yes"]
+            )
+
+        valide = request.query_params.get("valide")
+        if valide is not None:
+            queryset = queryset.filter(
+                valide=str(valide).lower() in ["1", "true", "yes"]
+            )
+
+        workflow_status = request.query_params.get("workflow_status")
+        if workflow_status:
+            queryset = queryset.filter(workflow_status=workflow_status)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            page = self._attach_reservation_count(page)
+            serializer = self.get_serializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+
+        queryset = self._attach_reservation_count(queryset)
+        serializer = self.get_serializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="public-list", permission_classes=[permissions.AllowAny])
+    def public_list(self, request):
+        queryset = filter_publicly_visible(self.get_queryset())
 
         type_vehicule = request.query_params.get("type_vehicule")
         if type_vehicule:
@@ -456,54 +323,86 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
         page = self.paginate_queryset(queryset)
         if page is not None:
             page = self._attach_reservation_count(page)
-            serializer = self.get_serializer(page, many=True)
+            serializer = VehiculeCardSerializer(page, many=True, context={"request": request})
             return self.get_paginated_response(serializer.data)
 
         queryset = self._attach_reservation_count(queryset)
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = VehiculeCardSerializer(queryset, many=True, context={"request": request})
         return Response(serializer.data)
 
-    @swagger_auto_schema(
-        operation_description="Crée un nouveau véhicule",
-        request_body=VehiculeSerializer,
-        responses={201: VehiculeSerializer},
-    )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
 
-    @swagger_auto_schema(
-        operation_description="Récupère un véhicule par son ID",
-        responses={200: VehiculeSerializer},
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        vehicle_id = response.data.get("id")
+        if vehicle_id:
+            vehicle = Vehicule.objects.select_related("proprietaire").get(id=vehicle_id)
+            staff_users = self._staff_users()
 
-    @swagger_auto_schema(
-        operation_description="Met à jour un véhicule",
-        request_body=VehiculeSerializer,
-        responses={200: VehiculeSerializer},
-    )
-    def update(self, request, *args, **kwargs):
-        kwargs["partial"] = True
-        return super().update(request, *args, **kwargs)
+            notify_users(
+                staff_users,
+                notification_type=Notification.NotificationType.VEHICLE,
+                title="Nouveau véhicule créé",
+                body=f"Le prestataire {vehicle.proprietaire.full_name or vehicle.proprietaire.email} a créé le véhicule « {vehicle.titre} ».",
+                vehicle=vehicle,
+                action_url_builder=lambda user: build_vehicle_action_url(user, vehicle),
+                extra_data={"event": "VEHICLE_CREATED"},
+            )
 
-    @swagger_auto_schema(
-        operation_description="Met à jour partiellement un véhicule",
-        request_body=VehiculeSerializer,
-        responses={200: VehiculeSerializer},
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Supprime un véhicule",
-        responses={204: "Deleted"},
-    )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        return response
 
     def perform_create(self, serializer):
-        serializer.save(proprietaire=self.request.user)
+        serializer.save(
+            proprietaire=self.request.user,
+            valide=False,
+            workflow_status=Vehicule.WorkflowStatus.DRAFT,
+            review_comment="",
+            reviewed_by=None,
+            reviewed_at=None,
+            submitted_at=None,
+            published_at=None,
+            est_certifie=False,
+            est_sponsorise=False,
+            est_coup_de_coeur=False,
+        )
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, context={"request": request})
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._can_manage_vehicle(request.user, instance):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        kwargs["partial"] = True
+        response = super().update(request, *args, **kwargs)
+
+        if not is_staff_user(request.user):
+            instance.refresh_from_db()
+            reset_vehicle_review_state(instance)
+
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._can_manage_vehicle(request.user, instance):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        response = super().partial_update(request, *args, **kwargs)
+
+        if not is_staff_user(request.user):
+            instance.refresh_from_db()
+            if any(k in request.data for k in ["titre", "description", "conditions_particulieres", "marque", "modele", "categorie", "transmission", "type_carburant", "statut", "annee", "numero_immatriculation", "numero_serie"]):
+                reset_vehicle_review_state(instance)
+
+        return response
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._can_manage_vehicle(request.user, instance):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
     def _sync_vehicle_favorites_count(self, vehicle_id):
         total = VehiculeFavorite.objects.filter(vehicle_id=vehicle_id).count()
@@ -582,6 +481,234 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(detail=False, methods=["get"], url_path="review-queue", permission_classes=[permissions.IsAuthenticated])
+    def review_queue(self, request):
+        if not is_staff_user(request.user):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = self.get_queryset()
+
+        workflow_status = request.query_params.get("workflow_status")
+        if workflow_status:
+            queryset = queryset.filter(workflow_status=workflow_status)
+
+        valide = request.query_params.get("valide")
+        if valide is not None:
+            queryset = queryset.filter(valide=str(valide).lower() in ["1", "true", "yes"])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            page = self._attach_reservation_count(page)
+            serializer = VehiculeCardSerializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+
+        queryset = self._attach_reservation_count(queryset)
+        serializer = VehiculeCardSerializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="submit-for-review", permission_classes=[permissions.IsAuthenticated])
+    def submit_for_review(self, request, pk=None):
+        vehicle = self.get_object()
+
+        if vehicle.proprietaire_id != request.user.id and not is_staff_user(request.user):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        latest_doc = vehicle.latest_documents
+        if not latest_doc:
+            return Response(
+                {"detail": "Aucun document véhicule n'a été soumis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not latest_doc.is_complete:
+            return Response(
+                {"detail": "Les documents requis ne sont pas encore complets."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        now = timezone.now()
+
+        vehicle.valide = False
+        vehicle.workflow_status = Vehicule.WorkflowStatus.PENDING_REVIEW
+        vehicle.review_comment = ""
+        vehicle.reviewed_by = None
+        vehicle.reviewed_at = None
+        vehicle.submitted_at = now
+        vehicle.published_at = None
+        vehicle.save(
+            update_fields=[
+                "valide",
+                "workflow_status",
+                "review_comment",
+                "reviewed_by",
+                "reviewed_at",
+                "submitted_at",
+                "published_at",
+                "updated_at",
+            ]
+        )
+
+        latest_doc.is_valide = False
+        latest_doc.rejection_reason = ""
+        latest_doc.reviewed_by = None
+        latest_doc.reviewed_at = None
+        latest_doc.submitted_at = now
+        latest_doc.save(
+            update_fields=[
+                "is_valide",
+                "rejection_reason",
+                "reviewed_by",
+                "reviewed_at",
+                "submitted_at",
+                "updated_at",
+            ]
+        )
+
+        staff_users = self._staff_users()
+        notify_users(
+            staff_users,
+            notification_type=Notification.NotificationType.VEHICLE_DOCUMENT,
+            title="Documents véhicule soumis",
+            body=f"Le véhicule « {vehicle.titre} » a été soumis pour validation avec ses documents.",
+            vehicle=vehicle,
+            vehicle_document=latest_doc,
+            action_url_builder=lambda user: build_vehicle_action_url(user, vehicle),
+            extra_data={"event": "VEHICLE_SUBMITTED_FOR_REVIEW"},
+        )
+
+        serializer = self.get_serializer(vehicle, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="review", permission_classes=[permissions.IsAuthenticated])
+    def review(self, request, pk=None):
+        vehicle = self.get_object()
+
+        if not is_staff_user(request.user):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        decision = str(request.data.get("decision", "")).strip().lower()
+        comment = str(request.data.get("comment", "")).strip()
+
+        latest_doc = vehicle.latest_documents
+        if not latest_doc:
+            return Response(
+                {"detail": "Aucun document véhicule à valider."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not latest_doc.is_complete:
+            return Response(
+                {"detail": "Le dossier documentaire du véhicule est incomplet."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        now = timezone.now()
+
+        if decision == "approve":
+            vehicle.valide = True
+            vehicle.workflow_status = Vehicule.WorkflowStatus.PUBLISHED
+            vehicle.review_comment = comment
+            vehicle.reviewed_by = request.user
+            vehicle.reviewed_at = now
+            vehicle.published_at = now
+            vehicle.save(
+                update_fields=[
+                    "valide",
+                    "workflow_status",
+                    "review_comment",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "published_at",
+                    "updated_at",
+                ]
+            )
+
+            latest_doc.is_valide = True
+            latest_doc.rejection_reason = ""
+            latest_doc.reviewed_by = request.user
+            latest_doc.reviewed_at = now
+            latest_doc.save(
+                update_fields=[
+                    "is_valide",
+                    "rejection_reason",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "updated_at",
+                ]
+            )
+
+            notify_users(
+                [vehicle.proprietaire],
+                notification_type=Notification.NotificationType.VEHICLE,
+                title="Véhicule validé",
+                body=f"Votre véhicule « {vehicle.titre} » a été validé et publié.",
+                vehicle=vehicle,
+                vehicle_document=latest_doc,
+                action_url_builder=lambda user: build_vehicle_action_url(user, vehicle),
+                extra_data={"event": "VEHICLE_APPROVED"},
+            )
+
+        elif decision == "reject":
+            if not comment:
+                return Response(
+                    {"detail": "Le motif de rejet est obligatoire."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            vehicle.valide = False
+            vehicle.workflow_status = Vehicule.WorkflowStatus.REJECTED
+            vehicle.review_comment = comment
+            vehicle.reviewed_by = request.user
+            vehicle.reviewed_at = now
+            vehicle.published_at = None
+            vehicle.save(
+                update_fields=[
+                    "valide",
+                    "workflow_status",
+                    "review_comment",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "published_at",
+                    "updated_at",
+                ]
+            )
+
+            latest_doc.is_valide = False
+            latest_doc.rejection_reason = comment
+            latest_doc.reviewed_by = request.user
+            latest_doc.reviewed_at = now
+            latest_doc.save(
+                update_fields=[
+                    "is_valide",
+                    "rejection_reason",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "updated_at",
+                ]
+            )
+
+            notify_users(
+                [vehicle.proprietaire],
+                notification_type=Notification.NotificationType.VEHICLE_DOCUMENT,
+                title="Véhicule rejeté",
+                body=f"Le véhicule « {vehicle.titre} » a été rejeté. Motif : {comment}",
+                vehicle=vehicle,
+                vehicle_document=latest_doc,
+                action_url_builder=lambda user: build_vehicle_action_url(user, vehicle),
+                extra_data={
+                    "event": "VEHICLE_REJECTED",
+                    "review_comment": comment,
+                },
+            )
+        else:
+            return Response(
+                {"detail": "Décision invalide. Utilisez 'approve' ou 'reject'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(vehicle, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @swagger_auto_schema(
         operation_description="Assigne un chauffeur au véhicule",
         request_body=serializers.Serializer,
@@ -590,6 +717,10 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def assign_driver(self, request, pk=None):
         vehicule = self.get_object()
+
+        if not self._can_manage_vehicle(request.user, vehicule):
+            return Response({"error": "Accès interdit"}, status=status.HTTP_403_FORBIDDEN)
+
         driver_id = request.data.get("driver_id")
 
         if not driver_id:
@@ -606,7 +737,7 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not request.user.is_staff and driver.owner != request.user:
+        if not is_staff_user(request.user) and driver.owner != request.user:
             return Response(
                 {"error": "Vous n'avez pas la permission d'assigner ce chauffeur"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -619,13 +750,12 @@ class VehiculeApiViewSet(viewsets.ModelViewSet):
             {"message": f"Chauffeur {driver.full_name} assigné avec succès"}
         )
 
-    @swagger_auto_schema(
-        operation_description="Enlève le chauffeur du véhicule",
-        responses={200: "Driver removed successfully"},
-    )
     @action(detail=True, methods=["post"])
     def remove_driver(self, request, pk=None):
         vehicule = self.get_object()
+
+        if not self._can_manage_vehicle(request.user, vehicule):
+            return Response({"error": "Accès interdit"}, status=status.HTTP_403_FORBIDDEN)
 
         if vehicule.driver:
             vehicule.driver = None
@@ -701,13 +831,21 @@ class VehicleEquipmentApiViewset(viewsets.ModelViewSet):
 class VehiclePhotoViewSet(viewsets.ModelViewSet):
     queryset = VehiclePhoto.objects.all().order_by("order")
     serializer_class = VehiclePhotoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _can_manage_photo(self, user, photo):
+        return is_staff_user(user) or photo.vehicle.proprietaire_id == user.id
 
     def create(self, request, *args, **kwargs):
         files = request.FILES.getlist("image")
+        vehicle_id = request.data.get("vehicle")
+        vehicle = get_object_or_404(Vehicule, id=vehicle_id)
+
+        if not (is_staff_user(request.user) or vehicle.proprietaire_id == request.user.id):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
 
         if len(files) > 1:
             photos = []
-            vehicle_id = request.data.get("vehicle")
 
             for index, file in enumerate(files):
                 photo = VehiclePhoto.objects.create(
@@ -718,12 +856,15 @@ class VehiclePhotoViewSet(viewsets.ModelViewSet):
                 )
                 photos.append(photo)
 
-            serializer = self.get_serializer(photos, many=True)
+            serializer = self.get_serializer(photos, many=True, context={"request": request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return super().create(request, *args, **kwargs)
 
     def perform_update(self, serializer):
+        instance = serializer.instance
+        if not self._can_manage_photo(self.request.user, instance):
+            raise serializers.ValidationError("Accès interdit.")
         instance = serializer.save()
         if instance.is_primary:
             VehiclePhoto.objects.filter(vehicle=instance.vehicle).exclude(
@@ -732,6 +873,9 @@ class VehiclePhotoViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        if not self._can_manage_photo(request.user, instance):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
         if instance.image:
             delete_file(instance.image.url)
         return super().destroy(request, *args, **kwargs)
@@ -749,10 +893,14 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
             "type_carburant",
             "statut",
         )
-        .prefetch_related("photos", "equipements", "availabilities", "pricing_grid")
+        .prefetch_related("photos", "equipements", "availabilities", "pricing_grid", "documents")
         .order_by("-created_at")
     )
     serializer_class = VehiculeSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        return filter_publicly_visible(super().get_queryset())
 
     @action(detail=False, methods=["get"], url_path="sponsored")
     def sponsored(self, request):
@@ -764,11 +912,7 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(qs)
         if page is not None:
-            serializer = VehiculeSearchSerializer(
-                page,
-                many=True,
-                context={"request": request},
-            )
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
             return self.get_paginated_response(serializer.data)
 
         serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
@@ -784,11 +928,7 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(qs)
         if page is not None:
-            serializer = VehiculeSearchSerializer(
-                page,
-                many=True,
-                context={"request": request},
-            )
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
             return self.get_paginated_response(serializer.data)
 
         serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
@@ -820,11 +960,7 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(qs)
         if page is not None:
-            serializer = VehiculeSearchSerializer(
-                page,
-                many=True,
-                context={"request": request},
-            )
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
             return self.get_paginated_response(serializer.data)
 
         serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
@@ -852,24 +988,12 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(qs)
         if page is not None:
-            serializer = VehiculeSearchSerializer(
-                page,
-                many=True,
-                context={"request": request},
-            )
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
             return self.get_paginated_response(serializer.data)
 
         serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(
-        operation_description=(
-            "Recherche rapide de véhicules par filtres : marque, modèle, catégorie, ville, "
-            "prix min/max, dates de location, etc.\n"
-            "Les dates doivent être au format ISO 8601 : 2025-01-30T10:00:00Z"
-        ),
-        responses={200: VehiculeSearchSerializer(many=True)},
-    )
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
         qs = self.get_queryset().filter(est_disponible=True)
@@ -950,11 +1074,7 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(qs)
         if page is not None:
-            serializer = VehiculeSearchSerializer(
-                page,
-                many=True,
-                context={"request": request},
-            )
+            serializer = VehiculeSearchSerializer(page, many=True, context={"request": request})
             return self.get_paginated_response(serializer.data)
 
         serializer = VehiculeSearchSerializer(qs, many=True, context={"request": request})
@@ -963,7 +1083,14 @@ class VehiculeSearchApiViewSet(viewsets.ModelViewSet):
 
 @api_view(["GET"])
 def getVehculeClient(request, user_id):
+    if not request.user.is_authenticated:
+        return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
+
     user = get_object_or_404(User, id=user_id)
+
+    if not is_staff_user(request.user) and request.user.id != user.id:
+        return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
     clients = User.objects.filter(
         reservations__vehicle__proprietaire=user
     ).distinct()
@@ -974,52 +1101,23 @@ def getVehculeClient(request, user_id):
 
 @api_view(["GET"])
 def getAllMyVehicles(request, user_id):
+    if not request.user.is_authenticated:
+        return Response({"detail": "Authentification requise."}, status=status.HTTP_401_UNAUTHORIZED)
+
     user = get_object_or_404(User, id=user_id)
+
+    if not is_staff_user(request.user) and request.user.id != user.id:
+        return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
     vehicule_data = (
         Vehicule.objects.filter(proprietaire=user)
         .annotate(_reservation_count=Count("reservations", distinct=True))
-        .select_related("marque", "modele", "transmission", "type_carburant")
+        .select_related("marque", "modele", "transmission", "type_carburant", "reviewed_by")
         .prefetch_related(
-            models.Prefetch(
-                "photos",
-                queryset=VehiclePhoto.objects.only("id", "vehicle", "image", "is_primary"),
-            ),
-            models.Prefetch(
-                "pricing_grid",
-                queryset=VehiclePricing.objects.only("id", "vehicle", "zone_type", "prix_jour"),
-            ),
-            models.Prefetch(
-                "driver",
-                queryset=Driver.objects.only(
-                    "id",
-                    "first_name",
-                    "last_name",
-                    "phone_number",
-                    "experience_years",
-                    "profile_photo",
-                ),
-            ),
-        )
-        .only(
-            "id",
-            "titre",
-            "marque",
-            "modele",
-            "annee",
-            "nombre_places",
-            "note_moyenne",
-            "nombre_locations",
-            "est_certifie",
-            "est_disponible",
-            "ville",
-            "zone",
-            "created_at",
-            "numero_immatriculation",
-            "transmission",
-            "type_carburant",
-            "kilometrage_actuel_km",
-            "devise",
+            "photos",
+            "pricing_grid",
             "driver",
+            "documents",
         )
         .order_by("-created_at")
     )
@@ -1040,7 +1138,7 @@ def getAllMyVehicles(request, user_id):
 @api_view(["GET"])
 def getVehiculeByCategory(request, category_id):
     category = get_object_or_404(Category, id=category_id)
-    vehicule_data = (
+    vehicule_data = filter_publicly_visible(
         Vehicule.objects.filter(categorie=category)
         .select_related(
             "marque",
@@ -1051,7 +1149,7 @@ def getVehiculeByCategory(request, category_id):
             "statut",
             "proprietaire",
         )
-        .prefetch_related("equipements", "photos", "availabilities", "pricing_grid")
+        .prefetch_related("equipements", "photos", "availabilities", "pricing_grid", "documents")
         .order_by("-created_at")
     )
 
@@ -1070,26 +1168,229 @@ class VehicleAvailabilityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         vehicle_id = self.request.query_params.get("vehicle")
+        qs = super().get_queryset()
+
+        if not is_staff_user(self.request.user):
+            qs = qs.filter(vehicle__proprietaire=self.request.user)
+
         if vehicle_id:
-            return VehicleAvailability.objects.filter(vehicle_id=vehicle_id)
-        return super().get_queryset()
+            qs = qs.filter(vehicle_id=vehicle_id)
+
+        return qs
+
+    def perform_create(self, serializer):
+        vehicle = serializer.validated_data["vehicle"]
+        if not (is_staff_user(self.request.user) or vehicle.proprietaire_id == self.request.user.id):
+            raise serializers.ValidationError("Accès interdit.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        vehicle = serializer.instance.vehicle
+        if not (is_staff_user(self.request.user) or vehicle.proprietaire_id == self.request.user.id):
+            raise serializers.ValidationError("Accès interdit.")
+        serializer.save()
 
 
 class VehicleDocumentsViewSet(viewsets.ModelViewSet):
-    queryset = VehicleDocuments.objects.all()
+    queryset = VehicleDocuments.objects.all().select_related("vehicle", "reviewed_by")
     serializer_class = VehicleDocumentsSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        qs = super().get_queryset()
         vehicle_id = self.request.query_params.get("vehicle")
-        if vehicle_id:
-            return VehicleDocuments.objects.filter(vehicle=vehicle_id)
-        return super().get_queryset()
 
+        if not is_staff_user(self.request.user):
+            qs = qs.filter(vehicle__proprietaire=self.request.user)
+
+        if vehicle_id:
+            qs = qs.filter(vehicle=vehicle_id)
+
+        return qs.order_by("-updated_at")
+
+    def create(self, request, *args, **kwargs):
+        vehicle_id = request.data.get("vehicle")
+        vehicle = get_object_or_404(Vehicule, id=vehicle_id)
+
+        if not (is_staff_user(request.user) or vehicle.proprietaire_id == request.user.id):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        if is_staff_user(request.user):
+            document = serializer.save()
+        else:
+            document = serializer.save(
+                is_valide=False,
+                rejection_reason="",
+                reviewed_by=None,
+                reviewed_at=None,
+                submitted_at=None,
+            )
+            reset_vehicle_review_state(vehicle)
+
+        headers = self.get_success_headers(serializer.data)
+        output = self.get_serializer(document, context={"request": request}).data
+        return Response(output, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        kwargs["partial"] = True
+        instance = self.get_object()
+
+        if not (is_staff_user(request.user) or instance.vehicle.proprietaire_id == request.user.id):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        if is_staff_user(request.user):
+            document = serializer.save()
+        else:
+            document = serializer.save(
+                is_valide=False,
+                rejection_reason="",
+                reviewed_by=None,
+                reviewed_at=None,
+                submitted_at=None,
+            )
+            reset_vehicle_review_state(instance.vehicle)
+
+        return Response(self.get_serializer(document, context={"request": request}).data)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="review",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def review(self, request, pk=None):
+        document = self.get_object()
+
+        if not is_staff_user(request.user):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
+
+        action_value = str(request.data.get("action", "")).strip().lower()
+        rejection_reason = str(request.data.get("rejection_reason", "")).strip()
+        now = timezone.now()
+
+        if action_value == "approve":
+            if not document.is_complete:
+                return Response(
+                    {"detail": "Les documents requis ne sont pas encore complets."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            document.is_valide = True
+            document.rejection_reason = ""
+            document.reviewed_by = request.user
+            document.reviewed_at = now
+            if not document.submitted_at:
+                document.submitted_at = now
+            document.save(
+                update_fields=[
+                    "is_valide",
+                    "rejection_reason",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "submitted_at",
+                    "updated_at",
+                ]
+            )
+
+            notify_users(
+                [document.vehicle.proprietaire],
+                notification_type=Notification.NotificationType.VEHICLE_DOCUMENT,
+                title="Documents validés",
+                body=f"Les documents du véhicule « {document.vehicle.titre} » ont été validés.",
+                vehicle=document.vehicle,
+                vehicle_document=document,
+                action_url_builder=lambda user: build_vehicle_action_url(user, document.vehicle),
+                extra_data={"event": "VEHICLE_DOCUMENTS_APPROVED"},
+            )
+
+        elif action_value == "reject":
+            if not rejection_reason:
+                return Response(
+                    {"detail": "Le motif de rejet est obligatoire."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            document.is_valide = False
+            document.rejection_reason = rejection_reason
+            document.reviewed_by = request.user
+            document.reviewed_at = now
+            if not document.submitted_at:
+                document.submitted_at = now
+            document.save(
+                update_fields=[
+                    "is_valide",
+                    "rejection_reason",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "submitted_at",
+                    "updated_at",
+                ]
+            )
+
+            vehicle = document.vehicle
+            vehicle.valide = False
+            vehicle.workflow_status = Vehicule.WorkflowStatus.REJECTED
+            vehicle.review_comment = rejection_reason
+            vehicle.reviewed_by = request.user
+            vehicle.reviewed_at = now
+            vehicle.published_at = None
+            vehicle.save(
+                update_fields=[
+                    "valide",
+                    "workflow_status",
+                    "review_comment",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "published_at",
+                    "updated_at",
+                ]
+            )
+
+            notify_users(
+                [vehicle.proprietaire],
+                notification_type=Notification.NotificationType.VEHICLE_DOCUMENT,
+                title="Documents rejetés",
+                body=f"Les documents du véhicule « {vehicle.titre} » ont été rejetés. Motif : {rejection_reason}",
+                vehicle=vehicle,
+                vehicle_document=document,
+                action_url_builder=lambda user: build_vehicle_action_url(user, vehicle),
+                extra_data={
+                    "event": "VEHICLE_DOCUMENTS_REJECTED",
+                    "rejection_reason": rejection_reason,
+                },
+            )
+        else:
+            return Response(
+                {"detail": "Action invalide. Utilisez 'approve' ou 'reject'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(document, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class VehiclePhotoUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request, vehicle_id):
         vehicle = get_object_or_404(Vehicule, id=vehicle_id)
+
+        if not (is_staff_user(request.user) or vehicle.proprietaire_id == request.user.id):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = VehiclePhotoUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1115,8 +1416,13 @@ class VehiclePhotoUploadView(APIView):
 
 
 class VehiclePhotoDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def delete(self, request, photo_id):
         photo = get_object_or_404(VehiclePhoto, id=photo_id)
+
+        if not (is_staff_user(request.user) or photo.vehicle.proprietaire_id == request.user.id):
+            return Response({"detail": "Accès interdit."}, status=status.HTTP_403_FORBIDDEN)
 
         if photo.image:
             try:
