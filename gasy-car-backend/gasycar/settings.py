@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "prestataire",
     "messaging",
     "payments",
+    "loyalty",
     "blogs",
     "modepayment",
     "driver",
