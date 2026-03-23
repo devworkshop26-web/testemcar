@@ -13,8 +13,6 @@ export interface ClientSettingsFormValues {
   cin_number: string;
   address: string;
   date_of_birth: string;
-  nif: string;
-  stat: string;
   old_password?: string;
   new_password?: string;
   new_password_confirm: string;
@@ -59,6 +57,12 @@ const normalizeDateOfBirth = (value?: string | null) => {
   return parsed.toISOString().slice(0, 10);
 };
 
+/**
+ * Affichage front :
+ * +261348982385 -> 0348982385
+ * 261348982385  -> 0348982385
+ * 0348982385    -> 0348982385
+ */
 const normalizePhoneForDisplay = (value?: string | null) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -80,6 +84,12 @@ const normalizePhoneForDisplay = (value?: string | null) => {
   return raw;
 };
 
+/**
+ * Enregistrement backend :
+ * 0348982385 -> +261348982385
+ * 348982385  -> +261348982385
+ * +261348982385 -> +261348982385
+ */
 const normalizePhoneForSubmit = (value?: string | null) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -98,15 +108,6 @@ const normalizePhoneForSubmit = (value?: string | null) => {
   return `+261${digits}`;
 };
 
-const readImageFile = (
-  file: File,
-  setPreview: (value: string) => void
-) => {
-  const reader = new FileReader();
-  reader.onload = () => setPreview(reader.result as string);
-  reader.readAsDataURL(file);
-};
-
 export const useClientSettings = () => {
   const { user, isLoading: isUserLoading } = useCurentuser();
   const { toast } = useToast();
@@ -119,21 +120,8 @@ export const useClientSettings = () => {
 
   const [previewCinRecto, setPreviewCinRecto] = useState("");
   const [previewCinVerso, setPreviewCinVerso] = useState("");
-  const [previewResidenceCertificate, setPreviewResidenceCertificate] =
-    useState("");
-  const [previewDrivingLicenseRecto, setPreviewDrivingLicenseRecto] =
-    useState("");
-  const [previewDrivingLicenseVerso, setPreviewDrivingLicenseVerso] =
-    useState("");
-
   const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
   const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
-  const [residenceCertificateFile, setResidenceCertificateFile] =
-    useState<File | null>(null);
-  const [drivingLicenseRectoFile, setDrivingLicenseRectoFile] =
-    useState<File | null>(null);
-  const [drivingLicenseVersoFile, setDrivingLicenseVersoFile] =
-    useState<File | null>(null);
 
   const {
     register,
@@ -149,8 +137,6 @@ export const useClientSettings = () => {
       cin_number: "",
       address: "",
       date_of_birth: "",
-      nif: "",
-      stat: "",
       old_password: "",
       new_password: "",
       new_password_confirm: "",
@@ -223,7 +209,10 @@ export const useClientSettings = () => {
     }
 
     setImageFile(file);
-    readImageFile(file, setPreviewPhoto);
+
+    const reader = new FileReader();
+    reader.onload = () => setPreviewPhoto(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleDeletePhoto = () => {
@@ -241,7 +230,10 @@ export const useClientSettings = () => {
     }
 
     setCinRectoFile(file);
-    readImageFile(file, setPreviewCinRecto);
+
+    const reader = new FileReader();
+    reader.onload = () => setPreviewCinRecto(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleCinVersoUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -254,53 +246,10 @@ export const useClientSettings = () => {
     }
 
     setCinVersoFile(file);
-    readImageFile(file, setPreviewCinVerso);
-  };
 
-
-  const handleResidenceCertificateUpload = (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!validateImageFile(file)) {
-      e.target.value = "";
-      return;
-    }
-
-    setResidenceCertificateFile(file);
-    readImageFile(file, setPreviewResidenceCertificate);
-  };
-
-  const handleDrivingLicenseRectoUpload = (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!validateImageFile(file)) {
-      e.target.value = "";
-      return;
-    }
-
-    setDrivingLicenseRectoFile(file);
-    readImageFile(file, setPreviewDrivingLicenseRecto);
-  };
-
-  const handleDrivingLicenseVersoUpload = (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!validateImageFile(file)) {
-      e.target.value = "";
-      return;
-    }
-
-    setDrivingLicenseVersoFile(file);
-    readImageFile(file, setPreviewDrivingLicenseVerso);
+    const reader = new FileReader();
+    reader.onload = () => setPreviewCinVerso(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const deleteProfilePhoto = async () => {
@@ -308,8 +257,10 @@ export const useClientSettings = () => {
 
     try {
       await usersAPI.clearProfilePhoto(user.id);
+
       setPreviewPhoto("");
       setImageFile(null);
+
       await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
       toast({
@@ -330,8 +281,10 @@ export const useClientSettings = () => {
 
     try {
       await usersAPI.clearCinRecto(user.id);
+
       setPreviewCinRecto("");
       setCinRectoFile(null);
+
       await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
       toast({
@@ -352,8 +305,10 @@ export const useClientSettings = () => {
 
     try {
       await usersAPI.clearCinVerso(user.id);
+
       setPreviewCinVerso("");
       setCinVersoFile(null);
+
       await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
       toast({
@@ -364,73 +319,6 @@ export const useClientSettings = () => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la photo CIN verso.",
-        variant: "destructive",
-      });
-    }
-  };
-
-
-  const deleteResidenceCertificate = async () => {
-    if (!user?.id) return;
-
-    try {
-      await usersAPI.clearResidenceCertificate(user.id);
-      setPreviewResidenceCertificate("");
-      setResidenceCertificateFile(null);
-      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-      toast({
-        title: "Certificat supprimé",
-        description: "Le certificat de résidence a été supprimé.",
-      });
-    } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le certificat de résidence.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteDrivingLicenseRecto = async () => {
-    if (!user?.id) return;
-
-    try {
-      await usersAPI.clearDrivingLicenseRecto(user.id);
-      setPreviewDrivingLicenseRecto("");
-      setDrivingLicenseRectoFile(null);
-      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-      toast({
-        title: "Permis recto supprimé",
-        description: "La photo recto du permis de conduire a été supprimée.",
-      });
-    } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le recto du permis de conduire.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteDrivingLicenseVerso = async () => {
-    if (!user?.id) return;
-
-    try {
-      await usersAPI.clearDrivingLicenseVerso(user.id);
-      setPreviewDrivingLicenseVerso("");
-      setDrivingLicenseVersoFile(null);
-      await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-
-      toast({
-        title: "Permis verso supprimé",
-        description: "La photo verso du permis de conduire a été supprimée.",
-      });
-    } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le verso du permis de conduire.",
         variant: "destructive",
       });
     }
@@ -449,9 +337,6 @@ export const useClientSettings = () => {
       setImageFile(null);
       setCinRectoFile(null);
       setCinVersoFile(null);
-      setResidenceCertificateFile(null);
-      setDrivingLicenseRectoFile(null);
-      setDrivingLicenseVersoFile(null);
 
       await queryClient.invalidateQueries({ queryKey: ["currentUser"] });
 
@@ -463,6 +348,7 @@ export const useClientSettings = () => {
 
     onError: (error: any) => {
       const backendErrors = error?.response?.data;
+
       let description = "Impossible de mettre à jour votre profil.";
 
       if (backendErrors && typeof backendErrors === "object") {
@@ -491,28 +377,9 @@ export const useClientSettings = () => {
   useEffect(() => {
     if (!user) return;
 
-    const userWithDrivingLicense = user as typeof user & {
-      permis_conduire?: string | null;
-      permis_conduire_recto?: string | null;
-      permis_conduire_verso?: string | null;
-    };
-
     setPreviewPhoto(toAbsoluteMediaUrl(user.image || ""));
-    setPreviewCinRecto(toAbsoluteMediaUrl(user.cin_photo_recto || ""));
-    setPreviewCinVerso(toAbsoluteMediaUrl(user.cin_photo_verso || ""));
-    setPreviewResidenceCertificate(
-      toAbsoluteMediaUrl(user.residence_certificate || "")
-    );
-    setPreviewDrivingLicenseRecto(
-      toAbsoluteMediaUrl(
-        userWithDrivingLicense.permis_conduire_recto ||
-          userWithDrivingLicense.permis_conduire ||
-          ""
-      )
-    );
-    setPreviewDrivingLicenseVerso(
-      toAbsoluteMediaUrl(userWithDrivingLicense.permis_conduire_verso || "")
-    );
+    setPreviewCinRecto(toAbsoluteMediaUrl((user as any).cin_photo_recto || ""));
+    setPreviewCinVerso(toAbsoluteMediaUrl((user as any).cin_photo_verso || ""));
 
     reset({
       first_name: user.first_name || "",
@@ -521,8 +388,6 @@ export const useClientSettings = () => {
       cin_number: user.cin_number || "",
       address: user.address || "",
       date_of_birth: normalizeDateOfBirth(user.date_of_birth) || "",
-      nif: user.nif || "",
-      stat: user.stat || "",
       old_password: "",
       new_password: "",
       new_password_confirm: "",
@@ -558,8 +423,6 @@ export const useClientSettings = () => {
       phone: normalizePhoneForSubmit(values.phone),
       cin_number: values.cin_number?.trim() || "",
       address: values.address?.trim() || "",
-      nif: values.nif?.trim() || "",
-      stat: values.stat?.trim() || "",
     };
 
     if (normalizedDateOfBirth) {
@@ -569,10 +432,7 @@ export const useClientSettings = () => {
     const hasFiles =
       imageFile instanceof File ||
       cinRectoFile instanceof File ||
-      cinVersoFile instanceof File ||
-      residenceCertificateFile instanceof File ||
-      drivingLicenseRectoFile instanceof File ||
-      drivingLicenseVersoFile instanceof File;
+      cinVersoFile instanceof File;
 
     let finalData: FormData | Record<string, string>;
 
@@ -595,35 +455,6 @@ export const useClientSettings = () => {
         formData.append("cin_photo_verso", cinVersoFile, cinVersoFile.name);
       }
 
-      if (residenceCertificateFile instanceof File) {
-        formData.append(
-          "residence_certificate",
-          residenceCertificateFile,
-          residenceCertificateFile.name
-        );
-      }
-
-      if (drivingLicenseRectoFile instanceof File) {
-        formData.append(
-          "permis_conduire_recto",
-          drivingLicenseRectoFile,
-          drivingLicenseRectoFile.name
-        );
-        formData.append(
-          "permis_conduire",
-          drivingLicenseRectoFile,
-          drivingLicenseRectoFile.name
-        );
-      }
-
-      if (drivingLicenseVersoFile instanceof File) {
-        formData.append(
-          "permis_conduire_verso",
-          drivingLicenseVersoFile,
-          drivingLicenseVersoFile.name
-        );
-      }
-
       finalData = formData;
     } else {
       finalData = payload;
@@ -644,20 +475,11 @@ export const useClientSettings = () => {
     handleDeletePhoto,
     previewCinRecto,
     previewCinVerso,
-    previewResidenceCertificate,
-    previewDrivingLicenseRecto,
-    previewDrivingLicenseVerso,
     handleCinRectoUpload,
     handleCinVersoUpload,
-    handleResidenceCertificateUpload,
-    handleDrivingLicenseRectoUpload,
-    handleDrivingLicenseVersoUpload,
     deleteProfilePhoto,
     deleteCinRecto,
     deleteCinVerso,
-    deleteResidenceCertificate,
-    deleteDrivingLicenseRecto,
-    deleteDrivingLicenseVerso,
     register,
     onSubmit,
     errors,

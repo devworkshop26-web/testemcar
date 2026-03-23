@@ -1,5 +1,5 @@
 import { InstanceAxis } from "@/helper/InstanceAxios";
-import { CreateReviewPayload, ModerateReviewPayload, Review, UpdateReviewPayload } from "@/types/reveiewType";
+import { CreateReviewPayload, Review, UpdateReviewPayload } from "@/types/reveiewType";
 
 export const reviewAPI = {
   // ========================================
@@ -33,11 +33,6 @@ export const reviewAPI = {
   // Supprimer un avis
   delete: async (id: string): Promise<void> => {
     await InstanceAxis.delete<void>(`/reviews/reviews/${id}/`);
-  },
-
-  moderate: async (id: string, payload: ModerateReviewPayload): Promise<Review> => {
-    const response = await InstanceAxis.post<Review>(`/reviews/reviews/${id}/moderate/`, payload);
-    return response.data;
   },
 
   // ========================================

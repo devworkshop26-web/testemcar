@@ -144,7 +144,7 @@ const IdentityCard = ({ client, buildMediaUrl, navigate }: any) => {
       {/* Top Action Buttons (Floating) */}
       <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <Button size="icon" variant="secondary" className="h-9 w-9 rounded-full bg-white/80 backdrop-blur-sm shadow-sm" asChild>
-          <Link to={`/support/client/${client.user_id ?? client.id}/edit`} state={{ clientSummary: client }}>
+          <Link to={`/support/client/${client.id}/edit`}>
             <Edit className="w-4 h-4 text-slate-600" />
           </Link>
         </Button>
@@ -202,7 +202,7 @@ const IdentityCard = ({ client, buildMediaUrl, navigate }: any) => {
 
         {/* Footer: Button Action */}
         <Button 
-          onClick={() => navigate(`/support/client/${client.user_id ?? client.id}`, { state: { clientSummary: client } })}
+          onClick={() => navigate(`/support/client/${client.id}`)}
           variant="ghost" 
           className="w-full mt-auto justify-between bg-slate-50 hover:bg-blue-600 hover:text-white group/btn rounded-xl h-11 transition-all"
         >

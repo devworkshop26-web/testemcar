@@ -186,7 +186,7 @@ const BookingsClientsView = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          {item.status === "COMPLETED" && item.vehicle_data?.id && (
+                          {(item.status === "CONFIRMED" || item.status === "COMPLETED") && item.vehicle_data?.id && (
                             <Button
                               variant="outline"
                               size="sm"

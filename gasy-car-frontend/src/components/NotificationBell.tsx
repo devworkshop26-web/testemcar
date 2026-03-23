@@ -29,9 +29,6 @@ type AppNotification = {
   is_read: boolean;
   created_at: string;
   reservation?: string | null;
-  vehicle?: string | null;
-  target_url?: string | null;
-  extra_data?: Record<string, any> | null;
 };
 
 const NotificationBell = () => {
@@ -79,60 +76,13 @@ const NotificationBell = () => {
     }
   };
 
-  const goToVehicle = (vehicleId: string) => {
-    if (!user) return;
-
-    if (user.role === "PRESTATAIRE") {
-      navigate(`/prestataire/vehicle/${vehicleId}/manage`);
-      return;
-    }
-
-    if (user.role === "ADMIN") {
-      navigate(`/admin/vehicles/${vehicleId}`);
-      return;
-    }
-
-    if (user.role === "SUPPORT") {
-      navigate(`/support/fleet/vehicule/${vehicleId}`);
-      return;
-    }
-
-    navigate(`/vehicule/${vehicleId}`);
-  };
-
   const handleItemClick = (notification: AppNotification) => {
     if (!notification.is_read) {
       markRead.mutate(notification.id);
     }
 
-    if (notification.target_url) {
-      navigate(notification.target_url);
-      setIsOpen(false);
-      return;
-    }
-
-    if (notification.vehicle) {
-      goToVehicle(notification.vehicle);
-      setIsOpen(false);
-      return;
-    }
-
-    if (notification.extra_data?.vehicle_id) {
-      goToVehicle(notification.extra_data.vehicle_id);
-      setIsOpen(false);
-      return;
-    }
-
     if (notification.reservation) {
       goToReservation(notification.reservation);
-      setIsOpen(false);
-      return;
-    }
-
-    if (notification.extra_data?.reservation_id) {
-      goToReservation(notification.extra_data.reservation_id);
-      setIsOpen(false);
-      return;
     }
 
     setIsOpen(false);
