@@ -13,9 +13,11 @@ class LoyaltySummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Le payload est déjà entièrement normalisé par build_payload.
+        # On le renvoie directement pour éviter toute re-sérialisation
+        # inutile sur des blocs déjà préparés (history, stats, tiers, ...).
         payload = LoyaltySummarySerializer.build_payload(request.user)
-        serializer = LoyaltySummarySerializer(payload)
-        return Response(serializer.data)
+        return Response(payload)
 
 
 class LoyaltyHistoryView(APIView):
