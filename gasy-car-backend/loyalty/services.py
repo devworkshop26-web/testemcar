@@ -171,13 +171,17 @@ class LoyaltyService:
 
     @staticmethod
     def _is_profile_complete(user: User) -> bool:
+        # On aligne la fidélité avec ce que le parcours client considère comme
+        # un profil réellement complété : identité, contact et documents clés.
+        #
+        # Important : on ne bloque pas le bonus sur des champs facultatifs dans
+        # l'UI actuelle (ex: adresse, date de naissance, NIF, STAT), sinon un
+        # client peut penser avoir tout rempli sans jamais recevoir ses points.
         required_values = [
             user.first_name,
             user.last_name,
             user.phone,
-            user.address,
             user.cin_number,
-            user.date_of_birth,
             user.cin_photo_recto,
             user.cin_photo_verso,
             user.permis_conduire_recto or user.permis_conduire,
