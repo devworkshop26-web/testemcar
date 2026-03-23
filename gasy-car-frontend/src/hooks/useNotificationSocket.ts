@@ -11,15 +11,19 @@ interface NotificationMessage {
   id: string;
   title: string;
   body: string;
-  type: string;
+  notification_type?: string;
   created_at: string;
   is_read: boolean;
   reservation?: string | null;
+  vehicle?: string | null;
+  target_url?: string | null;
+  extra_data?: Record<string, any> | null;
 }
 
-const isGeneralNotification = (payload: any): payload is NotificationMessage => {
+const isNotificationPayload = (payload: any): payload is NotificationMessage => {
   return Boolean(
     payload &&
+      typeof payload === "object" &&
       payload.id &&
       payload.title &&
       payload.body &&
@@ -50,34 +54,36 @@ export const useNotificationSocket = () => {
 
     socket.onmessage = (event) => {
       try {
-        const payload = JSON.parse(event.data);
+        const rawPayload = JSON.parse(event.data);
 
-        if (!isGeneralNotification(payload)) {
-          return;
-        }
+        const payload = isNotificationPayload(rawPayload)
+          ? rawPayload
+          : isNotificationPayload(rawPayload?.data)
+          ? rawPayload.data
+          : null;
 
-        const message = payload;
+        if (!payload) return;
 
         queryClient.setQueryData(["notifications"], (oldData: any) => {
-          if (!oldData) return [message];
+          if (!oldData) return [payload];
 
           if (Array.isArray(oldData)) {
-            const exists = oldData.some((item: any) => item.id === message.id);
-            return exists ? oldData : [message, ...oldData];
+            const exists = oldData.some((item: any) => item.id === payload.id);
+            return exists ? oldData : [payload, ...oldData];
           }
 
-          const results = oldData.results || [];
-          const exists = results.some((item: any) => item.id === message.id);
+          const results = Array.isArray(oldData.results) ? oldData.results : [];
+          const exists = results.some((item: any) => item.id === payload.id);
 
           return {
             ...oldData,
-            results: exists ? results : [message, ...results],
+            results: exists ? results : [payload, ...results],
             count: exists ? oldData.count || results.length : (oldData.count || 0) + 1,
           };
         });
 
-        toast(message.title, {
-          description: message.body,
+        toast(payload.title, {
+          description: payload.body,
         });
       } catch (err) {
         console.error("WS Notification parse error", err);

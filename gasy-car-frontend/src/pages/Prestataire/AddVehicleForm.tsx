@@ -6,14 +6,12 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 
-// Import des composants les erreurs
 import { Step1Identity } from "@/components/Prestataire/Step1Identity";
 import { Step2CharacteristicsEquipment } from "@/components/Prestataire/Step2CharacteristicsEquipment";
 import { Step3Pricing } from "@/components/Prestataire/Step3Pricing";
 import { Step4Location } from "@/components/Prestataire/Step4Location";
 import { StepFinalPublication } from "@/components/Prestataire/StepFinalPublication";
 
-// Import des types et constantes
 import { VehicleFormData, MAX_IMAGES, PhotoItem } from "@/types/addVehicleType";
 import { useCreateVehiculeMutation } from "@/useQuery/vehiculeUseQuery";
 import { useStatusVehiculesQuery } from "@/useQuery/statusVehiculeUseQuery";
@@ -33,7 +31,6 @@ interface StepDefinition {
   render: React.ReactNode;
 }
 
-// --- Composant Principal Multi-étapes ---
 export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -140,15 +137,14 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
   );
 
   const modeleOptions = useMemo(
-    () =>
-      [
-        { label: "Choisir un modèle", value: "", marque: null },
-        ...(modeleData || []).map((item) => ({
-          label: item.label,
-          value: item.id,
-          marque: (item as typeof item & { marque?: string | null }).marque ?? null,
-        })),
-      ],
+    () => [
+      { label: "Choisir un modèle", value: "", marque: null },
+      ...(modeleData || []).map((item) => ({
+        label: item.label,
+        value: item.id,
+        marque: (item as typeof item & { marque?: string | null }).marque ?? null,
+      })),
+    ],
     [modeleData]
   );
 
@@ -233,7 +229,7 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
       data.append("couleur", formData.couleur);
       data.append("kilometrage_actuel_km", formData.kilometrage_actuel_km.toString());
 
-      if (formData.volume_coffre_litres) {
+      if (formData.volume_coffre_litres !== null && formData.volume_coffre_litres !== undefined) {
         data.append("volume_coffre_litres", formData.volume_coffre_litres.toString());
       }
 
@@ -241,7 +237,7 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
       data.append("ville", formData.ville);
       data.append("zone", formData.zone);
       data.append("devise", formData.devise);
-      data.append("est_certifie", formData.est_certifie ? "true" : "false");
+      data.append("est_certifie", "false");
       data.append("est_disponible", formData.est_disponible ? "true" : "false");
       data.append("description", formData.description);
       data.append("conditions_particulieres", formData.conditions_particulieres || "");
@@ -266,14 +262,16 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
         "remise_par_mois",
         "remise_longue_duree_pourcent",
       ];
+
       numberFields.forEach((field) => {
-        if (formData[field as keyof VehicleFormData]) {
-          data.append(field, (formData[field as keyof VehicleFormData] as number).toString());
+        const value = formData[field as keyof VehicleFormData] as number | null | undefined;
+        if (value !== null && value !== undefined && value !== 0) {
+          data.append(field, String(value));
         }
       });
 
-      if ("montant_caution" in formData && (formData as any).montant_caution) {
-        data.append("montant_caution", String((formData as any).montant_caution));
+      if ("montant_caution" in formData && formData.montant_caution !== null && formData.montant_caution !== undefined) {
+        data.append("montant_caution", String(formData.montant_caution));
       } else {
         data.append("montant_caution", "0");
       }
@@ -288,9 +286,11 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
         "province_remise_par_mois",
         "province_remise_longue_duree_pourcent",
       ];
+
       provinceFields.forEach((field) => {
-        if (formData[field as keyof VehicleFormData]) {
-          data.append(field, (formData[field as keyof VehicleFormData] as number).toString());
+        const value = formData[field as keyof VehicleFormData] as number | null | undefined;
+        if (value !== null && value !== undefined && value !== 0) {
+          data.append(field, String(value));
         }
       });
 
@@ -304,10 +304,14 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
         if (photo.file) data.append("uploaded_photos", photo.file);
       });
 
-      await createVehiculeMutation.mutateAsync(data);
+      const createdVehicle = await createVehiculeMutation.mutateAsync(data);
 
-      toast({ title: "Succès", description: "Véhicule créé avec succès." });
-      navigate("/prestataire/fleet");
+      toast({
+        title: "Véhicule créé",
+        description: "Ajoutez maintenant les documents puis soumettez le véhicule pour validation.",
+      });
+
+      navigate(`/prestataire/vehicle/${createdVehicle.id}/manage`);
     } catch (error: any) {
       console.error("Erreur lors de la création :", error);
 
@@ -386,7 +390,14 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
         id: 2,
         title: "Caractéristiques & équipements",
         description: "Couleur, places, portes, kilométrage, coffre et équipements.",
-        fields: ["couleur", "kilometrage_actuel_km", "volume_coffre_litres", "nombre_places", "nombre_portes", "equipements"],
+        fields: [
+          "couleur",
+          "kilometrage_actuel_km",
+          "volume_coffre_litres",
+          "nombre_places",
+          "nombre_portes",
+          "equipements",
+        ],
         render: <Step2CharacteristicsEquipment stepNumber={2} equipments={equipmentOptions} />,
       },
       {
@@ -416,7 +427,8 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
       {
         id: 5,
         title: "Publication & photos",
-        description: "Ajoutez une description et des photos pour mettre en valeur votre véhicule.",
+        description:
+          "Ajoutez une description et des photos. Le véhicule sera créé en brouillon avant validation.",
         fields: ["description", "conditions_particulieres"],
         render: (
           <StepFinalPublication
@@ -520,7 +532,6 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
     setCurrentStep((prev) => prev + 1);
   };
 
-  // ✅ AJOUT: retour page précédente (avec fallback si pas d'historique)
   const goBackPage = useCallback(() => {
     const idx = (window.history.state as any)?.idx;
     const canGoBack = typeof idx === "number" ? idx > 0 : window.history.length > 1;
@@ -530,12 +541,9 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
       return;
     }
 
-    // fallback vers la liste des véhicules (et en dernier recours onBack)
     navigate("/prestataire/fleet");
-    // onBack(); // si tu veux garder ton comportement parent en fallback
   }, [navigate]);
 
-  // ✅ MODIF UNIQUEMENT ICI: step back sinon page back
   const onPrevious = () => {
     if (currentStep > 0) {
       setCurrentStep((prev) => Math.max(prev - 1, 0));
@@ -546,14 +554,19 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
 
   const getPrimaryButtonLabel = () => {
     if (currentStep === steps.length - 1) {
-      return createVehiculeMutation.isPending || isHandlingSubmission ? "Ajout en cours..." : "Ajouter le véhicule";
+      return createVehiculeMutation.isPending || isHandlingSubmission
+        ? "Création en cours..."
+        : "Créer le véhicule";
     }
     return "Suivant";
   };
 
   return (
     <FormProvider {...methods}>
-      <form ref={formRef} className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-20 max-w-6xl mx-auto">
+      <form
+        ref={formRef}
+        className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-20 max-w-6xl mx-auto"
+      >
         <div className="rounded-3xl p-6 shadow-sm border border-slate-200 bg-white">
           <div className="flex flex-wrap items-center gap-4">
             <Button
@@ -567,7 +580,9 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
             </Button>
 
             <div className="space-y-1">
-              <h2 className="text-2xl font-semibold flex items-center gap-2 text-slate-900">{steps[currentStep].title}</h2>
+              <h2 className="text-2xl font-semibold flex items-center gap-2 text-slate-900">
+                {steps[currentStep].title}
+              </h2>
               <p className="text-sm text-slate-600">{steps[currentStep].description}</p>
             </div>
 
@@ -579,9 +594,19 @@ export const AddVehicleForm = ({ onBack }: { onBack: () => void }) => {
           <div className="mt-4">
             <Progress value={progressValue} className="w-full h-2 rounded-full bg-slate-100" />
             <div className="flex justify-between text-xs text-slate-600 mt-2">
-              <span>{currentStep === steps.length - 1 ? "Upload des images" : "Saisie des informations"}</span>
+              <span>
+                {currentStep === steps.length - 1 ? "Préparation du brouillon" : "Saisie des informations"}
+              </span>
             </div>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <p className="text-sm font-semibold text-amber-700">Important</p>
+          <p className="text-sm text-amber-700/90 mt-1">
+            Après création, le véhicule sera enregistré en <strong>brouillon</strong>. Il ne sera pas visible
+            publiquement tant que les documents ne seront pas validés par le support/admin.
+          </p>
         </div>
 
         <div className="relative">

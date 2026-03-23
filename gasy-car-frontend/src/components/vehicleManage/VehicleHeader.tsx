@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useNavigate } from "react-router-dom"
+import type React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle,
@@ -10,28 +10,83 @@ import {
   Camera,
   Pencil,
   MapPin,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+  Clock3,
+  XCircle,
+  FileWarning,
+  Send,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useSubmitVehicleForReviewMutation } from "@/useQuery/vehiculeUseQuery";
 
 interface VehicleHeaderProps {
   vehicle: {
-    id: string
-    titre: string
-    numero_immatriculation: string
-    ville: string
-    zone?: string
-    est_disponible: boolean
-    est_certifie: boolean
-  }
+    id: string;
+    titre: string;
+    numero_immatriculation: string;
+    ville: string;
+    zone?: string;
+    est_disponible: boolean;
+    est_certifie: boolean;
+    workflow_status: "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED";
+    review_comment?: string;
+    documents_complete?: boolean;
+    documents_validated?: boolean;
+  };
 }
 
 const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const submitMutation = useSubmitVehicleForReviewMutation();
+
+  const canSubmit =
+    vehicle.workflow_status === "DRAFT" || vehicle.workflow_status === "REJECTED";
+
+  const handleSubmitForReview = async () => {
+    try {
+      await submitMutation.mutateAsync(vehicle.id);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const workflowBadge = () => {
+    switch (vehicle.workflow_status) {
+      case "DRAFT":
+        return (
+          <Badge className="h-6 bg-slate-100 text-slate-700 border border-slate-200 rounded-full px-3 text-xs">
+            Brouillon
+          </Badge>
+        );
+      case "PENDING_REVIEW":
+        return (
+          <Badge className="h-6 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-3 text-xs flex items-center gap-1">
+            <Clock3 className="w-3.5 h-3.5" />
+            En attente
+          </Badge>
+        );
+      case "PUBLISHED":
+        return (
+          <Badge className="h-6 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 text-xs flex items-center gap-1">
+            <CheckCircle className="w-3.5 h-3.5" />
+            Publié
+          </Badge>
+        );
+      case "REJECTED":
+        return (
+          <Badge className="h-6 bg-red-50 text-red-700 border border-red-200 rounded-full px-3 text-xs flex items-center gap-1">
+            <XCircle className="w-3.5 h-3.5" />
+            Rejeté
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <section className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-      {/* Breadcrumb */}
       <div className="flex items-center gap-2.5 text-sm text-muted-foreground/80">
         <button
           onClick={() => navigate("/prestataire/fleet")}
@@ -41,12 +96,47 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
           <span className="font-medium">Ma flotte</span>
         </button>
         <span className="text-muted-foreground/40">/</span>
-        <span className="font-medium text-foreground/90 truncate max-w-[280px]">
-          {vehicle.titre}
-        </span>
+        <span className="font-medium text-foreground/90 truncate max-w-[280px]">{vehicle.titre}</span>
       </div>
 
-      {/* Main Header */}
+      {(vehicle.workflow_status === "REJECTED" && vehicle.review_comment) ||
+      (vehicle.workflow_status !== "PUBLISHED" && !vehicle.documents_complete) ||
+      (vehicle.workflow_status !== "PUBLISHED" && vehicle.documents_complete && !vehicle.documents_validated) ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          {vehicle.workflow_status === "REJECTED" && vehicle.review_comment ? (
+            <div className="flex items-start gap-3">
+              <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-red-700">Véhicule rejeté</p>
+                <p className="text-sm text-red-700/90 mt-1 whitespace-pre-line">
+                  {vehicle.review_comment}
+                </p>
+              </div>
+            </div>
+          ) : !vehicle.documents_complete ? (
+            <div className="flex items-start gap-3">
+              <FileWarning className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-amber-700">Documents incomplets</p>
+                <p className="text-sm text-amber-700/90 mt-1">
+                  Ajoutez la carte grise, la visite technique et l’assurance avant soumission.
+                </p>
+              </div>
+            </div>
+          ) : vehicle.documents_complete && !vehicle.documents_validated ? (
+            <div className="flex items-start gap-3">
+              <Clock3 className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-amber-700">En attente de validation documentaire</p>
+                <p className="text-sm text-amber-700/90 mt-1">
+                  Vos documents sont complets. Soumettez le véhicule ou attendez la validation par le support/admin.
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div
         className="
           relative overflow-hidden
@@ -57,32 +147,16 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
         "
       >
         <div className="relative px-6 py-5 sm:px-8 flex flex-col lg:flex-row gap-6 items-start">
-          {/* LEFT SECTION */}
           <div className="flex-1 space-y-4">
-            {/* Title + Status */}
             <div className="flex items-start gap-4">
-              {/* <Button
-                variant="outline"
-                size="icon"
-                onClick={() => navigate("/prestataire/fleet")}
-                className="
-                  rounded-2xl shrink-0 h-11 w-11
-                  border-border/60
-                  hover:bg-accent/50
-                  transition-all
-                "
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button> */}
-
               <div className="flex-1 space-y-2">
-                {/* TITLE + BADGES INLINE */}
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight">
                     {vehicle.titre}
                   </h1>
 
-                  {/* Disponibilité */}
+                  {workflowBadge()}
+
                   {vehicle.est_disponible ? (
                     <Badge className="h-6 bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 rounded-full px-3 text-xs flex items-center gap-1">
                       <CheckCircle className="w-3.5 h-3.5" />
@@ -94,7 +168,6 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
                     </Badge>
                   )}
 
-                  {/* Certification */}
                   {vehicle.est_certifie && (
                     <Badge className="h-6 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-full px-3 text-xs flex items-center gap-1">
                       <Award className="w-3.5 h-3.5" />
@@ -105,10 +178,9 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
               </div>
             </div>
 
-            {/* Meta info */}
-            <div className="flex flex-wrap items-center gap-4 text-sm pl-[60px]">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
               <div className="font-mono font-semibold bg-muted/80 px-3 py-1.5 rounded-lg border border-border/60">
-                {vehicle.numero_immatriculation}
+                {vehicle.numero_immatriculation || "NON ATTRIBUÉE"}
               </div>
 
               <span className="text-muted-foreground/30">•</span>
@@ -127,8 +199,22 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
             </div>
           </div>
 
-          {/* RIGHT SECTION — ACTION BUTTONS */}
           <div className="flex flex-row flex-wrap gap-2.5 w-full lg:w-auto">
+            {canSubmit && (
+              <Button
+                onClick={handleSubmitForReview}
+                disabled={submitMutation.isPending || !vehicle.documents_complete}
+                className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200"
+              >
+                {submitMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Soumettre pour validation
+              </Button>
+            )}
+
             <Button
               variant="outline"
               onClick={() => navigate(`/prestataire/vehicle/${vehicle.id}/edit`)}
@@ -148,9 +234,7 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
             </Button>
 
             <Button
-              onClick={() =>
-                navigate(`/prestataire/vehicle/${vehicle.id}/photos`)
-              }
+              onClick={() => navigate(`/prestataire/vehicle/${vehicle.id}/photos`)}
               className="gap-2 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25"
             >
               <Camera className="w-4 h-4" />
@@ -160,7 +244,7 @@ const VehicleHeader: React.FC<VehicleHeaderProps> = ({ vehicle }) => {
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default VehicleHeader
+export default VehicleHeader;
