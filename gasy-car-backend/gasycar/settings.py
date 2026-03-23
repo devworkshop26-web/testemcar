@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "modepayment",
     "driver",
     "smsapp",
+    "loyalty",
 ]
 
 REST_FRAMEWORK = {

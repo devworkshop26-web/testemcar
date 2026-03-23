@@ -53,6 +53,12 @@ type LoyaltyAction = {
   variant?: "default" | "outline";
 };
 
+type LoyaltyRule = {
+  title: string;
+  description: string;
+  enabled: boolean;
+};
+
 export type LoyaltyProgramContentProps = {
   title: string;
   subtitle: string;
@@ -130,9 +136,13 @@ export function LoyaltyProgramContent({
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">Progression vers {nextTierLabel}</p>
+                    <p className="text-sm font-semibold text-white">
+                      {pointsToNextTier > 0 ? `Progression vers ${nextTierLabel}` : "Palier maximal atteint"}
+                    </p>
                     <p className="text-xs text-white/65">
-                      Encore {pointsToNextTier} points pour débloquer le prochain niveau.
+                      {pointsToNextTier > 0
+                        ? `Encore ${pointsToNextTier} points pour débloquer le prochain niveau.`
+                        : "Vous êtes déjà au niveau le plus élevé du programme."}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-amber-300">{Math.round(progress)}%</p>
@@ -256,7 +266,7 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Pourquoi accumuler des points ?</CardTitle>
                 <CardDescription>
-                  Des blocs réutilisables pour expliquer simplement la fidélité dans l’espace client.
+                  Les avantages visibles dépendent de votre progression réelle dans le programme.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -287,7 +297,7 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Niveaux du programme</CardTitle>
                 <CardDescription>
-                  Une présentation claire des paliers, réutilisable ensuite avec les vraies données backend.
+                  Les paliers sont calculés automatiquement selon votre total de points.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -380,8 +390,8 @@ export function LoyaltyProgramContent({
                     <p className="font-semibold text-slate-900">{rule.title}</p>
                     <p className="mt-1 text-sm text-slate-500">{rule.description}</p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
 

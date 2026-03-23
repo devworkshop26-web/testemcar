@@ -1,4 +1,7 @@
 import { LoyaltyProgramContent } from "@/components/client/loyalty/LoyaltyProgramContent";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import { useLoyaltyQuery } from "@/useQuery/useLoyaltyQuery";
 import { Gift, ShieldCheck, Sparkles, Star } from "lucide-react";
 import { useLoyaltyOverviewQuery } from "@/useQuery/loyaltyUseQuery";
 
