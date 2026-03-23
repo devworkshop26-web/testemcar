@@ -27,7 +27,8 @@ class LoyaltyTransactionSerializer(serializers.ModelSerializer):
             LoyaltyTransaction.Status.REDEEMED: "redeemed",
             LoyaltyTransaction.Status.CANCELLED: "cancelled",
         }
-        return mapping.get(obj.status, "earned")
+        status = obj.get("status") if isinstance(obj, dict) else obj.status
+        return mapping.get(status, "earned")
 
 
 class LoyaltySummarySerializer(serializers.Serializer):
@@ -43,7 +44,7 @@ class LoyaltySummarySerializer(serializers.Serializer):
     current_tier_helper = serializers.CharField()
     next_tier_display = serializers.CharField()
     tiers = serializers.ListField(child=serializers.DictField(), read_only=True)
-    history = LoyaltyTransactionSerializer(many=True, read_only=True)
+    history = serializers.ListField(child=serializers.DictField(), read_only=True)
     stats = serializers.ListField(child=serializers.DictField(), read_only=True)
     benefits = serializers.ListField(child=serializers.DictField(), read_only=True)
     actions = serializers.ListField(child=serializers.DictField(), read_only=True)
