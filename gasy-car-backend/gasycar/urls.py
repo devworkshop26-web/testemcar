@@ -38,6 +38,7 @@ urlpatterns = [
    path('api/', include('prestataire.urls')),
    path('api/driver/', include('driver.urls')),
    path('api/smsapp/', include('smsapp.urls')),
+   path('api/', include('loyalty.urls')),
    
 ]
 

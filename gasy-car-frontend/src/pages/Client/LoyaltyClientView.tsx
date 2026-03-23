@@ -1,118 +1,86 @@
 import { LoyaltyProgramContent } from "@/components/client/loyalty/LoyaltyProgramContent";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import { useLoyaltyQuery } from "@/useQuery/useLoyaltyQuery";
 import { Gift, ShieldCheck, Sparkles, Star } from "lucide-react";
 
-const loyaltyMockData = {
-  title: "Mes points fidélité",
-  subtitle:
-    "Suivez votre progression, découvrez vos avantages et visualisez les récompenses disponibles dans votre espace client.",
-  points: 1250,
-  nextTierLabel: "Platinum",
-  pointsToNextTier: 50,
-  progress: 96,
-  memberSince: "janvier 2026",
-  discountLabel: "-10% sur certaines locations",
-  stats: [
-    {
-      label: "Niveau actuel",
-      value: "Gold",
-      helper: "Accès aux offres fidélité et aux bonus sur vos prochaines réservations.",
-    },
-    {
-      label: "Points disponibles",
-      value: "1 250",
-      helper: "Solde frontend simulé avant connexion aux vraies données backend.",
-    },
-    {
-      label: "Prochain palier",
-      value: "50 pts",
-      helper: "Encore un petit effort pour atteindre Platinum.",
-    },
-  ],
-  benefits: [
-    {
-      title: "Réductions sur les locations",
-      description: "Transformez vos points en avantages lors de vos prochaines réservations sans changer le parcours actuel.",
-      icon: <Gift className="h-5 w-5" />,
-    },
-    {
-      title: "Bonus confiance",
-      description: "Les clients réguliers peuvent accéder à des privilèges premium et à des offres ciblées.",
-      icon: <ShieldCheck className="h-5 w-5" />,
-    },
-    {
-      title: "Récompenses d’engagement",
-      description: "Avis, locations terminées et parrainage peuvent renforcer la progression dans le programme.",
-      icon: <Star className="h-5 w-5" />,
-    },
-    {
-      title: "Expérience évolutive",
-      description: "La page est pensée pour rester réutilisable quand on branchera les données backend réelles.",
-      icon: <Sparkles className="h-5 w-5" />,
-    },
-  ],
-  history: [
-    {
-      id: "history-1",
-      title: "Location terminée · Toyota Land Cruiser Prado",
-      date: "18 mars 2026",
-      points: 180,
-      status: "earned" as const,
-      description: "Points accordés après une location finalisée avec succès.",
-    },
-    {
-      id: "history-2",
-      title: "Avis vérifié publié",
-      date: "14 mars 2026",
-      points: 25,
-      status: "earned" as const,
-      description: "Bonus engagement après publication d’un retour client utile.",
-    },
-    {
-      id: "history-3",
-      title: "Réduction appliquée sur une réservation",
-      date: "10 mars 2026",
-      points: -120,
-      status: "redeemed" as const,
-      description: "Utilisation de points pour bénéficier d’une remise fidélité.",
-    },
-    {
-      id: "history-4",
-      title: "Parrainage en attente",
-      date: "07 mars 2026",
-      points: 80,
-      status: "pending" as const,
-      description: "Les points seront validés lorsque le filleul terminera sa première location.",
-    },
-  ],
-  tiers: [
-    {
-      name: "Bronze",
-      thresholdLabel: "0 à 299 points",
-      perks: ["Accès au programme", "Historique des points"],
-    },
-    {
-      name: "Silver",
-      thresholdLabel: "300 à 799 points",
-      perks: ["Bonus ponctuels", "Offres fidélité"],
-    },
-    {
-      name: "Gold",
-      thresholdLabel: "800 à 1 499 points",
-      active: true,
-      perks: ["-10% sur certaines locations", "Avantages exclusifs", "Priorité promo"],
-    },
-    {
-      name: "Platinum",
-      thresholdLabel: "1 500+ points",
-      perks: ["Privilèges premium", "Bonus majorés", "Accès anticipé aux offres"],
-    },
-  ],
-  actions: [
-    { label: "Voir mes locations", href: "/client/rentals", variant: "outline" as const },
-    { label: "Parrainer un ami", href: "/client/loyalty" },
-  ],
-};
-
 export default function LoyaltyClientView() {
-  return <LoyaltyProgramContent {...loyaltyMockData} />;
+  const { data, isLoading, isError, error } = useLoyaltyQuery();
+
+  if (isLoading) {
+    return (
+      <Card className="rounded-3xl border-slate-200/70 shadow-sm">
+        <CardContent className="p-8 text-sm text-slate-500">
+          Chargement de vos données fidélité…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Impossible de charger la fidélité</AlertTitle>
+        <AlertDescription>
+          {error instanceof Error
+            ? error.message
+            : "Le backend fidélité ne répond pas pour le moment."}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <LoyaltyProgramContent
+      title={data.title}
+      subtitle={data.subtitle}
+      points={data.points}
+      nextTierLabel={data.next_tier_label || data.current_tier}
+      pointsToNextTier={data.points_to_next_tier}
+      progress={data.progress}
+      memberSince={data.member_since}
+      discountLabel={data.discount_label}
+      stats={data.stats}
+      benefits={[
+        {
+          title: "Réductions sur les locations",
+          description: "Transformez vos points en avantages sur vos prochaines réservations.",
+          icon: <Gift className="h-5 w-5" />,
+        },
+        {
+          title: "Bonus confiance",
+          description: "Les clients réguliers profitent d’avantages supplémentaires selon leur niveau.",
+          icon: <ShieldCheck className="h-5 w-5" />,
+        },
+        {
+          title: "Récompenses d’engagement",
+          description: "Les avis vérifiés et le profil complété améliorent aussi votre progression.",
+          icon: <Star className="h-5 w-5" />,
+        },
+        {
+          title: "Expérience connectée au backend",
+          description: "Cette page affiche maintenant les données réelles calculées depuis votre compte.",
+          icon: <Sparkles className="h-5 w-5" />,
+        },
+      ]}
+      history={data.history.map((item) => ({
+        ...item,
+        date: new Date(item.date).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        }),
+      }))}
+      tiers={data.tiers.map((tier) => ({
+        name: tier.name,
+        thresholdLabel: tier.threshold_label,
+        active: tier.active,
+        perks: tier.perks,
+      }))}
+      actions={[
+        { label: "Voir mes locations", href: "/client/rentals", variant: "outline" as const },
+      ]}
+      earningRules={data.earning_rules}
+    />
+  );
 }
