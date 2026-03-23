@@ -3,84 +3,58 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLoyaltyQuery } from "@/useQuery/useLoyaltyQuery";
 import { Gift, ShieldCheck, Sparkles, Star } from "lucide-react";
+import { useLoyaltyOverviewQuery } from "@/useQuery/loyaltyUseQuery";
+
+const staticBenefits = [
+  {
+    title: "Réductions sur les locations",
+    description: "Transformez vos points en avantages lors de vos prochaines réservations sans changer le parcours actuel.",
+    icon: <Gift className="h-5 w-5" />,
+  },
+  {
+    title: "Bonus confiance",
+    description: "Les clients réguliers peuvent accéder à des privilèges premium et à des offres ciblées.",
+    icon: <ShieldCheck className="h-5 w-5" />,
+  },
+  {
+    title: "Récompenses d’engagement",
+    description: "Les locations terminées, les avis approuvés et le profil complété renforcent la progression dans le programme.",
+    icon: <Star className="h-5 w-5" />,
+  },
+  {
+    title: "Expérience évolutive",
+    description: "Le parrainage est volontairement laissé de côté pour le moment, mais le reste est branché aux vraies données backend.",
+    icon: <Sparkles className="h-5 w-5" />,
+  },
+];
 
 export default function LoyaltyClientView() {
-  const { data, isLoading, isError, error } = useLoyaltyQuery();
-
-  if (isLoading) {
-    return (
-      <Card className="rounded-3xl border-slate-200/70 shadow-sm">
-        <CardContent className="p-8 text-sm text-slate-500">
-          Chargement de vos données fidélité…
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (isError || !data) {
-    return (
-      <Alert variant="destructive">
-        <AlertTitle>Impossible de charger la fidélité</AlertTitle>
-        <AlertDescription>
-          {error instanceof Error
-            ? error.message
-            : "Le backend fidélité ne répond pas pour le moment."}
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  const { data, isLoading, isError } = useLoyaltyOverviewQuery();
 
   return (
     <LoyaltyProgramContent
-      title={data.title}
-      subtitle={data.subtitle}
-      points={data.points}
-      nextTierLabel={data.next_tier_label || data.current_tier}
-      pointsToNextTier={data.points_to_next_tier}
-      progress={data.progress}
-      memberSince={data.member_since}
-      discountLabel={data.discount_label}
-      stats={data.stats}
-      benefits={[
-        {
-          title: "Réductions sur les locations",
-          description: "Transformez vos points en avantages sur vos prochaines réservations.",
-          icon: <Gift className="h-5 w-5" />,
-        },
-        {
-          title: "Bonus confiance",
-          description: "Les clients réguliers profitent d’avantages supplémentaires selon leur niveau.",
-          icon: <ShieldCheck className="h-5 w-5" />,
-        },
-        {
-          title: "Récompenses d’engagement",
-          description: "Les avis vérifiés et le profil complété améliorent aussi votre progression.",
-          icon: <Star className="h-5 w-5" />,
-        },
-        {
-          title: "Expérience connectée au backend",
-          description: "Cette page affiche maintenant les données réelles calculées depuis votre compte.",
-          icon: <Sparkles className="h-5 w-5" />,
-        },
-      ]}
-      history={data.history.map((item) => ({
-        ...item,
-        date: new Date(item.date).toLocaleDateString("fr-FR", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        }),
-      }))}
-      tiers={data.tiers.map((tier) => ({
-        name: tier.name,
-        thresholdLabel: tier.threshold_label,
-        active: tier.active,
-        perks: tier.perks,
-      }))}
+      title={data?.title ?? "Mes points fidélité"}
+      subtitle={
+        data?.subtitle ??
+        "Suivez votre progression, découvrez vos avantages et visualisez les récompenses disponibles dans votre espace client."
+      }
+      points={data?.points ?? 0}
+      nextTierLabel={data?.nextTierLabel ?? "Bronze"}
+      pointsToNextTier={data?.pointsToNextTier ?? 0}
+      progress={data?.progress ?? 0}
+      memberSince={data?.memberSince ?? "—"}
+      discountLabel={data?.discountLabel ?? "Accès au programme"}
+      stats={data?.stats ?? []}
+      benefits={staticBenefits}
+      history={data?.history ?? []}
+      tiers={data?.tiers ?? []}
       actions={[
         { label: "Voir mes locations", href: "/client/rentals", variant: "outline" as const },
+        { label: "Parrainer un ami", href: "/client/loyalty" },
       ]}
-      earningRules={data.earning_rules}
+      isLoading={isLoading}
+      isError={isError}
+      referralEnabled={data?.rules?.referralEnabled ?? false}
     />
   );
 }

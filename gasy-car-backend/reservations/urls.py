@@ -20,6 +20,7 @@ router.register(
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("loyalty/overview/", views.LoyaltyOverviewAPIView.as_view(), name="loyalty-overview"),
 
     # pricing
     path(

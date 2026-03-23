@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { ReactNode } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 
 type LoyaltyStat = {
@@ -72,7 +73,9 @@ export type LoyaltyProgramContentProps = {
   history: LoyaltyHistoryItem[];
   tiers: LoyaltyTier[];
   actions: LoyaltyAction[];
-  earningRules: LoyaltyRule[];
+  isLoading?: boolean;
+  isError?: boolean;
+  referralEnabled?: boolean;
 };
 
 const historyStatusStyles: Record<LoyaltyHistoryItem["status"], string> = {
@@ -95,7 +98,9 @@ export function LoyaltyProgramContent({
   history,
   tiers,
   actions,
-  earningRules,
+  isLoading = false,
+  isError = false,
+  referralEnabled = false,
 }: LoyaltyProgramContentProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -158,7 +163,7 @@ export function LoyaltyProgramContent({
                         : "bg-white text-slate-950 hover:bg-white/90"
                     )}
                   >
-                    <Link to={action.href}>{action.label}</Link>
+                    <Link to={action.href}>{action.label === "Parrainer un ami" && !referralEnabled ? "Parrainer un ami (bientôt)" : action.label}</Link>
                   </Button>
                 ))}
               </div>
@@ -199,11 +204,17 @@ export function LoyaltyProgramContent({
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">Mes mouvements fidélité</CardTitle>
                 <CardDescription>
-                  Vos mouvements fidélité calculés depuis le backend.
+                  Historique réel des points calculés par le backend hors parrainage.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {history.map((item) => (
+                {isLoading ? Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="space-y-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+                    <Skeleton className="h-5 w-1/2" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                )) : history.length > 0 ? history.map((item) => (
                   <div
                     key={item.id}
                     className="flex flex-col gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -239,7 +250,13 @@ export function LoyaltyProgramContent({
                       </p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                    {isError
+                      ? "Impossible de charger la fidélité pour le moment."
+                      : "Aucun mouvement fidélité disponible pour l’instant."}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -253,7 +270,7 @@ export function LoyaltyProgramContent({
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
-                {benefits.map((benefit) => (
+                {benefits.length > 0 ? benefits.map((benefit) => (
                   <div
                     key={benefit.title}
                     className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm"
@@ -264,7 +281,13 @@ export function LoyaltyProgramContent({
                     <h3 className="font-semibold text-slate-900">{benefit.title}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-500">{benefit.description}</p>
                   </div>
-                ))}
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                    {isError
+                      ? "Impossible de charger les avantages pour le moment."
+                      : "Aucun avantage fidélité disponible pour l’instant."}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -278,7 +301,7 @@ export function LoyaltyProgramContent({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {tiers.map((tier) => (
+                {tiers.length > 0 ? tiers.map((tier) => (
                   <div
                     key={tier.name}
                     className={cn(
@@ -314,7 +337,13 @@ export function LoyaltyProgramContent({
                       ))}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                    {isError
+                      ? "Impossible de charger les niveaux pour le moment."
+                      : "Aucun niveau fidélité disponible pour l’instant."}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -325,35 +354,41 @@ export function LoyaltyProgramContent({
             <CardHeader>
               <CardTitle className="text-xl font-bold text-slate-900">Comment gagner des points ?</CardTitle>
               <CardDescription>
-                Règles actuellement prises en compte par le backend fidélité.
+                Les règles hors parrainage sont maintenant connectées au backend.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {earningRules.map((rule) => {
-                const icon = rule.title.includes("location")
-                  ? <Trophy className="h-4 w-4" />
-                  : rule.title.includes("avis")
-                    ? <Star className="h-4 w-4" />
-                    : rule.title.includes("Parrainer")
-                      ? <Users className="h-4 w-4" />
-                      : <CheckCircle2 className="h-4 w-4" />;
-
-                return (
-                  <div key={rule.title} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      {icon}
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-slate-900">{rule.title}</p>
-                        {!rule.enabled && (
-                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                            Hors périmètre
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-sm text-slate-500">{rule.description}</p>
-                    </div>
+              {[
+                {
+                  title: "Réserver et terminer une location",
+                  description: "Les points sont crédités quand la location se termine correctement.",
+                  icon: <Trophy className="h-4 w-4" />,
+                },
+                {
+                  title: "Laisser un avis vérifié",
+                  description: "Un bonus fidélité peut récompenser les retours utiles après une location.",
+                  icon: <Star className="h-4 w-4" />,
+                },
+                {
+                  title: "Parrainer un ami",
+                  description: referralEnabled
+                    ? "Invitez un proche et débloquez des points lorsqu’il réalise sa première location."
+                    : "Point temporairement désactivé : le parrainage n’est pas encore pris en charge.",
+                  icon: <Users className="h-4 w-4" />,
+                },
+                {
+                  title: "Compléter votre profil",
+                  description: "Un bonus ponctuel de 80 points est accordé quand le profil et les documents sont complets.",
+                  icon: <CheckCircle2 className="h-4 w-4" />,
+                },
+              ].map((rule) => (
+                <div key={rule.title} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    {rule.icon}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{rule.title}</p>
+                    <p className="mt-1 text-sm text-slate-500">{rule.description}</p>
                   </div>
                 );
               })}
@@ -367,12 +402,12 @@ export function LoyaltyProgramContent({
                 Prochaine étape
               </CardTitle>
               <CardDescription className="text-white/80">
-                Cette page affiche désormais vos soldes, niveaux et historiques calculés depuis le backend.
+                Cette page affiche désormais les vrais soldes et l’historique réel pour la fidélité hors parrainage.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl bg-white/10 p-4 text-sm leading-6 text-white/85">
-                Le parrainage reste volontairement hors scope pour l’instant, mais le reste du programme fidélité est maintenant connecté.
+                Le frontend et le backend sont désormais branchés pour les locations terminées, les avis approuvés et le profil complété. Le parrainage reste volontairement en attente.
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button asChild className="rounded-xl bg-white text-primary hover:bg-white/90">

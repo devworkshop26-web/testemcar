@@ -1,8 +1,10 @@
 from decimal import Decimal
+from itertools import chain
 
 from django.db import transaction
-from django.db.models import Count, Sum, Value
+from django.db.models import Count, Prefetch, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate, TruncMonth
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils.crypto import get_random_string
@@ -26,6 +28,7 @@ from gasycar.utils import send_email_notification
 from modepayment.models import ModePayment
 from smsapp.helpsms import send_sms_befiana
 from users.models import User
+from reviews.models import Review
 from vehicule.models import Vehicule
 
 from .forms import ReservationPaymentForm
@@ -359,6 +362,219 @@ class ReservationPaymentViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save(processed_by=payment.processed_by)
+
+
+
+
+LOYALTY_TIERS = [
+    {
+        "name": "Bronze",
+        "min_points": 0,
+        "max_points": 299,
+        "perks": ["Accès au programme", "Historique des points"],
+        "discount_label": "Accès au programme"
+    },
+    {
+        "name": "Silver",
+        "min_points": 300,
+        "max_points": 799,
+        "perks": ["Bonus ponctuels", "Offres fidélité"],
+        "discount_label": "Bonus fidélité ponctuels"
+    },
+    {
+        "name": "Gold",
+        "min_points": 800,
+        "max_points": 1499,
+        "perks": ["-10% sur certaines locations", "Avantages exclusifs", "Priorité promo"],
+        "discount_label": "-10% sur certaines locations"
+    },
+    {
+        "name": "Platinum",
+        "min_points": 1500,
+        "max_points": None,
+        "perks": ["Privilèges premium", "Bonus majorés", "Accès anticipé aux offres"],
+        "discount_label": "-15% sur certaines locations"
+    },
+]
+
+LOYALTY_RESERVATION_POINTS = 100
+LOYALTY_REVIEW_POINTS = 25
+LOYALTY_PROFILE_COMPLETION_POINTS = 80
+
+
+def user_profile_is_complete(user: User) -> bool:
+    return all(
+        [
+            bool((user.first_name or "").strip()),
+            bool((user.last_name or "").strip()),
+            bool((user.phone or "").strip()),
+            bool((user.address or "").strip()),
+            bool((user.cin_number or "").strip()),
+            bool(user.cin_photo_recto),
+            bool(user.cin_photo_verso),
+            bool(user.residence_certificate),
+            bool(user.permis_conduire or user.permis_conduire_recto),
+        ]
+    )
+
+
+def get_loyalty_tier(points: int):
+    for tier in LOYALTY_TIERS:
+        max_points = tier["max_points"]
+        if max_points is None or points <= max_points:
+            return tier
+    return LOYALTY_TIERS[-1]
+
+
+def serialize_loyalty_tiers(current_tier_name: str):
+    serialized = []
+    for tier in LOYALTY_TIERS:
+        max_points = tier["max_points"]
+        threshold_label = (
+            f"{tier['min_points']} à {max_points} points"
+            if max_points is not None
+            else f"{tier['min_points']}+ points"
+        )
+        serialized.append(
+            {
+                "name": tier["name"],
+                "thresholdLabel": threshold_label,
+                "active": tier["name"] == current_tier_name,
+                "perks": tier["perks"],
+            }
+        )
+    return serialized
+
+
+class LoyaltyOverviewAPIView(SecuredAPIView):
+    def get(self, request, format=None):
+        user = request.user
+
+        completed_reservations = list(
+            Reservation.objects.filter(client=user, status=Reservation.Status.COMPLETED)
+            .select_related("vehicle", "vehicle__marque", "vehicle__modele")
+            .order_by("-end_datetime", "-updated_at")
+        )
+        approved_reviews = list(
+            Review.objects.filter(
+                author=user,
+                is_verified=True,
+                moderation_status=Review.ModerationStatus.APPROVED,
+                review_type=Review.ReviewType.CLIENT_TO_OWNER,
+                reservation__isnull=False,
+            )
+            .select_related("reservation", "reservation__vehicle")
+            .order_by("-created_at")
+        )
+
+        profile_completed = user_profile_is_complete(user)
+
+        history = []
+        total_points = 0
+
+        for reservation in completed_reservations:
+            vehicle_label = getattr(reservation.vehicle, "titre", "") or str(reservation.vehicle)
+            history.append(
+                {
+                    "id": f"reservation-{reservation.id}",
+                    "title": f"Location terminée · {vehicle_label}",
+                    "date": timezone.localtime(reservation.end_datetime).date().isoformat() if reservation.end_datetime else timezone.localdate().isoformat(),
+                    "points": LOYALTY_RESERVATION_POINTS,
+                    "status": "earned",
+                    "description": "Points accordés après une location finalisée avec succès.",
+                    "source": "reservation",
+                }
+            )
+            total_points += LOYALTY_RESERVATION_POINTS
+
+        for review in approved_reviews:
+            history.append(
+                {
+                    "id": f"review-{review.id}",
+                    "title": "Avis vérifié publié",
+                    "date": timezone.localtime(review.created_at).date().isoformat(),
+                    "points": LOYALTY_REVIEW_POINTS,
+                    "status": "earned",
+                    "description": "Bonus engagement après publication d’un retour client utile.",
+                    "source": "review",
+                }
+            )
+            total_points += LOYALTY_REVIEW_POINTS
+
+        if profile_completed:
+            history.append(
+                {
+                    "id": f"profile-{user.id}",
+                    "title": "Profil complété",
+                    "date": timezone.localtime(user.updated_at or user.date_joined).date().isoformat(),
+                    "points": LOYALTY_PROFILE_COMPLETION_POINTS,
+                    "status": "earned",
+                    "description": "Bonus ponctuel débloqué après complétion du profil et des documents.",
+                    "source": "profile",
+                }
+            )
+            total_points += LOYALTY_PROFILE_COMPLETION_POINTS
+
+        history.sort(key=lambda item: item["date"], reverse=True)
+
+        current_tier = get_loyalty_tier(total_points)
+        current_index = LOYALTY_TIERS.index(current_tier)
+        next_tier = LOYALTY_TIERS[current_index + 1] if current_index + 1 < len(LOYALTY_TIERS) else None
+
+        if next_tier:
+            points_to_next_tier = max(next_tier["min_points"] - total_points, 0)
+            tier_span = max(next_tier["min_points"] - current_tier["min_points"], 1)
+            progress = min(100, round(((total_points - current_tier["min_points"]) / tier_span) * 100))
+            next_tier_label = next_tier["name"]
+        else:
+            points_to_next_tier = 0
+            progress = 100
+            next_tier_label = current_tier["name"]
+
+        stats = [
+            {
+                "label": "Niveau actuel",
+                "value": current_tier["name"],
+                "helper": "Avantages fidélité actifs hors parrainage.",
+            },
+            {
+                "label": "Points disponibles",
+                "value": str(total_points),
+                "helper": "Solde calculé depuis les réservations terminées, les avis approuvés et le profil complété.",
+            },
+            {
+                "label": "Prochain palier",
+                "value": f"{points_to_next_tier} pts" if next_tier else current_tier["name"],
+                "helper": (
+                    f"Encore {points_to_next_tier} points pour atteindre {next_tier['name']}."
+                    if next_tier
+                    else "Palier maximum déjà atteint."
+                ),
+            },
+        ]
+
+        return Response(
+            {
+                "title": "Mes points fidélité",
+                "subtitle": "Suivez votre progression, découvrez vos avantages et visualisez les récompenses disponibles dans votre espace client.",
+                "points": total_points,
+                "nextTierLabel": next_tier_label,
+                "pointsToNextTier": points_to_next_tier,
+                "progress": progress,
+                "memberSince": timezone.localtime(user.date_joined).strftime("%B %Y"),
+                "discountLabel": current_tier["discount_label"],
+                "stats": stats,
+                "history": history,
+                "tiers": serialize_loyalty_tiers(current_tier["name"]),
+                "rules": {
+                    "reservationPoints": LOYALTY_RESERVATION_POINTS,
+                    "reviewPoints": LOYALTY_REVIEW_POINTS,
+                    "profilePoints": LOYALTY_PROFILE_COMPLETION_POINTS,
+                    "referralEnabled": False,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ReservationPricingConfigAPIView(SecuredAPIView):

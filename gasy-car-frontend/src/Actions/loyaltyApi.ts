@@ -1,9 +1,8 @@
 import { InstanceAxis } from "@/helper/InstanceAxios";
-import type { LoyaltyDashboard } from "@/types/loyaltyType";
+import type { LoyaltyOverview } from "@/types/loyalty";
 
-export const loyaltyApi = {
-  getMyDashboard: async () => {
-    const response = await InstanceAxis.get<LoyaltyDashboard>("/loyalty/me/");
-    return response.data;
+export const loyaltyAPI = {
+  getOverview: async () => {
+    return await InstanceAxis.get<LoyaltyOverview>("/bookings/loyalty/overview/");
   },
 };
