@@ -31,7 +31,6 @@ urlpatterns = [
    path('api/marketing/', include('marketing.urls')),
    # reservations
    path('api/bookings/', include('reservations.urls')),
-   path('api/loyalty/', include('loyalty.urls')),
    path('api/support/', include('support.urls')),
    path('api/reviews/', include('reviews.urls')),
    path('api/', include('blogs.urls')),

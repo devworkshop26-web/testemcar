@@ -1,32 +1,23 @@
+// queries/vehicule-query.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type {
   CreateVehiculePayload,
   UpdateVehiculePayload,
-  ReviewVehiclePayload,
 } from "@/types/vehiculeType";
 import { vehiculeAPI } from "@/Actions/vehiculeApi";
 import { Vehicule } from "@/types/vehiculeType";
 import { User } from "@/types/userType";
+import { InstanceAxis } from "@/helper/InstanceAxios";
 
 const ONE_YEAR_MS = 1000 * 60 * 60 * 24 * 365;
 
-export const useVehiculesQuery = (
-  filters?:
-    | string
-    | {
-        type_vehicule?: string;
-        est_sponsorise?: boolean;
-        est_disponible?: boolean;
-        est_coup_de_coeur?: boolean;
-        valide?: boolean;
-        workflow_status?: string;
-      }
-) => {
+// Liste de tous les véhicules
+export const useVehiculesQuery = (type?: string) => {
   return useQuery<Vehicule[]>({
-    queryKey: ["vehicules-all", filters],
+    queryKey: ["vehicules-all", type],
     queryFn: async () => {
-      const { data } = await vehiculeAPI.get_all_vehicules(filters);
+      const { data } = await vehiculeAPI.get_all_vehicules(type);
       return Array.isArray(data) ? data : [];
     },
     staleTime: ONE_YEAR_MS,
@@ -34,39 +25,7 @@ export const useVehiculesQuery = (
   });
 };
 
-export const usePublicVehiculesQuery = (
-  filters?:
-    | string
-    | {
-        type_vehicule?: string;
-        est_sponsorise?: boolean;
-        est_disponible?: boolean;
-        est_coup_de_coeur?: boolean;
-      }
-) => {
-  return useQuery<Vehicule[]>({
-    queryKey: ["vehicules-public", filters],
-    queryFn: async () => {
-      const { data } = await vehiculeAPI.get_public_vehicules(filters);
-      return Array.isArray(data) ? data : [];
-    },
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-  });
-};
-
-export const useVehicleReviewQueueQuery = (filters?: { workflow_status?: string; valide?: boolean }) => {
-  return useQuery<Vehicule[]>({
-    queryKey: ["vehicules-review-queue", filters],
-    queryFn: async () => {
-      const { data } = await vehiculeAPI.get_review_queue(filters);
-      return Array.isArray(data) ? data : [];
-    },
-    staleTime: 60 * 1000,
-    retry: 1,
-  });
-};
-
+// Détail d'un véhicule
 export const useVehiculeQuery = (id?: string) => {
   return useQuery<Vehicule>({
     queryKey: ["vehicule-one", id],
@@ -80,8 +39,11 @@ export const useVehiculeQuery = (id?: string) => {
   });
 };
 
+// Alias 
+// Alias clair pour un véhicule unique (utilisé par les pages de réservation)
 export const useSingleCarQuery = (carId?: string) => useVehiculeQuery(carId);
 
+// Création
 export const useCreateVehiculeMutation = () => {
   const queryClient = useQueryClient();
 
@@ -91,11 +53,11 @@ export const useCreateVehiculeMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
       queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
     },
   });
 };
 
+// Upload des images liées à un véhicule existant
 export const useUploadVehiculeImagesMutation = () => {
   return useMutation({
     mutationFn: ({
@@ -105,103 +67,51 @@ export const useUploadVehiculeImagesMutation = () => {
       vehiculeId: string;
       formData: FormData;
     }) =>
-      vehiculeAPI.upload_vehicule_images(vehiculeId, formData).then((res) => res.data),
+      vehiculeAPI
+        .upload_vehicule_images(vehiculeId, formData)
+        .then((res) => res.data),
   });
 };
 
+
+// Update
 export const useUpdateVehiculeMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: UpdateVehiculePayload | FormData;
-    }) => {
-      const res = await vehiculeAPI.update_vehicule(id, payload);
+    mutationFn: async ({ id, payload }: { id: string; payload: FormData }) => {
+      const res = await InstanceAxis.put(
+        `/vehicule/vehicule/${id}/`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
       return res.data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
       queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
       queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-public"] });
     },
   });
 };
 
-export const usePatchVehiculeMutation = () => {
-  const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: UpdateVehiculePayload | FormData;
-    }) => {
-      const res = await vehiculeAPI.patch_vehicule(id, payload);
-      return res.data;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-public"] });
-    },
-  });
-};
 
-export const useSubmitVehicleForReviewMutation = () => {
-  const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => vehiculeAPI.submit_vehicle_for_review(id).then((res) => res.data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
-    },
-  });
-};
-
-export const useReviewVehicleMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: ReviewVehiclePayload;
-    }) => vehiculeAPI.review_vehicle(id, payload).then((res) => res.data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-public"] });
-    },
-  });
-};
-
+// Delete
 export const useDeleteVehiculeMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => vehiculeAPI.delete_vehicule(id).then((res) => res.data),
+    mutationFn: (id: string) =>
+      vehiculeAPI.delete_vehicule(id).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
       queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-review-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicules-public"] });
     },
   });
 };
@@ -230,7 +140,7 @@ export const useOwnerVehiculesQuery = (id?: string) => {
       return Array.isArray(data) ? data : [];
     },
     retry: 1,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -239,7 +149,7 @@ export const useCategoryVehiculesQuery = (id?: string) => {
     queryKey: ["vehicule-categorys-vehicules", id],
     enabled: !!id,
     queryFn: async () => {
-      if (!id) throw new Error("ID catégorie manquant");
+      if (!id) throw new Error("ID user manquant");
       const { data } = await vehiculeAPI.get_all_vehicules_of_category(id);
       return Array.isArray(data) ? data : [];
     },
@@ -260,7 +170,9 @@ export const useAssignDriverMutation = () => {
     }) => vehiculeAPI.assign_driver(vehiculeId, driverId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vehicules-all"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicule-one", variables.vehiculeId] });
+      queryClient.invalidateQueries({
+        queryKey: ["vehicule-one", variables.vehiculeId],
+      });
       queryClient.invalidateQueries({ queryKey: ["vehicule-owner-vehicules"] });
     },
   });

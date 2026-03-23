@@ -1,228 +1,69 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Car, Home, ReceiptText } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { InstanceAxis } from "@/helper/InstanceAxios";
+import { Car, CheckCircle2 } from "lucide-react";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../../components/ui/card";
 import { useCurentuser } from "@/useQuery/authUseQuery";
 import { useReservationClientQuery } from "@/useQuery/clientUseQuery";
-import {
-  ChevronRight,
-  Clock3,
-  Crown,
-  FilePlus2,
-  Gift,
-  ImageOff,
-  ShieldCheck,
-} from "lucide-react";
-import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const loyaltyProgress = 96;
-const loyaltyPoints = 1250;
-const loyaltyPointsToNextTier = 50;
-
-type ExtendedUser = {
-  permis_conduire?: string | null;
-  permis_conduire_recto?: string | null;
-  permis_conduire_verso?: string | null;
-  cin_photo_recto?: string | null;
-  cin_photo_verso?: string | null;
-  residence_certificate?: string | null;
-  nif?: string | null;
-  stat?: string | null;
-};
-
-type DocumentPreview = {
-  label: string;
-  src: string | null;
-};
-
-type DocumentDetail = {
-  label: string;
-  value: string;
-};
-
-type DocumentItem = {
-  id: "permis" | "cin" | "residence" | "fiscal";
-  label: string;
-  status: string;
-  icon: JSX.Element;
-  description: string;
-  previews?: DocumentPreview[];
-  details?: DocumentDetail[];
-};
-
-const rawBaseUrl = String(InstanceAxis.defaults.baseURL || "");
-const mediaBaseUrl = rawBaseUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
-
-const toAbsoluteMediaUrl = (path?: string | null) => {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  if (!mediaBaseUrl) return path;
-  return path.startsWith("/") ? `${mediaBaseUrl}${path}` : `${mediaBaseUrl}/${path}`;
-};
-
-const formatReservationDateRange = (start?: string, end?: string) => {
-  if (!start || !end) return "Dates à confirmer";
-
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-
-  return `Du ${startDate.toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-  })} au ${endDate.toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-  })}`;
-};
-
-const DocumentImageCard = ({ label, src }: DocumentPreview) => {
-  if (!src) {
-    return (
-      <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-        <div className="mb-3 rounded-full bg-white p-3 text-slate-400 shadow-sm">
-          <ImageOff className="h-5 w-5" />
-        </div>
-        <p className="text-sm font-semibold text-slate-700">{label}</p>
-        <p className="mt-1 text-xs text-slate-500">Aucun document disponible.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-4 py-3">
-        <p className="text-sm font-semibold text-slate-900">{label}</p>
-      </div>
-      <div className="bg-slate-50 p-3">
-        <img src={src} alt={label} className="h-[240px] w-full rounded-xl object-cover" />
-      </div>
-    </div>
-  );
-};
+import { Skeleton } from "@/components/ui/skeleton";
+import { useReservationPricingConfigQuery } from "@/useQuery/reservationsUseQuery";
+import { Reservation } from "@/types/reservationsType";
 
 const DashboardOverClientView = () => {
   const { user } = useCurentuser();
   const { data: reservations = [] } = useReservationClientQuery(user?.id);
+  const { data: pricingConfig } = useReservationPricingConfigQuery();
   const navigate = useNavigate();
-  const [selectedDocumentId, setSelectedDocumentId] = useState<DocumentItem["id"] | null>(null);
 
-  const profile = (user ?? {}) as ExtendedUser;
+  const getNumberValue = (value?: string | number | null) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return Number.isNaN(value) ? 0 : value;
+    const normalized = value.replace(/,/g, ".");
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
 
-  const recentReservations = [...reservations]
-    .filter((reservation) => ["COMPLETED", "CANCELLED"].includes(reservation.status))
-    .sort((a, b) => {
-      const left = new Date(b.updated_at ?? b.end_datetime).getTime();
-      const right = new Date(a.updated_at ?? a.end_datetime).getTime();
-      return left - right;
-    })
-    .slice(0, 3);
+  const getReservationDisplayTotal = (reservation: Reservation) => {
+    const baseAmount = getNumberValue(reservation.base_amount);
+    const rawOptionsAmount = getNumberValue(reservation.options_amount);
+    const rawTotalAmount = getNumberValue(reservation.total_amount);
+    const totalDays = Math.max(1, getNumberValue(reservation.total_days) || 1);
 
-  const documentItems = useMemo<DocumentItem[]>(
-    () => [
-      {
-        id: "permis",
-        label: "Permis de conduire",
-        status:
-          profile.permis_conduire_recto ||
-          profile.permis_conduire_verso ||
-          profile.permis_conduire
-            ? "Validé"
-            : "À compléter",
-        icon: <ShieldCheck className="h-4 w-4" />,
-        description:
-          "Consultez ici les images recto et verso de votre permis de conduire.",
-        previews: [
-          {
-            label: "Permis - Recto",
-            src: toAbsoluteMediaUrl(
-              profile.permis_conduire_recto || profile.permis_conduire || null
-            ),
-          },
-          {
-            label: "Permis - Verso",
-            src: toAbsoluteMediaUrl(profile.permis_conduire_verso || null),
-          },
-        ],
-      },
-      {
-        id: "cin",
-        label: "CIN / Passeport",
-        status:
-          profile.cin_photo_recto || profile.cin_photo_verso
-            ? "Validé"
-            : "À compléter",
-        icon: <Gift className="h-4 w-4" />,
-        description:
-          "Consultez ici les images recto et verso de votre CIN ou passeport.",
-        previews: [
-          {
-            label: "CIN / Passeport - Recto",
-            src: toAbsoluteMediaUrl(profile.cin_photo_recto || null),
-          },
-          {
-            label: "CIN / Passeport - Verso",
-            src: toAbsoluteMediaUrl(profile.cin_photo_verso || null),
-          },
-        ],
-      },
-      {
-        id: "residence",
-        label: "Certificat de résidence",
-        status: profile.residence_certificate ? "Validé" : "À compléter",
-        icon: <Home className="h-4 w-4" />,
-        description:
-          "Consultez ici le certificat de résidence de moins de 3 mois enregistré sur votre compte.",
-        previews: [
-          {
-            label: "Certificat de résidence",
-            src: toAbsoluteMediaUrl(profile.residence_certificate || null),
-          },
-        ],
-      },
-      {
-        id: "fiscal",
-        label: "Infos fiscales",
-        status: profile.nif || profile.stat ? "Renseignées" : "À compléter",
-        icon: <ReceiptText className="h-4 w-4" />,
-        description:
-          "Consultez ici les informations fiscales enregistrées sur votre profil.",
-        details: [
-          {
-            label: "NIF",
-            value: profile.nif || "Non renseigné",
-          },
-          {
-            label: "STAT",
-            value: profile.stat || "Non renseigné",
-          },
-        ],
-      },
-    ],
-    [profile]
+    const equipmentsAmount = (reservation.equipments_data ?? []).reduce(
+      (sum, equipment) => sum + getNumberValue(equipment?.price) * totalDays,
+      0
+    );
+    const servicesAmount = (reservation.services_data ?? []).reduce(
+      (sum, service) =>
+        sum + getNumberValue(service?.price) * Math.max(1, getNumberValue(service?.quantity) || 1),
+      0
+    );
+
+    const optionsAmount = Math.max(rawOptionsAmount, equipmentsAmount + servicesAmount);
+    const configuredServiceFee = Math.max(0, getNumberValue(pricingConfig?.service_fee) || 0);
+
+    return Math.max(
+      rawTotalAmount,
+      baseAmount + optionsAmount + configuredServiceFee,
+      baseAmount + optionsAmount
+    );
+  };
+
+  const activeReservations = reservations.filter((r) =>
+    ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(r.status)
   );
 
-  const selectedDocument =
-    documentItems.find((document) => document.id === selectedDocumentId) ?? null;
+  const recentReservations = reservations
+    .filter((r) => ["COMPLETED", "CANCELLED"].includes(r.status))
+    .slice(0, 2);
 
   return (
-    <>
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <Card className="overflow-hidden rounded-[28px] border border-slate-800/20 bg-[#1A2436] text-white shadow-[0_22px_65px_-40px_rgba(15,23,42,0.88)]">
-          <CardContent className="relative p-0">
-            <div className="absolute inset-y-0 right-0 w-[30%] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.08),_transparent_62%)]" />
-           <div className="absolute right-5 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full border border-white/8" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+    <div className="space-y-10 animate-in fade-in duration-500">
+      {/* 🟦 WELCOME HERO SECTION */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-primary to-sky-600 text-white shadow-[0_20px_60px_-35px_rgba(2,6,23,0.55)]">
+        <div className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-sky-300/20 blur-2xl" />
 
-            <div className="relative z-10 p-7 sm:p-10">
+        <div className="relative z-10 p-7 sm:p-10">
           <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wide">
@@ -238,7 +79,7 @@ const DashboardOverClientView = () => {
                 Explorez, comparez et réservez votre véhicule en quelques clics.
               </p>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Button
                   className="rounded-xl bg-white text-slate-900 hover:bg-white/90 shadow-sm active:scale-[0.99]"
                   onClick={() => navigate("/allCars")}
@@ -253,14 +94,6 @@ const DashboardOverClientView = () => {
                 >
                   Voir mes réservations
                 </Button>
-
-                <Button
-                  variant="outline"
-                  className="rounded-xl border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                  onClick={() => navigate("/client/loyalty")}
-                >
-                  Mes points
-                </Button>
               </div>
             </div>
 
@@ -272,196 +105,253 @@ const DashboardOverClientView = () => {
             </div>
           </div>
         </div>
-          </CardContent>
-        </Card>
+      </div>
 
-        <div className="grid gap-8 xl:grid-cols-[1.45fr_0.7fr] xl:items-start">
-          <section className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Clock3 className="h-4 w-4" />
-              </div>
-              <h3 className="font-poppins text-[20px] font-bold tracking-tight text-slate-900 sm:text-[22px]">
-                Locations Récentes
+      {/* 🟦 MAIN GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+        {/* LEFT COLUMN */}
+        <div className="lg:col-span-2 space-y-10">
+          {/* ACTIVE RENTAL */}
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="text-lg sm:text-xl font-bold font-poppins text-slate-900">
+                Location en cours
               </h3>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-xl text-slate-600 hover:bg-slate-100"
+                onClick={() => navigate("/client/rentals")}
+              >
+                Tout voir
+              </Button>
             </div>
 
-            <div className="space-y-5">
-              {recentReservations.length > 0 ? (
-                recentReservations.map((reservation) => {
-                  const vehicle = reservation.vehicle_data;
-                  const image = vehicle?.photo_principale || vehicle?.photos?.[0]?.image;
-                  const locationLabel =
-                    vehicle?.ville ||
-                    vehicle?.adresse_localisation ||
-                    reservation.pickup_location ||
-                    "Madagascar";
+            {activeReservations.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {activeReservations.map((res) => {
+                  const vehicle = res.vehicle_data;
+                  const photo =
+                    vehicle?.photo_principale || (vehicle?.photos?.[0] as any)?.image_url;
 
-                  const vehicleId = vehicle?.id ? String(vehicle.id) : null;
+                  const statusLabel = res.status === "PENDING" ? "En attente" : "En cours";
 
                   return (
                     <Card
-                      key={reservation.id}
-                      className="rounded-[22px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,0.38)]"
+                      key={res.id}
+                      className="
+                        group h-full overflow-hidden rounded-2xl
+                        border border-slate-200/60 bg-white
+                        shadow-[0_18px_55px_-40px_rgba(2,6,23,0.45)]
+                        hover:shadow-[0_22px_70px_-45px_rgba(2,6,23,0.55)]
+                        transition-all
+                      "
                     >
-                      <CardContent className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex min-w-0 items-center gap-4">
-                          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
-                            {image ? (
-                              <img src={image} alt={vehicle?.titre || "Véhicule"} className="h-full w-full object-cover" />
-                            ) : (
-                              <Skeleton className="h-full w-full rounded-none bg-slate-200" />
-                            )}
-                          </div>
+                      {/* PHOTO TOP */}
+                      <div className="relative h-44 sm:h-48 overflow-hidden bg-slate-100">
+                        {photo ? (
+                          <img
+                            src={photo}
+                            alt="vehicle"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <Skeleton className="h-full w-full rounded-none bg-gray-200" />
+                        )}
 
-                          <div className="min-w-0 space-y-1.5">
-                            <h4 className="font-poppins text-[18px] font-bold text-slate-900 sm:text-[19px]">
-                              {vehicle?.titre || `${vehicle?.marque_data?.nom || "Véhicule"} ${vehicle?.modele_data?.label || ""}`.trim()}
+                        {/* Gradient overlay */}
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/10 to-transparent" />
+
+                        {/* Status pill */}
+                        <span className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          {statusLabel}
+                        </span>
+
+                        {/* Total amount chip */}
+                        <div className="absolute bottom-4 right-4 rounded-xl bg-white/90 px-3 py-2 shadow-sm">
+                          <p className="text-[10px] font-medium text-slate-500 leading-none">
+                            Montant total
+                          </p>
+                          <p className="mt-1 text-sm font-extrabold text-primary leading-none">
+                            {Math.round(getReservationDisplayTotal(res)).toLocaleString()} Ar
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* CONTENT */}
+                      <CardContent className="p-5 sm:p-6">
+                        <div className="h-full flex flex-col">
+                          <div className="min-w-0">
+                            <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                              {vehicle?.marque_data?.nom ??
+                                (vehicle as any)?.marque_nom ??
+                                "Marque inconnue"}{" "}
+                              {vehicle?.modele_data?.label ??
+                                (vehicle as any)?.modele_label ??
+                                vehicle?.titre ??
+                                "Modèle non spécifié"}
                             </h4>
-                            <p className="text-base text-slate-500">{locationLabel}</p>
-                            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-                              <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
-                                {reservation.status === "CANCELLED" ? "Annulé" : "Terminé"}
-                              </span>
-                              <span>{formatReservationDateRange(reservation.start_datetime, reservation.end_datetime)}</span>
-                            </div>
+
+                            <p className="text-sm text-slate-500 mt-1">
+                              {vehicle?.transmission_data?.nom ??
+                                (vehicle as any)?.transmission_nom ??
+                                "Transmission"}{" "}
+                              •{" "}
+                              {vehicle?.type_carburant_data?.nom ??
+                                (vehicle as any)?.carburant_nom ??
+                                "Carburant"}
+                            </p>
+                          </div>
+
+                          <div className="my-4 h-px w-full bg-slate-100" />
+
+                          <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                            <Button
+                              variant="outline"
+                              className="flex-1 rounded-xl text-xs border-slate-200"
+                              onClick={() => navigate(`/client/rentals/${res.id}`)}
+                            >
+                              Détails
+                            </Button>
+
+                            <Button
+                              className="flex-1 rounded-xl text-xs bg-primary text-white hover:opacity-95"
+                              onClick={() => navigate("/client/supports/my-tickets")}
+                            >
+                              Contacter support
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="rounded-2xl border border-dashed border-slate-300/70 bg-white p-10 text-center shadow-sm">
+                <p className="text-slate-500">Aucune location en cours.</p>
+                <Button
+                  variant="outline"
+                  className="mt-4 rounded-xl"
+                  onClick={() => navigate("/allCars")}
+                >
+                  Explorer les véhicules
+                </Button>
+              </Card>
+            )}
+          </div>
+
+          {/* RECENT */}
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="text-lg sm:text-xl font-bold font-poppins text-slate-900">
+                Historique récent
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {recentReservations.length > 0 ? (
+                recentReservations.map((res) => {
+                  const vehicle = res.vehicle_data;
+                  const photo =
+                    vehicle?.photo_principale || (vehicle?.photos?.[0] as any)?.image_url;
+
+                  return (
+                    <Card
+                      key={res.id}
+                      className="
+                        rounded-2xl border border-slate-200/60 bg-white
+                        shadow-[0_14px_40px_-30px_rgba(2,6,23,0.35)]
+                        hover:shadow-[0_18px_50px_-30px_rgba(2,6,23,0.45)]
+                        transition-shadow
+                      "
+                    >
+                      <CardContent className="flex items-center gap-4 p-4">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200/60">
+                          {photo ? (
+                            <img src={photo} alt="vehicle" className="w-full h-full object-cover" />
+                          ) : (
+                            <Skeleton className="w-full h-full bg-gray-200" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-slate-900 line-clamp-1">
+                            {vehicle?.marque_data?.nom ??
+                              (vehicle as any)?.marque_nom ??
+                              "Marque"}{" "}
+                            {vehicle?.modele_data?.label ??
+                              (vehicle as any)?.modele_label ??
+                              vehicle?.titre}
+                          </h4>
+
+                          <p className="text-xs text-slate-500 mt-1">
+                            {new Date(res.start_datetime).toLocaleDateString()}
+                          </p>
+
+                          <div className="flex items-center gap-1 text-emerald-600 mt-1.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span className="text-xs font-semibold">Terminé</span>
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-start gap-3 lg:items-end">
-                          <Button
-                            className="rounded-2xl bg-[#EEF4FF] px-6 text-sm font-semibold text-[#316BFF] hover:bg-[#E2ECFF]"
-                            onClick={() => navigate(vehicleId ? `/vehicule/${vehicleId}` : "/allCars")}
-                          >
-                            Louer à nouveau
-                          </Button>
-                          <button
-                            type="button"
-                            className="text-sm font-medium text-slate-400 transition-colors hover:text-slate-600"
-                            onClick={() => navigate(`/client/rentals/${reservation.id}`)}
-                          >
-                            Voir facture
-                          </button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-xl text-slate-600 hover:bg-slate-100"
+                          onClick={() => navigate(`/client/rentals/${res.id}`)}
+                        >
+                          Voir
+                        </Button>
                       </CardContent>
                     </Card>
                   );
                 })
               ) : (
-                <Card className="rounded-[22px] border border-dashed border-slate-300 bg-white shadow-sm">
-                  <CardContent className="p-10 text-center text-slate-500">
-                    Aucune location récente pour le moment.
-                  </CardContent>
-                </Card>
+                <p className="text-slate-400 text-sm">Aucun historique récent.</p>
               )}
             </div>
-          </section>
+          </div>
+        </div>
 
-          <section>
-            <Card className="rounded-[24px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,0.38)] xl:sticky xl:top-24">
-              <CardContent className="p-6">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <ShieldCheck className="h-4 w-4" />
-                  </div>
-                  <h3 className="font-poppins text-[20px] font-bold tracking-tight text-slate-900 sm:text-[22px]">
-                    Mes Documents
-                  </h3>
-                </div>
+        {/* RIGHT COLUMN */}
+        <div className="space-y-6">
+          <Card className="rounded-2xl border border-slate-200/60 bg-white shadow-sm">
+            <CardContent className="p-5">
+              <p className="text-sm font-semibold text-slate-900">Astuce</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Comparez plusieurs véhicules pour trouver la meilleure option selon votre budget et vos
+                besoins.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4 w-full rounded-xl"
+                onClick={() => navigate("/allCars")}
+              >
+                Rechercher une voiture
+              </Button>
+            </CardContent>
+          </Card>
 
-                <div className="space-y-4">
-                  {documentItems.map((document) => (
-                    <button
-                      key={document.id}
-                      type="button"
-                      onClick={() => setSelectedDocumentId(document.id)}
-                      className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-4 py-4 text-left transition-colors hover:bg-slate-100/80"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                          {document.icon}
-                        </div>
-                        <div>
-                          <p className="text-base font-semibold text-slate-900">{document.label}</p>
-                          <p className="text-sm text-emerald-600">{document.status}</p>
-                        </div>
-                      </div>
-
-                      <ChevronRight className="h-5 w-5 text-slate-300" />
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-4 text-base font-medium text-slate-500 transition-colors hover:border-primary/30 hover:text-primary"
-                    onClick={() => navigate("/client/settings")}
-                  >
-                    <FilePlus2 className="h-4 w-4" />
-                    Ajouter un document
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          <Card className="rounded-2xl border border-slate-200/60 bg-white shadow-sm">
+            <CardContent className="p-5">
+              <p className="text-sm font-semibold text-slate-900">Support</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Besoin d’aide ? Contactez notre équipe rapidement.
+              </p>
+              <Button
+                className="mt-4 w-full rounded-xl bg-primary text-white hover:opacity-95"
+                onClick={() => navigate("/client/supports/my-tickets")}
+              >
+                Ouvrir un ticket
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      <Dialog open={!!selectedDocument} onOpenChange={(open) => !open && setSelectedDocumentId(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-[28px] border-slate-200 bg-white p-0 sm:max-w-4xl">
-          {selectedDocument && (
-            <>
-              <DialogHeader className="border-b border-slate-100 px-6 py-5 text-left">
-                <DialogTitle className="font-poppins text-2xl font-bold text-slate-900">
-                  {selectedDocument.label}
-                </DialogTitle>
-                <DialogDescription className="text-sm leading-6 text-slate-500">
-                  {selectedDocument.description}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-5 px-6 py-6">
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-sm text-slate-500">Statut du document</p>
-                    <p className="text-base font-semibold text-slate-900">{selectedDocument.status}</p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => navigate("/client/settings")}
-                  >
-                    Modifier mes documents
-                  </Button>
-                </div>
-
-                {selectedDocument.previews?.length ? (
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    {selectedDocument.previews.map((preview) => (
-                      <DocumentImageCard key={preview.label} {...preview} />
-                    ))}
-                  </div>
-                ) : null}
-
-                {selectedDocument.details?.length ? (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {selectedDocument.details.map((detail) => (
-                      <div
-                        key={detail.label}
-                        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                      >
-                        <p className="text-sm text-slate-500">{detail.label}</p>
-                        <p className="mt-2 text-base font-semibold text-slate-900">{detail.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 };
 
